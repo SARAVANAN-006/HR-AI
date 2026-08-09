@@ -9,7 +9,8 @@ import StartInterview from './pages/StartInterview';
 import InterviewRoom from './pages/InterviewRoom';
 import Report from './pages/Report';
 import AdminDashboard from './pages/AdminDashboard';
-import { LayoutDashboard, Play, ShieldAlert, LogOut, Code, Activity, BrainCircuit } from 'lucide-react';
+import AssessmentDashboardPage from './pages/AssessmentDashboardPage';
+import { LayoutDashboard, Play, ShieldAlert, LogOut, Code, Activity, BrainCircuit, BarChart3 } from 'lucide-react';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode; requireAdmin?: boolean }> = ({ children, requireAdmin }) => {
   const { token, user, loading } = useAuth();
@@ -52,6 +53,7 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
     ? [{ name: 'Admin Console', path: '/admin', icon: ShieldAlert }]
     : [
         { name: 'Dashboard Console', path: '/dashboard', icon: LayoutDashboard },
+        { name: 'Assessment Engine (Mem 3)', path: '/assessment-dashboard', icon: BarChart3 },
         { name: 'Start AI Interview', path: '/start-interview', icon: Play },
       ];
 
@@ -164,6 +166,16 @@ const App: React.FC = () => {
             <ProtectedRoute>
               <DashboardLayout>
                 <Dashboard />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/assessment-dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <AssessmentDashboardPage />
               </DashboardLayout>
             </ProtectedRoute>
           }
