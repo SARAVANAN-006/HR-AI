@@ -1,0 +1,36 @@
+# Environment Variables
+.env
+.env.local
+
+# Backend builds
+backend/target/
+backend/.mvn/
+backend/*.jar
+backend/bin/
+backend/.metadata/
+backend/.classpath
+backend/.project
+backend/.settings/
+
+# Frontend builds
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/*.local
+
+# IDEs
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS files
+Thumbs.db
+Desktop.ini
+
+# Local build tools & databases
+maven/
+data/

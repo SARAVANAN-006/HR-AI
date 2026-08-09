@@ -1,0 +1,68 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-zinc-100 font-sans antialiased overflow-x-hidden;
+  }
+}
+
+/* Custom grid mesh */
+.grid-mesh {
+  background-size: 30px 30px;
+  background-image: 
+    linear-gradient(to right, rgba(39, 39, 42, 0.15) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(39, 39, 42, 0.15) 1px, transparent 1px);
+}
+
+/* Custom radial scan highlights */
+.radial-highlight {
+  background: radial-gradient(circle 800px at 50% 200px, rgba(34, 211, 238, 0.04), transparent 80%);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #09090b;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
+
+/* Code editor console terminal styling */
+.terminal-glow {
+  text-shadow: 0 0 4px rgba(34, 211, 238, 0.4);
+}
+.terminal-glow-green {
+  text-shadow: 0 0 4px rgba(52, 211, 153, 0.4);
+}
+
+/* Markdown message styles */
+.markdown-content p {
+  @apply mb-2 last:mb-0;
+}
+.markdown-content ul {
+  @apply pl-4 mb-2 list-disc;
+}
+.markdown-content ol {
+  @apply pl-4 mb-2 list-decimal;
+}
+.markdown-content li {
+  @apply mb-1;
+}
+.markdown-content code {
+  @apply bg-zinc-950 px-1 py-0.5 rounded text-brand-cyan font-mono text-[10px];
+}
