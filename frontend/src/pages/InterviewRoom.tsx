@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Editor from '@monaco-editor/react';
-import { Brain, Play, Send, Activity, Award, Clock, Code2, Maximize2, Minimize2, FileCode, GitCommit, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Brain, Play, Send, Activity, Award, Clock, Code2, Maximize2, Minimize2, FileCode, GitCommit, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 interface TestCase {
@@ -566,6 +566,33 @@ const InterviewRoom: React.FC = () => {
     }
   };
 
+  const getEditorFilename = (lang: string) => {
+    switch (lang) {
+      case 'JAVA': return 'Main.java';
+      case 'PYTHON': return 'main.py';
+      case 'JAVASCRIPT': return 'index.js';
+      case 'CPP': return 'main.cpp';
+      case 'C': return 'main.c';
+      case 'CSHARP': return 'Program.cs';
+      case 'GO': return 'main.go';
+      default: return 'main.py';
+    }
+  };
+
+  const handleResetCode = () => {
+    if (window.confirm("Are you sure you want to reset your code draft back to the default template? Your current changes will be lost.")) {
+      let template = '';
+      if (language === 'JAVA') template = session?.question.javaTemplate || '';
+      else if (language === 'PYTHON') template = session?.question.pythonTemplate || '';
+      else if (language === 'JAVASCRIPT') template = session?.question.javascriptTemplate || '';
+      else if (language === 'CPP') template = session?.question.cppTemplate || '';
+      else if (language === 'CSHARP') template = session?.question.csharpTemplate || '';
+      else if (language === 'GO') template = session?.question.goTemplate || '';
+      else template = session?.question.cTemplate || '';
+      setCode(template);
+    }
+  };
+
   const handleRunCode = async () => {
     setTerminalStatus('running');
     setTerminalOutput('Initializing sandbox runtime...\nConnecting to public execution containers...\nRunning solution...');
@@ -841,7 +868,7 @@ const InterviewRoom: React.FC = () => {
             <div className="flex items-center space-x-3">
               <div className="px-3 py-1.5 border-r border-t border-l border-border bg-background text-xs font-semibold text-brand-cyan flex items-center gap-1.5">
                 <Code2 size={12} />
-                <span>solution.{language === 'JAVA' ? 'java' : language === 'PYTHON' ? 'py' : language === 'JAVASCRIPT' ? 'js' : language === 'CPP' ? 'cpp' : language === 'CSHARP' ? 'cs' : language === 'GO' ? 'go' : 'c'}</span>
+                <span>{getEditorFilename(language)}</span>
               </div>
               
               {/* Language Switcher Dropdown */}
@@ -901,6 +928,15 @@ const InterviewRoom: React.FC = () => {
               </button>
 
               <button
+                onClick={handleResetCode}
+                className="flex items-center space-x-1 px-3 py-1 bg-zinc-800 hover:bg-zinc-700/80 rounded border border-border text-[10px] font-bold text-zinc-400 hover:text-zinc-200 transition"
+                title="Reset editor code back to the default language template"
+              >
+                <RotateCcw size={10} />
+                <span>Reset</span>
+              </button>
+
+              <button
                 onClick={handleRunCode}
                 disabled={terminalStatus === 'running'}
                 className="flex items-center space-x-1 px-3 py-1 bg-zinc-800 hover:bg-zinc-700/80 rounded border border-border text-[10px] font-bold text-brand-cyan transition"
@@ -949,8 +985,8 @@ const InterviewRoom: React.FC = () => {
                         <FileCode size={13} className="text-brand-cyan" />
                         <span>Problem Description</span>
                       </h3>
-                      <div className="text-xs text-zinc-300 leading-relaxed whitespace-pre-wrap font-sans">
-                        {session.question.description}
+                      <div className="text-xs text-zinc-300 leading-relaxed font-sans markdown-content">
+                        <ReactMarkdown>{session.question.description}</ReactMarkdown>
                       </div>
                     </div>
                   ) : (
