@@ -87,7 +87,7 @@ const Landing: React.FC = () => {
 
           <h1 className="text-5xl md:text-8xl font-bold tracking-tight text-white leading-none select-none font-mono">
             DON'T JUST <span className="text-transparent" style={{ WebkitTextStroke: '1px rgba(255, 255, 255, 0.45)' }}>COMPILE.</span><br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-cyan via-zinc-100 to-brand-violet neon-text-cyan font-extrabold italic uppercase">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-cyan via-zinc-100 to-brand-violet neon-text-cyan font-extrabold italic uppercase pl-2">
               {typedTitle}
               <span className="animate-pulse text-brand-cyan font-normal">|</span>
             </span>
