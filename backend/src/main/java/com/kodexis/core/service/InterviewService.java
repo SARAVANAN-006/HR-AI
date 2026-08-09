@@ -50,6 +50,12 @@ public class InterviewService {
 
     @Transactional
     public InterviewSession startSession(User user, Enums.Difficulty requestedDifficulty, Enums.Language language, Integer duration, String mode) {
+        return startSession(user, requestedDifficulty, language, duration, mode, null, null, null, null);
+    }
+
+    @Transactional
+    public InterviewSession startSession(User user, Enums.Difficulty requestedDifficulty, Enums.Language language, Integer duration, String mode,
+                                         String candidateAlias, String targetRole, String candidateMood, String interviewerPersona) {
         CandidateProfile profile = profileRepository.findByUserId(user.getId()).orElse(null);
         
         AdaptiveDifficultyEngine.QuestionRecommendation recommendation = difficultyEngine.recommendQuestion(profile, requestedDifficulty);
@@ -57,16 +63,31 @@ public class InterviewService {
 
         InterviewSession session = new InterviewSession(user, question, requestedDifficulty, language, duration, mode);
         session.setState(Enums.SessionState.DISCUSSION);
+        session.setCandidateAlias(candidateAlias != null && !candidateAlias.trim().isEmpty() ? candidateAlias : (profile != null ? profile.getFullName() : user.getUsername()));
+        session.setTargetRole(targetRole != null && !targetRole.trim().isEmpty() ? targetRole : "Software Engineer");
+        session.setCandidateMood(candidateMood != null ? candidateMood : "Feeling Confident");
+        session.setInterviewerPersona(interviewerPersona != null ? interviewerPersona : "Rigorous Tech Lead");
         
         // Log Initial Telemetry
         session = sessionRepository.save(session);
         logTelemetry(session.getId(), "Interview Session Initiated. Selected Problem: " + question.getTitle() + " (" + question.getDifficulty() + "). " + recommendation.getAdjustmentReason());
 
         // Save AI Welcome Message
-        String candidateName = profile != null ? profile.getFullName() : user.getUsername();
-        String welcomeText = "Hello " + candidateName + ", I'm your KODEXIS AI interviewer. " +
-                "Today we'll solve a " + question.getDifficulty() + " problem in the topic of **" + question.getTopic() + "**: **" + question.getTitle() + "**. " +
-                "Before writing code, please explain your approach in the chat. How will you solve this? What variables will you track, and what is your target Big-O complexity?";
+        String candidateName = session.getCandidateAlias();
+        String welcomeText;
+        if ("Chaotic Code Critic".equals(session.getInterviewerPersona())) {
+            welcomeText = "Hey " + candidateName + "! 😼 I'm your Chaotic Code Critic AI today. We are going to tackle a " + question.getDifficulty() + " problem: **" + question.getTitle() + "**.\n\n" +
+                    "I hope you're ready to defend your code like your life depends on it. Before touching the editor, give me a raw explanation of your approach. Don't make it messy!";
+        } else if ("Friendly Peer/Mentor".equals(session.getInterviewerPersona())) {
+            welcomeText = "Hi " + candidateName + "! 😊 I'm your Friendly Mentor AI interviewer. Today, we have a great " + question.getDifficulty() + " coding problem to solve: **" + question.getTitle() + "**.\n\n" +
+                    "Let's chat about your ideas first. Feel free to explain how you'd solve this conceptually—I'm here to guide you!";
+        } else if ("Silent Auditor".equals(session.getInterviewerPersona())) {
+            welcomeText = "Hello " + candidateName + ". I am your Silent Auditor. We will proceed with **" + question.getTitle() + "** (" + question.getDifficulty() + ").\n\n" +
+                    "State your approach and the target time and space complexities. Speak when ready.";
+        } else {
+            welcomeText = "Hello " + candidateName + ". I am your Rigorous Tech Lead. Today we will evaluate your problem-solving capabilities on: **" + question.getTitle() + "** (" + question.getDifficulty() + ").\n\n" +
+                    "Explain your conceptual approach first, detail which variables you will track, and specify your target Big-O runtime and space complexities.";
+        }
         
         InterviewMessage msg = new InterviewMessage(session, "AI", welcomeText);
         messageRepository.save(msg);
@@ -109,6 +130,21 @@ public class InterviewService {
                     .append("Expected Optimal Time Complexity: ").append(session.getQuestion().getExpectedTimeComplexity()).append("\n")
                     .append("Expected Optimal Space Complexity: ").append(session.getQuestion().getExpectedSpaceComplexity()).append("\n")
                     .append("Optimal Concept: ").append(session.getQuestion().getOptimalSolutionConcept()).append("\n\n");
+
+            String persona = session.getInterviewerPersona();
+            if ("Chaotic Code Critic".equals(persona)) {
+                promptBuilder.append("YOUR INTERVIEWER PERSONA: Chaotic Code Critic.\n")
+                        .append("Adopt a slightly sarcastic, playful, and highly skeptical tone. Challenge the candidate's logic and question why they make decisions, using slight humor. Keep them engaged, but do not be mean.\n\n");
+            } else if ("Friendly Peer/Mentor".equals(persona)) {
+                promptBuilder.append("YOUR INTERVIEWER PERSONA: Friendly Peer/Mentor.\n")
+                        .append("Adopt a warm, encouraging, supportive, and kind mentor tone. Guide them gently, validate their approach, and help clarify logic using simple steps.\n\n");
+            } else if ("Silent Auditor".equals(persona)) {
+                promptBuilder.append("YOUR INTERVIEWER PERSONA: Silent Auditor.\n")
+                        .append("Adopt an extremely formal, direct, and concise tone. Speak only when necessary and provide minimal guidance unless directly questioned.\n\n");
+            } else {
+                promptBuilder.append("YOUR INTERVIEWER PERSONA: Rigorous Tech Lead (Default).\n")
+                        .append("Adopt a professional, engineering lead tone. Focus heavily on Big-O complexity, corner cases, data structures choice, and coding standards.\n\n");
+            }
 
             if (code != null && !code.trim().isEmpty()) {
                 promptBuilder.append("--- CANDIDATE LIVE CODE EDITOR STATE ---\n")

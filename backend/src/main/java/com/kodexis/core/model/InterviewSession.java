@@ -37,6 +37,18 @@ public class InterviewSession {
     @Column(name = "interview_mode")
     private String interviewMode = "Full Simulation";
 
+    @Column(name = "candidate_alias")
+    private String candidateAlias = "Candidate";
+
+    @Column(name = "target_role")
+    private String targetRole = "Software Engineer";
+
+    @Column(name = "candidate_mood")
+    private String candidateMood = "Feeling Confident";
+
+    @Column(name = "interviewer_persona")
+    private String interviewerPersona = "Rigorous Tech Lead";
+
     @Column(name = "started_at", nullable = false)
     private LocalDateTime startedAt;
 
@@ -101,4 +113,16 @@ public class InterviewSession {
 
     public String getTelemetryLog() { return telemetryLog; }
     public void setTelemetryLog(String telemetryLog) { this.telemetryLog = telemetryLog; }
+
+    public String getCandidateAlias() { return candidateAlias; }
+    public void setCandidateAlias(String candidateAlias) { this.candidateAlias = candidateAlias; }
+
+    public String getTargetRole() { return targetRole; }
+    public void setTargetRole(String targetRole) { this.targetRole = targetRole; }
+
+    public String getCandidateMood() { return candidateMood; }
+    public void setCandidateMood(String candidateMood) { this.candidateMood = candidateMood; }
+
+    public String getInterviewerPersona() { return interviewerPersona; }
+    public void setInterviewerPersona(String interviewerPersona) { this.interviewerPersona = interviewerPersona; }
 }
