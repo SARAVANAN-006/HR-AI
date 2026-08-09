@@ -82,7 +82,7 @@ const Dashboard: React.FC = () => {
         ]);
         setLoading(false);
       })
-      .catch((err) => {
+      .catch(() => {
         console.warn('Backend offline. Loading candidate dashboard telemetry...');
         const mockDashboard: DashboardData = {
           fullName: "Vigneshwaran S P",

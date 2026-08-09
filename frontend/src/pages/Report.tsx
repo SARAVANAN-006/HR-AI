@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Calendar, FileCode, CheckCircle2, ShieldAlert, GitCommit } from 'lucide-react';
+import { ArrowLeft, Calendar, CheckCircle2, ShieldAlert, GitCommit } from 'lucide-react';
 import RadarChart from '../components/RadarChart';
 import CodeQualityInspector from '../components/CodeQualityInspector';
 
@@ -69,7 +69,7 @@ const Report: React.FC = () => {
         }
         setLoading(false);
       })
-      .catch((err) => {
+      .catch(() => {
         console.warn('Backend offline. Loading Member 3 Multi-Factor Assessment Report...');
         const mockS: Session = {
           id: 1,

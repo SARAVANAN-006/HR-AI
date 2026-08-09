@@ -1,15 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   BarChart3, 
   Code, 
   History, 
-  Network, 
-  User, 
-  Award, 
-  TrendingUp, 
-  CheckCircle2, 
-  Sparkles,
-  Terminal
+  Network
 } from 'lucide-react';
 import RadarChart from '../components/RadarChart';
 import ProgressChart from '../components/ProgressChart';
