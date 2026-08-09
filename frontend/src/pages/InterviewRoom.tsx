@@ -419,6 +419,7 @@ const InterviewRoom: React.FC = () => {
   const [chatInput, setChatInput] = useState<string>('');
   const [code, setCode] = useState<string>('');
   const [language, setLanguage] = useState<string>('PYTHON');
+  const [attachCode, setAttachCode] = useState<boolean>(true);
   
   // Sandbox Console States
   const [terminalOutput, setTerminalOutput] = useState<string>('Terminal initialized. Sandbox engine ready.');
@@ -517,7 +518,12 @@ const InterviewRoom: React.FC = () => {
     }));
 
     try {
-      const response = await axios.post(`/api/interviews/${id}/message`, { content: userText });
+      const payload: any = { content: userText };
+      if (attachCode) {
+        payload.code = code;
+        payload.language = language;
+      }
+      const response = await axios.post(`/api/interviews/${id}/message`, payload);
       setMessages((prev) => [...prev, response.data]);
       
       // Update session state locally if AI tells the candidate to code
@@ -529,6 +535,32 @@ const InterviewRoom: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to post message:', error);
+    } finally {
+      setAiTyping(false);
+    }
+  };
+
+  const handleExplainCodeWithAi = async () => {
+    setIsLeftSidebarOpen(true);
+    setAiTyping(true);
+    
+    const prompt = "Please review my current code draft for potential bugs, logic flow correctness, or optimizations.";
+    setMessages((prev) => [...prev, { id: Date.now(), sender: 'CANDIDATE', content: prompt, timestamp: new Date().toISOString() }]);
+
+    setSignals(prev => ({
+      ...prev,
+      communication: { value: Math.min(100, prev.communication.value + 5), label: 'Observed' }
+    }));
+
+    try {
+      const response = await axios.post(`/api/interviews/${id}/message`, {
+        content: prompt,
+        code: code,
+        language: language
+      });
+      setMessages((prev) => [...prev, response.data]);
+    } catch (error) {
+      console.error('Failed to explain code:', error);
     } finally {
       setAiTyping(false);
     }
@@ -756,20 +788,43 @@ const InterviewRoom: React.FC = () => {
           </div>
 
           {/* Form message input */}
-          <form onSubmit={handleSendMessage} className="p-4 border-t border-border bg-background">
+          <form onSubmit={handleSendMessage} className="p-4 border-t border-border bg-background space-y-3 shrink-0">
+            <div className="flex items-center justify-between font-mono text-[9px] text-zinc-500">
+              <label className="flex items-center space-x-1.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={attachCode}
+                  onChange={(e) => setAttachCode(e.target.checked)}
+                  className="rounded bg-zinc-900 border-border text-brand-cyan focus:ring-0 focus:ring-offset-0 focus:outline-none w-3 h-3 cursor-pointer"
+                />
+                <span className={attachCode ? "text-brand-cyan font-bold" : "text-zinc-500"}>
+                  ATTACH LIVE EDITOR DRAFT
+                </span>
+              </label>
+              {attachCode && (
+                <span className="text-brand-cyan font-bold animate-pulse text-[8px] bg-brand-cyan/10 border border-brand-cyan/20 px-1.5 py-0.5 rounded">
+                  📎 CODE CONTEXT ACTIVE
+                </span>
+              )}
+            </div>
+
             <div className="relative">
               <input
                 type="text"
                 disabled={aiTyping}
-                placeholder={session.state === 'DISCUSSION' ? "Explain your approach..." : "Ask for a hint or justify logic..."}
+                placeholder={session ? (session.state === 'DISCUSSION' ? "Explain your approach..." : "Ask for a hint or justify logic...") : "Type a message..."}
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
-                className="w-full bg-background-panel border border-border rounded pl-4 pr-10 py-2.5 text-xs font-mono text-zinc-200 focus:outline-none focus:border-brand-violet"
+                className={`w-full bg-background-panel border border-border rounded pl-4 pr-10 py-2.5 text-xs font-mono text-zinc-200 focus:outline-none transition ${
+                  attachCode ? 'focus:border-brand-cyan border-brand-cyan/40 bg-zinc-950/20' : 'focus:border-brand-violet border-border/80'
+                }`}
               />
               <button
                 type="submit"
                 disabled={aiTyping || !chatInput.trim()}
-                className="absolute right-2 top-2.5 p-1 text-zinc-500 hover:text-brand-violet transition disabled:opacity-50"
+                className={`absolute right-2 top-2.5 p-1 transition disabled:opacity-50 ${
+                  attachCode ? 'text-brand-cyan hover:text-brand-cyan/80' : 'text-zinc-500 hover:text-brand-violet'
+                }`}
               >
                 <Send size={14} />
               </button>
@@ -834,6 +889,15 @@ const InterviewRoom: React.FC = () => {
               >
                 {!(isLeftSidebarOpen || isRightSidebarOpen) ? <Minimize2 size={10} /> : <Maximize2 size={10} />}
                 <span>{!(isLeftSidebarOpen || isRightSidebarOpen) ? 'Normal View' : 'Focus Mode'}</span>
+              </button>
+
+              <button
+                onClick={handleExplainCodeWithAi}
+                className="flex items-center space-x-1 px-3 py-1 bg-zinc-800 hover:bg-zinc-700/80 rounded border border-border text-[10px] font-bold text-brand-violet transition"
+                title="Send current code editor state to AI Interviewer for feedback"
+              >
+                <Brain size={10} className="text-brand-violet animate-pulse" />
+                <span>Explain Code</span>
               </button>
 
               <button

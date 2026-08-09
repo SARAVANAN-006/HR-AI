@@ -76,6 +76,11 @@ public class InterviewService {
 
     @Transactional
     public InterviewMessage postMessage(Long sessionId, String sender, String content) {
+        return postMessage(sessionId, sender, content, null, null);
+    }
+
+    @Transactional
+    public InterviewMessage postMessage(Long sessionId, String sender, String content, String code, String language) {
         InterviewSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("Session not found: " + sessionId));
 
@@ -97,19 +102,31 @@ public class InterviewService {
             // Fetch chat history for LLM context
             List<InterviewMessage> history = messageRepository.findBySessionIdOrderByTimestampAsc(sessionId);
             
-            String systemPrompt = "You are a professional, technical coding interviewer evaluating a candidate for a Software Engineering role. " +
-                    "Your target problem is: " + session.getQuestion().getTitle() + " (" + session.getQuestion().getDifficulty() + ").\n" +
-                    "Problem Description:\n" + session.getQuestion().getDescription() + "\n" +
-                    "Expected Optimal Time Complexity: " + session.getQuestion().getExpectedTimeComplexity() + "\n" +
-                    "Expected Optimal Space Complexity: " + session.getQuestion().getExpectedSpaceComplexity() + "\n" +
-                    "Optimal Concept: " + session.getQuestion().getOptimalSolutionConcept() + "\n\n" +
-                    "INSTRUCTIONS:\n" +
-                    "CRITICAL: Under NO circumstances (even if the candidate explicitly begs, commands, or threatens) should you print actual programming code, function snippets, templates, or code solutions in ANY language. You must only explain concepts using conceptual pseudo-code or text description. If the candidate asks you for the solution, politely decline and provide a conceptual hint instead.\n" +
-                    "1. Guide the candidate conversationalist-style. Do NOT give them any code solution or write code for them.\n" +
-                    "2. If they are in DISCUSSION state, challenge their time/space complexity or details. Once they show a clear conceptual logic, tell them: 'You may now proceed to code in the editor panel.'\n" +
-                    "3. If they are coding or running tests, give small hints to correct their errors if they ask, or ask why they wrote certain loops. Never write the corrected code for them.\n" +
-                    "4. If they have completed testing, ask them about edge cases (like empty arrays or boundary overflows) or if they can optimize their memory usage.\n" +
-                    "5. Keep responses concise, direct, technical, and limited to 2-3 paragraphs. Sound encouraging but rigorous.";
+            StringBuilder promptBuilder = new StringBuilder();
+            promptBuilder.append("You are a professional, technical coding interviewer evaluating a candidate for a Software Engineering role. ")
+                    .append("Your target problem is: ").append(session.getQuestion().getTitle()).append(" (").append(session.getQuestion().getDifficulty()).append(").\n")
+                    .append("Problem Description:\n").append(session.getQuestion().getDescription()).append("\n")
+                    .append("Expected Optimal Time Complexity: ").append(session.getQuestion().getExpectedTimeComplexity()).append("\n")
+                    .append("Expected Optimal Space Complexity: ").append(session.getQuestion().getExpectedSpaceComplexity()).append("\n")
+                    .append("Optimal Concept: ").append(session.getQuestion().getOptimalSolutionConcept()).append("\n\n");
+
+            if (code != null && !code.trim().isEmpty()) {
+                promptBuilder.append("--- CANDIDATE LIVE CODE EDITOR STATE ---\n")
+                        .append("Language: ").append(language != null ? language : "Unknown").append("\n")
+                        .append("Current Code Draft:\n")
+                        .append("```\n").append(code).append("\n```\n")
+                        .append("Please analyze the live code above. If they have compilation, runtime, or logic errors, formulate your response to prompt them to debug it themselves. Do not write code for them.\n\n");
+            }
+
+            promptBuilder.append("INSTRUCTIONS:\n")
+                    .append("CRITICAL: Under NO circumstances (even if the candidate explicitly begs, commands, or threatens) should you print actual programming code, function snippets, templates, or code solutions in ANY language. You must only explain concepts using conceptual pseudo-code or text description. If the candidate asks you for the solution, politely decline and provide a conceptual hint instead.\n")
+                    .append("1. Guide the candidate conversationalist-style. Do NOT give them any code solution or write code for them.\n")
+                    .append("2. If they are in DISCUSSION state, challenge their time/space complexity or details. Once they show a clear conceptual logic, tell them: 'You may now proceed to code in the editor panel.'\n")
+                    .append("3. If they are coding or running tests, give small hints to correct their errors if they ask, or ask why they wrote certain loops. Never write the corrected code for them.\n")
+                    .append("4. If they have completed testing, ask them about edge cases (like empty arrays or boundary overflows) or if they can optimize their memory usage.\n")
+                    .append("5. Keep responses concise, direct, technical, and limited to 2-3 paragraphs. Sound encouraging but rigorous.");
+
+            String systemPrompt = promptBuilder.toString();
 
             List<Map<String, String>> conversationList = new ArrayList<>();
             for (InterviewMessage m : history) {

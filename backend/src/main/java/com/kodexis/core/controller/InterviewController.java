@@ -47,6 +47,8 @@ public class InterviewController {
 
     public static class MessageRequest {
         public String content;
+        public String code;
+        public String language;
     }
 
     public static class CodeRequest {
@@ -91,7 +93,7 @@ public class InterviewController {
     @PostMapping("/{id}/message")
     public ResponseEntity<?> postMessage(@PathVariable Long id, @RequestBody MessageRequest request) {
         try {
-            InterviewMessage aiResponse = interviewService.postMessage(id, "CANDIDATE", request.content);
+            InterviewMessage aiResponse = interviewService.postMessage(id, "CANDIDATE", request.content, request.code, request.language);
             return ResponseEntity.ok(aiResponse);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", e.getMessage()));
