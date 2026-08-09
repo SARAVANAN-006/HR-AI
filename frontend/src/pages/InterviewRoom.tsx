@@ -689,7 +689,8 @@ const InterviewRoom: React.FC = () => {
         
         {/* LEFT PANEL: AI INTERVIEWER */}
         {isLeftSidebarOpen && (
-          <div className="w-full lg:w-[380px] border-b lg:border-b-0 lg:border-r border-border flex flex-col bg-background-panel shrink-0 overflow-hidden">
+          <div className="w-full lg:w-[380px] border-b lg:border-b-0 lg:border-r border-border flex flex-col bg-background-panel/60 backdrop-blur-md shrink-0 overflow-hidden relative animate-glow-violet">
+            <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-gradient-to-b from-brand-violet to-transparent" />
             <div className="p-4 border-b border-border bg-background flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <Brain className="text-brand-violet" size={16} />
@@ -727,10 +728,10 @@ const InterviewRoom: React.FC = () => {
                   <span className={`text-[8px] font-mono mb-1 ${isAi ? 'text-brand-violet' : 'text-brand-cyan text-right'}`}>
                     {isAi ? 'KODEXIS AI' : 'CANDIDATE'}
                   </span>
-                  <div className={`p-3 rounded border text-xs font-mono leading-relaxed ${
+                  <div className={`p-3.5 rounded-2xl text-xs leading-relaxed ${
                     isAi
-                      ? 'bg-brand-violet/5 border-brand-violet/20 text-zinc-200'
-                      : 'bg-brand-cyan/5 border-brand-cyan/20 text-zinc-100'
+                      ? 'bg-brand-violet/5 border border-brand-violet/25 text-zinc-100 rounded-tl-none font-sans shadow-[0_0_15px_rgba(139,92,246,0.03)]'
+                      : 'bg-brand-cyan/5 border border-brand-cyan/25 text-zinc-100 rounded-tr-none font-sans shadow-[0_0_15px_rgba(34,211,238,0.03)]'
                   }`}>
                     {isAi ? (
                       <div className="markdown-content">
@@ -746,7 +747,7 @@ const InterviewRoom: React.FC = () => {
             {aiTyping && (
               <div className="flex flex-col max-w-[85%] self-start">
                 <span className="text-[8px] font-mono text-brand-violet mb-1">KODEXIS AI</span>
-                <div className="p-3 rounded border border-brand-violet/10 bg-brand-violet/5 text-xs text-zinc-500 font-mono animate-pulse">
+                <div className="p-3.5 rounded-2xl rounded-tl-none border border-brand-violet/25 bg-brand-violet/5 text-xs text-brand-violet/60 font-mono animate-pulse">
                   Analyzing explanation parameters...
                 </div>
               </div>
@@ -1052,7 +1053,8 @@ const InterviewRoom: React.FC = () => {
 
         {/* RIGHT PANEL: INTERVIEW SIGNAL PANEL */}
         {isRightSidebarOpen && (
-          <div className="w-full lg:w-[260px] border-t lg:border-t-0 lg:border-l border-border bg-background-panel p-4 space-y-6 shrink-0 font-mono">
+          <div className="w-full lg:w-[260px] border-t lg:border-t-0 lg:border-l border-border bg-background-panel/60 backdrop-blur-md p-4 space-y-6 shrink-0 font-mono relative overflow-hidden animate-glow-cyan">
+            <div className="absolute right-0 top-0 bottom-0 w-[2px] bg-gradient-to-b from-brand-cyan to-transparent" />
             <div className="border-b border-border pb-3">
               <span className="text-[9px] text-zinc-500 uppercase tracking-widest block">TELEMETRY SCANNER</span>
               <h3 className="text-xs font-bold text-zinc-200 uppercase">SESSION SIGNALS</h3>
@@ -1060,20 +1062,20 @@ const InterviewRoom: React.FC = () => {
 
             <div className="space-y-4">
               {[
-                { name: 'Correctness', value: signals.correctness.value, label: signals.correctness.label, color: 'bg-brand-cyan' },
-                { name: 'Complexity', value: signals.complexity.value, label: signals.complexity.label, color: 'bg-brand-violet' },
-                { name: 'Code Quality', value: signals.codeQuality.value, label: signals.codeQuality.label, color: 'bg-brand-violet' },
-                { name: 'Edge Cases', value: signals.edgeCases.value, label: signals.edgeCases.label, color: 'bg-yellow-500' },
-                { name: 'Debugging', value: signals.debugging.value, label: signals.debugging.label, color: 'bg-brand-emerald' },
-                { name: 'Communication', value: signals.communication.value, label: signals.communication.label, color: 'bg-brand-cyan' }
+                { name: 'Correctness', value: signals.correctness.value, label: signals.correctness.label, color: 'bg-brand-cyan', glow: '0 0 8px #22d3ee' },
+                { name: 'Complexity', value: signals.complexity.value, label: signals.complexity.label, color: 'bg-brand-violet', glow: '0 0 8px #8b5cf6' },
+                { name: 'Code Quality', value: signals.codeQuality.value, label: signals.codeQuality.label, color: 'bg-brand-violet', glow: '0 0 8px #8b5cf6' },
+                { name: 'Edge Cases', value: signals.edgeCases.value, label: signals.edgeCases.label, color: 'bg-yellow-500', glow: '0 0 8px #f59e0b' },
+                { name: 'Debugging', value: signals.debugging.value, label: signals.debugging.label, color: 'bg-brand-emerald', glow: '0 0 8px #10b981' },
+                { name: 'Communication', value: signals.communication.value, label: signals.communication.label, color: 'bg-brand-cyan', glow: '0 0 8px #22d3ee' }
               ].map((sig) => (
                 <div key={sig.name} className="space-y-1">
                   <div className="flex justify-between text-[11px]">
                     <span className="text-zinc-400">{sig.name}</span>
-                    <span className="text-zinc-500">{sig.label}</span>
+                    <span className="text-zinc-500 font-bold">{sig.label}</span>
                   </div>
                   <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
-                    <div className={`h-full ${sig.color} transition-all duration-300`} style={{ width: `${sig.value}%` }}></div>
+                    <div className={`h-full ${sig.color} transition-all duration-300`} style={{ width: `${sig.value}%`, boxShadow: sig.glow }}></div>
                   </div>
                 </div>
               ))}

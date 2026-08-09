@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ArrowLeft, Calendar, FileCode, CheckCircle2, ShieldAlert, GitCommit } from 'lucide-react';
+import RadarChart from '../components/RadarChart';
+import CodeQualityInspector from '../components/CodeQualityInspector';
 
 interface Question {
   title: string;
@@ -156,17 +158,18 @@ const Report: React.FC = () => {
       </div>
 
       {/* OVERALL SCORE BLOCK */}
-      <div className="grid grid-cols-1 md:grid-cols-12 border border-border bg-background-panel rounded overflow-hidden">
+      <div className="grid grid-cols-1 md:grid-cols-12 glass-panel animate-glow-cyan rounded overflow-hidden relative">
+        <div className="absolute left-0 top-0 bottom-0 w-[4px] bg-gradient-to-b from-brand-cyan to-transparent" />
         
         {/* Left Side: Score display */}
-        <div className="md:col-span-5 border-b md:border-b-0 md:border-r border-border p-8 flex flex-col justify-between items-center text-center">
+        <div className="md:col-span-5 border-b md:border-b-0 md:border-r border-border/40 p-8 flex flex-col justify-between items-center text-center">
           <div className="space-y-1">
             <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest block">Overall Grade</span>
             <p className="text-xs font-mono text-brand-cyan uppercase">KODEXIS Readiness Index</p>
           </div>
 
           <div className="flex items-baseline py-6">
-            <span className="text-7xl font-bold font-mono text-zinc-100 tracking-tighter">{assessment.overallScore}</span>
+            <span className="text-7xl font-bold font-mono tracking-tighter neon-text-cyan">{assessment.overallScore}</span>
             <span className="text-zinc-500 text-lg font-mono ml-1">/ 100</span>
           </div>
 
@@ -198,7 +201,7 @@ const Report: React.FC = () => {
             </div>
           </div>
 
-          <div className="pt-4 border-t border-border/60 flex items-center space-x-2 text-[10px] font-mono text-zinc-500">
+          <div className="pt-4 border-t border-border/40 flex items-center space-x-2 text-[10px] font-mono text-zinc-500">
             <Calendar size={12} />
             <span>Completed on: {session.completedAt ? session.completedAt.replace('T', ' ').substring(0, 16) : ''}</span>
           </div>
@@ -210,7 +213,8 @@ const Report: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* MEMBER 3: MULTI-FACTOR RADAR PROFILE */}
-        <div className="lg:col-span-5 border border-border bg-background-panel rounded p-6 space-y-4 font-mono">
+        <div className="lg:col-span-5 glass-panel animate-glow-violet rounded p-6 space-y-4 font-mono relative overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b from-brand-violet to-transparent" />
           <div>
             <span className="text-[9px] text-brand-cyan uppercase tracking-widest block font-bold">MEMBER 3 ASSESSMENT ENGINE</span>
             <h4 className="text-xs font-bold text-zinc-200 uppercase">Multi-Factor Radar Profile</h4>
@@ -229,27 +233,28 @@ const Report: React.FC = () => {
         </div>
 
         {/* INTERVIEW AUTOPSY FEEDBACKS */}
-        <div className="lg:col-span-7 border border-border bg-background-panel rounded p-6 space-y-6">
-          <div className="flex justify-between items-center border-b border-border/60 pb-3">
+        <div className="lg:col-span-7 glass-panel animate-glow-cyan rounded p-6 space-y-6 relative overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b from-brand-cyan to-transparent" />
+          <div className="flex justify-between items-center border-b border-border/40 pb-3">
             <h4 className="text-xs font-mono font-bold text-zinc-200 uppercase">INTERVIEW AUTOPSY ANALYSIS</h4>
-            <span className="text-[10px] font-mono text-brand-cyan bg-brand-cyan/10 px-2 py-0.5 rounded">AI ANALYSIS DECK</span>
+            <span className="text-[10px] font-mono text-brand-cyan bg-brand-cyan/15 px-2 py-0.5 rounded border border-brand-cyan/20">AI ANALYSIS DECK</span>
           </div>
 
           <div className="space-y-4 text-xs leading-relaxed">
             <div className="space-y-1">
               <span className="font-mono text-[10px] text-brand-violet uppercase font-semibold">Autopsy Summary</span>
-              <p className="text-zinc-300 font-mono bg-zinc-950/45 p-3 border border-border rounded">{assessment.autopsySummary}</p>
+              <p className="text-zinc-300 font-mono bg-zinc-950/45 p-3 border border-border/40 rounded leading-relaxed">{assessment.autopsySummary}</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-3 border border-brand-emerald/10 bg-brand-emerald/5 rounded space-y-1.5">
+              <div className="p-3 border border-brand-emerald/20 bg-brand-emerald/5 rounded space-y-1.5 shadow-[0_0_12px_rgba(16,185,129,0.02)]">
                 <span className="font-mono text-[9px] text-brand-emerald uppercase font-bold flex items-center gap-1">
                   <CheckCircle2 size={12} /> What You Did Well
                 </span>
                 <p className="text-zinc-300 font-mono text-[11px] leading-relaxed">{assessment.whatWentWell}</p>
               </div>
 
-              <div className="p-3 border border-yellow-500/10 bg-yellow-500/5 rounded space-y-1.5">
+              <div className="p-3 border border-yellow-500/20 bg-yellow-500/5 rounded space-y-1.5 shadow-[0_0_12px_rgba(245,158,11,0.02)]">
                 <span className="font-mono text-[9px] text-yellow-500 uppercase font-bold flex items-center gap-1">
                   <ShieldAlert size={12} /> Areas To Improve
                 </span>
@@ -259,10 +264,10 @@ const Report: React.FC = () => {
 
             <div className="space-y-1">
               <span className="font-mono text-[10px] text-zinc-400 uppercase font-semibold">Interviewer Scorecard Notes</span>
-              <p className="text-zinc-400 italic bg-zinc-950/20 p-3 border border-border/50 rounded">"{assessment.interviewerFeedback}"</p>
+              <p className="text-zinc-400 italic bg-zinc-950/20 p-3 border border-border/30 rounded">"{assessment.interviewerFeedback}"</p>
             </div>
 
-            <div className="p-3 border border-border bg-background rounded font-mono text-[11px] flex justify-between items-center">
+            <div className="p-3 border border-border/40 bg-zinc-950/40 rounded font-mono text-[11px] flex justify-between items-center">
               <div>
                 <span className="text-zinc-500 uppercase text-[9px] block">Recommended Practice Topics</span>
                 <span className="text-zinc-300 mt-1 font-semibold block">{assessment.suggestedPractice}</span>
@@ -277,7 +282,8 @@ const Report: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* MEMBER 3: CODE QUALITY INSPECTOR */}
-        <div className="lg:col-span-8">
+        <div className="lg:col-span-8 glass-panel animate-glow-cyan rounded p-6 relative overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b from-brand-cyan to-transparent" />
           <CodeQualityInspector
             code={session.lastSubmittedCode}
             codeSmells={[]}
@@ -286,8 +292,9 @@ const Report: React.FC = () => {
         </div>
 
         {/* CODE TELEMETRY TIMELINE */}
-        <div className="lg:col-span-4 border border-border bg-background-panel rounded p-6 space-y-4 overflow-hidden">
-          <div className="border-b border-border/60 pb-3">
+        <div className="lg:col-span-4 glass-panel animate-glow-violet rounded p-6 space-y-4 overflow-hidden relative">
+          <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b from-brand-violet to-transparent" />
+          <div className="border-b border-border/40 pb-3">
             <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-mono block">Development Path</span>
             <h4 className="text-xs font-mono font-bold text-zinc-200 uppercase">Code Telemetry Timeline</h4>
           </div>
