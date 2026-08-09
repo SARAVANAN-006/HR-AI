@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { 
   BarChart3, 
   Code, 
-  History, 
-  Network
+  History
 } from 'lucide-react';
 import RadarChart from '../components/RadarChart';
 import ProgressChart from '../components/ProgressChart';
@@ -12,7 +11,6 @@ import CodeQualityInspector from '../components/CodeQualityInspector';
 import AiFeedbackCard from '../components/AiFeedbackCard';
 import LiveCodeEvaluator from '../components/LiveCodeEvaluator';
 import SessionHistory from '../components/SessionHistory';
-import IntegrationGuide from '../components/IntegrationGuide';
 
 const sampleCodeJava = `public class TwoSum {
     public int[] solveTwoSum(int[] nums, int target) {
@@ -93,16 +91,14 @@ const mockInterviewHistory = [
 ];
 
 export default function AssessmentDashboardPage() {
-  const [activeTab, setActiveTab] = useState<'evaluator' | 'analytics' | 'history' | 'integration'>('evaluator');
+  const [activeTab, setActiveTab] = useState<'evaluator' | 'analytics' | 'history'>('evaluator');
   const [currentAssessment, setCurrentAssessment] = useState<any>(mockAssessmentData);
   const [currentCode, setCurrentCode] = useState<string>(sampleCodeJava);
   const [history] = useState<any[]>(mockInterviewHistory);
 
-  const handleEvaluationComplete = (newAssessment: any) => {
+  const handleEvaluationComplete = (newAssessment: any, code: string) => {
     setCurrentAssessment(newAssessment);
-    if (newAssessment.refactoredCodeSnippet) {
-      setCurrentCode(newAssessment.refactoredCodeSnippet);
-    }
+    setCurrentCode(code);
     setActiveTab('evaluator');
   };
 
@@ -168,16 +164,6 @@ export default function AssessmentDashboardPage() {
           }`}
         >
           <History size={15} /> Session History & PDF Exports
-        </button>
-        <button
-          onClick={() => setActiveTab('integration')}
-          className={`px-4 py-2.5 rounded border transition flex items-center gap-2 ${
-            activeTab === 'integration'
-              ? 'bg-brand-cyan/15 border-brand-cyan text-brand-cyan font-bold'
-              : 'border-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/40'
-          }`}
-        >
-          <Network size={15} /> API Integration Hub
         </button>
       </div>
 
@@ -278,10 +264,6 @@ export default function AssessmentDashboardPage() {
         <SessionHistory history={history} onSelectSession={() => setActiveTab('evaluator')} />
       )}
 
-      {/* Tab 4: Integration Hub */}
-      {activeTab === 'integration' && (
-        <IntegrationGuide />
-      )}
     </div>
   );
 }

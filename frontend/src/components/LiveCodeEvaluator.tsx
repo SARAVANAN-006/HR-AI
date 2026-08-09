@@ -26,6 +26,11 @@ public int[] solveTwoSum(int[] nums, int target) {
     setEvaluating(true);
     setTimeout(() => {
       const mockResult = {
+        overallScore: 94.0,
+        testCasesPassed: 18,
+        totalTestCases: 18,
+        timeComplexityEstimate: "O(N)",
+        spaceComplexityEstimate: "O(N)",
         cyclomaticComplexity: 2,
         detectedCodeSmells: [],
         summaryVerdict: "Clean code structure. Successfully compiled local AST representation. No variables are left unused.",
