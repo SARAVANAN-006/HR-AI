@@ -70,7 +70,7 @@ const Report: React.FC = () => {
         setLoading(false);
       })
       .catch(() => {
-        console.warn('Backend offline. Loading Member 3 Multi-Factor Assessment Report...');
+        console.warn('Backend offline. Loading KODEXIS Multi-Factor Assessment Report...');
         const mockS: Session = {
           id: 1,
           question: {
@@ -216,7 +216,7 @@ const Report: React.FC = () => {
         <div className="lg:col-span-5 glass-panel animate-glow-violet rounded p-6 space-y-4 font-mono relative overflow-hidden">
           <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b from-brand-violet to-transparent" />
           <div>
-            <span className="text-[9px] text-brand-cyan uppercase tracking-widest block font-bold">MEMBER 3 ASSESSMENT ENGINE</span>
+            <span className="text-[9px] text-brand-cyan uppercase tracking-widest block font-bold">KODEXIS ASSESSMENT ENGINE</span>
             <h4 className="text-xs font-bold text-zinc-200 uppercase">Multi-Factor Radar Profile</h4>
           </div>
 

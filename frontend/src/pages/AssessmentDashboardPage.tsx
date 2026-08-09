@@ -115,7 +115,7 @@ export default function AssessmentDashboardPage() {
               Multi-Factor Coding Assessment Dashboard
             </h1>
             <p className="text-xs font-mono text-zinc-400">
-              Member 3 Assessment Engine • Multi-Dimensional Technical Proficiency Analytics
+              KODEXIS Assessment Engine • Multi-Dimensional Technical Proficiency Analytics
             </p>
           </div>
         </div>
