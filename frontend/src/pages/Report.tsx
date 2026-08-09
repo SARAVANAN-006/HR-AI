@@ -284,27 +284,6 @@ const Report: React.FC = () => {
             cyclomaticComplexity={3}
           />
         </div>
-          <div className="flex items-center justify-between border-b border-border/60 pb-3">
-            <div className="flex items-center space-x-2 font-mono">
-              <FileCode className="text-brand-cyan" size={16} />
-              <span className="text-xs font-bold text-zinc-200 uppercase">SUBMITTED SOURCE CODE</span>
-            </div>
-            
-            {/* Big O Indicators */}
-            <div className="flex space-x-3 text-[10px] font-mono">
-              <span className="text-zinc-400">
-                Time: <strong className="text-brand-cyan">{assessment.detectedTimeComplexity}</strong> (Exp: {session.question.expectedTimeComplexity})
-              </span>
-              <span className="text-zinc-400">
-                Space: <strong className="text-brand-violet">{assessment.detectedSpaceComplexity}</strong> (Exp: {session.question.expectedSpaceComplexity})
-              </span>
-            </div>
-          </div>
-
-          <pre className="p-4 bg-zinc-950/90 border border-border rounded font-mono text-[11px] text-zinc-300 overflow-x-auto leading-relaxed select-text">
-            <code>{session.lastSubmittedCode}</code>
-          </pre>
-        </div>
 
         {/* CODE TELEMETRY TIMELINE */}
         <div className="lg:col-span-4 border border-border bg-background-panel rounded p-6 space-y-4 overflow-hidden">
