@@ -13,7 +13,8 @@ const Landing: React.FC = () => {
   useEffect(() => {
     let index = 0;
     const interval = setInterval(() => {
-      setMockAiMessage((prev) => prev + fullMessage.charAt(index));
+      const char = fullMessage.charAt(index);
+      setMockAiMessage((prev) => prev + char);
       index++;
       if (index >= fullMessage.length) {
         clearInterval(interval);
@@ -25,7 +26,8 @@ const Landing: React.FC = () => {
   useEffect(() => {
     let index = 0;
     const interval = setInterval(() => {
-      setTypedTitle((prev) => prev + titleText.charAt(index));
+      const char = titleText.charAt(index);
+      setTypedTitle((prev) => prev + char);
       index++;
       if (index >= titleText.length) {
         clearInterval(interval);
