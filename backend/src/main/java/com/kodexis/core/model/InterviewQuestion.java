@@ -50,6 +50,12 @@ public class InterviewQuestion {
     @Column(name = "c_template", length = 2000)
     private String cTemplate;
 
+    @Column(name = "csharp_template", length = 2000)
+    private String csharpTemplate;
+
+    @Column(name = "go_template", length = 2000)
+    private String goTemplate;
+
     @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<TestCase> testCases = new ArrayList<>();
 
@@ -101,6 +107,12 @@ public class InterviewQuestion {
 
     public String getCTemplate() { return cTemplate; }
     public void setCTemplate(String cTemplate) { this.cTemplate = cTemplate; }
+
+    public String getCsharpTemplate() { return csharpTemplate; }
+    public void setCsharpTemplate(String csharpTemplate) { this.csharpTemplate = csharpTemplate; }
+
+    public String getGoTemplate() { return goTemplate; }
+    public void setGoTemplate(String goTemplate) { this.goTemplate = goTemplate; }
 
     public List<TestCase> getTestCases() { return testCases; }
     public void setTestCases(List<TestCase> testCases) { this.testCases = testCases; }

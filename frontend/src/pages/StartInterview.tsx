@@ -93,6 +93,8 @@ const StartInterview: React.FC = () => {
                   <option value="JAVASCRIPT">JavaScript</option>
                   <option value="CPP">C++</option>
                   <option value="C">C</option>
+                  <option value="CSHARP">C#</option>
+                  <option value="GO">Go</option>
                 </select>
               </div>
 

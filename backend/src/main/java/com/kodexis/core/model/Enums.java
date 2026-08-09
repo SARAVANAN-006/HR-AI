@@ -26,7 +26,9 @@ public class Enums {
         PYTHON,
         CPP,
         JAVASCRIPT,
-        C
+        C,
+        CSHARP,
+        GO
     }
 
     public enum Difficulty {

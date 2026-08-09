@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Editor from '@monaco-editor/react';
-import { Brain, Play, Send, Activity, Award, Clock, Code2, Maximize2, Minimize2, FileCode } from 'lucide-react';
+import { Brain, Play, Send, Activity, Award, Clock, Code2, Maximize2, Minimize2, FileCode, GitCommit, ChevronLeft, ChevronRight } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 interface TestCase {
@@ -25,6 +25,8 @@ interface Question {
   javascriptTemplate: string;
   cppTemplate: string;
   cTemplate: string;
+  csharpTemplate: string;
+  goTemplate: string;
   testCases: TestCase[];
 }
 
@@ -46,6 +48,368 @@ interface Message {
   timestamp: string;
 }
 
+interface VisualizerStep {
+  title: string;
+  desc: string;
+  array?: number[];
+  activeIdx?: number;
+  map?: Record<string, number>;
+  sum?: number;
+  maxLen?: number;
+  inputStr?: string;
+  charIdx?: number;
+  stack?: string[];
+  status: string;
+}
+
+interface ProblemVisualizerProps {
+  questionTitle: string;
+}
+
+const ProblemVisualizer: React.FC<ProblemVisualizerProps> = ({ questionTitle }) => {
+  const [step, setStep] = useState<number>(0);
+
+  // Define steps for each problem
+  const getProblemSteps = (): VisualizerStep[] => {
+    if (questionTitle.toLowerCase().includes("two sum") || questionTitle.toLowerCase().includes("twosum")) {
+      return [
+        {
+          title: "Setup & State Initialization",
+          desc: "We initialize an empty Hash Map to track numbers we've seen and their indices. Target sum is 9.",
+          array: [2, 7, 11, 15],
+          activeIdx: -1,
+          map: {},
+          status: "Map is empty. Target = 9."
+        },
+        {
+          title: "Step 1: Check Element '2'",
+          desc: "Target - Element = 9 - 2 = 7. We check if 7 is in the Map. It is not. We store 2 with its index 0 in the Map.",
+          array: [2, 7, 11, 15],
+          activeIdx: 0,
+          map: { "2": 0 },
+          status: "Map now tracks: {2: 0}"
+        },
+        {
+          title: "Step 2: Check Element '7'",
+          desc: "Target - Element = 9 - 7 = 2. We check if 2 is in the Map. Yes, 2 exists at index 0! We found our pair.",
+          array: [2, 7, 11, 15],
+          activeIdx: 1,
+          map: { "2": 0 },
+          status: "Match Found! Return indices [0, 1]."
+        }
+      ];
+    }
+
+    if (questionTitle.toLowerCase().includes("longest") || questionTitle.toLowerCase().includes("subarray")) {
+      return [
+        {
+          title: "Setup & Prefix Maps",
+          desc: "We track the running cumulative sum. We seed the Map with sum 0 at index -1 to handle subarrays starting from index 0. Target sum k = 15.",
+          array: [1, 2, 3, 7, 5],
+          activeIdx: -1,
+          sum: 0,
+          map: { "0": -1 },
+          maxLen: 0,
+          status: "Cumulative Sum = 0"
+        },
+        {
+          title: "Step 1: Process '1'",
+          desc: "Cumulative sum is 1. We check if sum - k (1 - 15 = -14) is in the Map. No. We store sum 1 at index 0.",
+          array: [1, 2, 3, 7, 5],
+          activeIdx: 0,
+          sum: 1,
+          map: { "0": -1, "1": 0 },
+          maxLen: 0,
+          status: "Cumulative Sum = 1"
+        },
+        {
+          title: "Step 2: Process '2'",
+          desc: "Cumulative sum is 3. Diff (3 - 15 = -12) not in map. Store sum 3 at index 1.",
+          array: [1, 2, 3, 7, 5],
+          activeIdx: 1,
+          sum: 3,
+          map: { "0": -1, "1": 0, "3": 1 },
+          maxLen: 0,
+          status: "Cumulative Sum = 3"
+        },
+        {
+          title: "Step 3: Process '3'",
+          desc: "Cumulative sum is 6. Diff (6 - 15 = -9) not in map. Store sum 6 at index 2.",
+          array: [1, 2, 3, 7, 5],
+          activeIdx: 2,
+          sum: 6,
+          map: { "0": -1, "1": 0, "3": 1, "6": 2 },
+          maxLen: 0,
+          status: "Cumulative Sum = 6"
+        },
+        {
+          title: "Step 4: Process '7'",
+          desc: "Cumulative sum is 13. Diff (13 - 15 = -2) not in map. Store sum 13 at index 3.",
+          array: [1, 2, 3, 7, 5],
+          activeIdx: 3,
+          sum: 13,
+          map: { "0": -1, "1": 0, "3": 1, "6": 2, "13": 3 },
+          maxLen: 0,
+          status: "Cumulative Sum = 13"
+        },
+        {
+          title: "Step 5: Process '5'",
+          desc: "Cumulative sum is 18. Diff (18 - 15 = 3) is found in the Map at index 1! Subarray length = 5 - 1 = 4. Update Max Length.",
+          array: [1, 2, 3, 7, 5],
+          activeIdx: 4,
+          sum: 18,
+          map: { "0": -1, "1": 0, "3": 1, "6": 2, "13": 3 },
+          maxLen: 4,
+          status: "Subarray [2,3,7,5] sums to 15! Max length = 4."
+        }
+      ];
+    }
+
+    // Default to Valid Parentheses / Stack
+    return [
+      {
+        title: "Setup Empty Stack",
+        desc: "We initialize an empty stack to track unmatched opening brackets. String = '()[]{}'",
+        inputStr: "()[]{}",
+        charIdx: -1,
+        stack: [],
+        status: "Stack is empty."
+      },
+      {
+        title: "Step 1: Parse '('",
+        desc: "Opening bracket encountered. We push '(' onto the stack.",
+        inputStr: "()[]{}",
+        charIdx: 0,
+        stack: ["("],
+        status: "Stack: ['(']"
+      },
+      {
+        title: "Step 2: Parse ')'",
+        desc: "Closing bracket. We pop from stack: popped '(' matches ')'. Match valid.",
+        inputStr: "()[]{}",
+        charIdx: 1,
+        stack: [],
+        status: "Pop matched. Stack is empty."
+      },
+      {
+        title: "Step 3: Parse '['",
+        desc: "Opening bracket. Push '[' onto stack.",
+        inputStr: "()[]{}",
+        charIdx: 2,
+        stack: ["["],
+        status: "Stack: ['[']"
+      },
+      {
+        title: "Step 4: Parse ']'",
+        desc: "Closing bracket. Pop from stack: popped '[' matches ']'. Match valid.",
+        inputStr: "()[]{}",
+        charIdx: 3,
+        stack: [],
+        status: "Pop matched. Stack is empty."
+      },
+      {
+        title: "Step 5: Parse '{'",
+        desc: "Opening bracket. Push '{' onto stack.",
+        inputStr: "()[]{}",
+        charIdx: 4,
+        stack: ["{"],
+        status: "Stack: ['{']"
+      },
+      {
+        title: "Step 6: Parse '}'",
+        desc: "Closing bracket. Pop from stack: popped '{' matches '}'. Stack empty. String is valid.",
+        inputStr: "()[]{}",
+        charIdx: 5,
+        stack: [],
+        status: "Valid parenthesis parsing complete!"
+      }
+    ];
+  };
+
+  const steps = getProblemSteps();
+  const currentStep = steps[Math.min(step, steps.length - 1)];
+
+  return (
+    <div className="space-y-6">
+      
+      {/* 1. Space Time Complexity Chart Visual */}
+      <div className="border border-border bg-zinc-950/40 p-4 space-y-3 rounded">
+        <h4 className="text-[10px] font-bold text-zinc-400 tracking-wider uppercase flex items-center gap-1.5 font-mono">
+          <Activity size={12} className="text-brand-violet" />
+          <span>Space-Time Complexity Curve</span>
+        </h4>
+        
+        {/* Glow Filters SVG */}
+        <div className="relative h-32 border border-zinc-900 bg-black/60 rounded overflow-hidden flex items-center justify-center">
+          <svg className="w-full h-full px-2" viewBox="0 0 200 100">
+            <defs>
+              <linearGradient id="glowCyan" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.2"/>
+                <stop offset="100%" stopColor="#22d3ee" stopOpacity="0.9"/>
+              </linearGradient>
+              <linearGradient id="glowViolet" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.2"/>
+                <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.9"/>
+              </linearGradient>
+            </defs>
+            {/* Grid Lines */}
+            <line x1="20" y1="10" x2="20" y2="90" stroke="#18181b" strokeWidth="1" />
+            <line x1="20" y1="90" x2="190" y2="90" stroke="#18181b" strokeWidth="1" />
+            
+            {/* O(n^2) Quadratic Curve - Red/Violet */}
+            <path d="M 20 90 Q 110 80 180 15" fill="none" stroke="url(#glowViolet)" strokeWidth="1.5" strokeDasharray="3 3" />
+            <text x="110" y="35" fill="#8b5cf6" className="text-[7px] font-mono opacity-80">Brute Force O(n²)</text>
+            
+            {/* O(n) Linear Curve - Cyan */}
+            <line x1="20" y1="90" x2="180" y2="50" stroke="url(#glowCyan)" strokeWidth="2" />
+            <text x="120" y="65" fill="#22d3ee" className="text-[7px] font-mono font-bold">Optimal O(n)</text>
+            
+            {/* Axis Titles */}
+            <text x="5" y="55" fill="#52525b" className="text-[6px] font-mono" transform="rotate(-90 5 55)">Operations (N)</text>
+            <text x="95" y="98" fill="#52525b" className="text-[6px] font-mono">Input Size (N)</text>
+          </svg>
+        </div>
+        <p className="text-[9px] text-zinc-500 leading-relaxed font-sans select-none">
+          Optimal time complexity reduces execution bounds linearly. Brute-force nested traversals scale quadratically, risking CPU throttles on large input sizes.
+        </p>
+      </div>
+
+      {/* 2. Interactive Logic Flow Sandbox */}
+      <div className="border border-border bg-zinc-950/40 p-4 space-y-4 rounded">
+        <div className="flex items-center justify-between">
+          <h4 className="text-[10px] font-bold text-zinc-400 tracking-wider uppercase flex items-center gap-1.5 font-mono">
+            <GitCommit size={12} className="text-brand-cyan" />
+            <span>Logic Trace Visualizer</span>
+          </h4>
+          
+          {/* Controls */}
+          <div className="flex items-center space-x-1">
+            <button
+              onClick={() => setStep(prev => Math.max(0, prev - 1))}
+              disabled={step === 0}
+              className="p-1 border border-border rounded hover:bg-zinc-800 transition disabled:opacity-30"
+            >
+              <ChevronLeft size={12} />
+            </button>
+            <span className="text-[9px] font-mono text-zinc-500">{step + 1}/{steps.length}</span>
+            <button
+              onClick={() => setStep(prev => Math.min(steps.length - 1, prev + 1))}
+              disabled={step === steps.length - 1}
+              className="p-1 border border-border rounded hover:bg-zinc-800 transition disabled:opacity-30"
+            >
+              <ChevronRight size={12} />
+            </button>
+          </div>
+        </div>
+
+        {/* Step details */}
+        <div className="space-y-3 font-mono">
+          <div className="p-2 border border-zinc-900 bg-black/30 rounded">
+            <span className="text-[9px] text-brand-cyan uppercase block mb-0.5">Phase: {currentStep.title}</span>
+            <p className="text-[10px] text-zinc-300 font-sans leading-relaxed">{currentStep.desc}</p>
+          </div>
+
+          {/* Visual representations */}
+          <div className="space-y-3 pt-2">
+            {/* Render Arrays if present */}
+            {currentStep.array && (
+              <div className="space-y-1">
+                <span className="text-[8px] text-zinc-500 uppercase">Input Array:</span>
+                <div className="flex space-x-1.5">
+                  {currentStep.array.map((val: number, idx: number) => (
+                    <div
+                      key={idx}
+                      className={`w-8 h-8 rounded border flex items-center justify-center text-[10px] font-bold transition-all duration-300 ${
+                        currentStep.activeIdx === idx
+                          ? 'border-brand-cyan bg-brand-cyan/20 text-brand-cyan scale-105 shadow-glow-cyan'
+                          : 'border-border bg-zinc-900/50 text-zinc-400'
+                      }`}
+                    >
+                      {val}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Render Input String (for Valid Parentheses) */}
+            {currentStep.inputStr && (
+              <div className="space-y-1">
+                <span className="text-[8px] text-zinc-500 uppercase">Input String:</span>
+                <div className="flex space-x-1 text-sm font-bold tracking-widest pl-1">
+                  {currentStep.inputStr.split("").map((char: string, idx: number) => (
+                    <span
+                      key={idx}
+                      className={`px-1 rounded transition-all duration-300 ${
+                        currentStep.charIdx !== undefined && currentStep.charIdx === idx
+                          ? 'text-brand-cyan bg-brand-cyan/10 border border-brand-cyan/20'
+                          : currentStep.charIdx !== undefined && idx < currentStep.charIdx
+                          ? 'text-zinc-600 line-through'
+                          : 'text-zinc-300'
+                      }`}
+                    >
+                      {char}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Render Map (if present) */}
+            {currentStep.map && (
+              <div className="space-y-1">
+                <span className="text-[8px] text-zinc-500 uppercase">Tracking Map:</span>
+                <div className="p-2 border border-zinc-900 bg-zinc-900/30 rounded text-[9px] text-zinc-400 min-h-8 flex items-center">
+                  {Object.keys(currentStep.map).length === 0 ? (
+                    <span className="text-zinc-600 font-bold">{"{ } (empty)"}</span>
+                  ) : (
+                    <span>
+                      {"{ "}
+                      {Object.entries(currentStep.map).map(([key, val]: [string, number]) => (
+                        <span key={key} className="text-brand-cyan font-bold">
+                          {key}: <span className="text-zinc-300">{val}</span>,{" "}
+                        </span>
+                      ))}
+                      {"}"}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Render Stack (if present) */}
+            {currentStep.stack && (
+              <div className="space-y-1">
+                <span className="text-[8px] text-zinc-500 uppercase">Memory Stack:</span>
+                <div className="flex flex-col-reverse w-24 border-b-2 border-x-2 border-zinc-800 bg-zinc-900/10 min-h-16 rounded-b">
+                  {currentStep.stack.length === 0 ? (
+                    <div className="text-[7px] text-zinc-600 text-center py-5 font-bold uppercase select-none">Empty Stack</div>
+                  ) : (
+                    currentStep.stack.map((char: string, idx: number) => (
+                      <div
+                        key={idx}
+                        className="h-5 border-t border-zinc-800 bg-brand-cyan/5 text-brand-cyan flex items-center justify-center text-[10px] font-bold font-mono transition-all duration-300"
+                      >
+                        {char}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Status updates */}
+            <div className="p-2 bg-zinc-950 border border-zinc-900 rounded text-[9px] text-zinc-400 font-bold border-l-2 border-l-brand-cyan flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-cyan animate-pulse"></span>
+              <span>{currentStep.status}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const InterviewRoom: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -64,6 +428,7 @@ const InterviewRoom: React.FC = () => {
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState<boolean>(true);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState<boolean>(true);
   const [isDescriptionOpen, setIsDescriptionOpen] = useState<boolean>(true);
+  const [leftPanelTab, setLeftPanelTab] = useState<'description' | 'analysis'>('description');
   const [testResults, setTestResults] = useState<any[]>([]);
 
   // Telemetry signals states
@@ -99,6 +464,8 @@ const InterviewRoom: React.FC = () => {
         else if (sData.language === 'PYTHON') startingCode = sData.question.pythonTemplate;
         else if (sData.language === 'JAVASCRIPT') startingCode = sData.question.javascriptTemplate;
         else if (sData.language === 'CPP') startingCode = sData.question.cppTemplate;
+        else if (sData.language === 'CSHARP') startingCode = sData.question.csharpTemplate;
+        else if (sData.language === 'GO') startingCode = sData.question.goTemplate;
         else startingCode = sData.question.cTemplate;
 
         setCode(startingCode || '# Complete your code here');
@@ -418,7 +785,7 @@ const InterviewRoom: React.FC = () => {
             <div className="flex items-center space-x-3">
               <div className="px-3 py-1.5 border-r border-t border-l border-border bg-background text-xs font-semibold text-brand-cyan flex items-center gap-1.5">
                 <Code2 size={12} />
-                <span>solution.{language === 'JAVA' ? 'java' : language === 'PYTHON' ? 'py' : language === 'JAVASCRIPT' ? 'js' : language === 'CPP' ? 'cpp' : 'c'}</span>
+                <span>solution.{language === 'JAVA' ? 'java' : language === 'PYTHON' ? 'py' : language === 'JAVASCRIPT' ? 'js' : language === 'CPP' ? 'cpp' : language === 'CSHARP' ? 'cs' : language === 'GO' ? 'go' : 'c'}</span>
               </div>
               
               {/* Language Switcher Dropdown */}
@@ -433,6 +800,8 @@ const InterviewRoom: React.FC = () => {
                     else if (newLang === 'PYTHON') template = session.question.pythonTemplate;
                     else if (newLang === 'JAVASCRIPT') template = session.question.javascriptTemplate;
                     else if (newLang === 'CPP') template = session.question.cppTemplate;
+                    else if (newLang === 'CSHARP') template = session.question.csharpTemplate;
+                    else if (newLang === 'GO') template = session.question.goTemplate;
                     else template = session.question.cTemplate;
                     setCode(template || '');
                   }
@@ -443,6 +812,8 @@ const InterviewRoom: React.FC = () => {
                 <option value="JAVA">Java</option>
                 <option value="JAVASCRIPT">JavaScript</option>
                 <option value="CPP">C++</option>
+                <option value="CSHARP">C#</option>
+                <option value="GO">Go</option>
               </select>
             </div>
             
@@ -478,15 +849,54 @@ const InterviewRoom: React.FC = () => {
           {/* HORIZONTAL SPLIT: DESCRIPTION (LEFT) & EDITOR/CONSOLE (RIGHT) */}
           <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
             
-            {/* LEFT SUB-PANEL: Problem Description */}
+            {/* LEFT SUB-PANEL: Problem Description & Analysis */}
             {isDescriptionOpen && (
-              <div className="w-full md:w-[380px] border-b md:border-b-0 md:border-r border-border bg-background-panel p-5 overflow-y-auto flex flex-col shrink-0">
-                <h3 className="text-xs font-bold text-zinc-200 tracking-wide mb-3 flex items-center gap-1.5 border-b border-zinc-900 pb-2 font-mono uppercase">
-                  <FileCode size={13} className="text-brand-cyan" />
-                  <span>Problem Description</span>
-                </h3>
-                <div className="text-xs text-zinc-300 leading-relaxed space-y-4 whitespace-pre-wrap font-sans select-text">
-                  {session.question.description}
+              <div className="w-full md:w-[380px] border-b md:border-b-0 md:border-r border-border bg-background-panel flex flex-col shrink-0 overflow-hidden">
+                {/* Tab Switcher */}
+                <div className="h-10 border-b border-border bg-background flex items-center px-4 space-x-4 shrink-0 font-mono text-[10px]">
+                  <button
+                    onClick={() => setLeftPanelTab('description')}
+                    className={`py-2 border-b-2 font-bold transition tracking-wider ${
+                      leftPanelTab === 'description'
+                        ? 'border-brand-cyan text-brand-cyan'
+                        : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                    }`}
+                  >
+                    DESCRIPTION
+                  </button>
+                  <button
+                    onClick={() => setLeftPanelTab('analysis')}
+                    className={`py-2 border-b-2 font-bold transition tracking-wider ${
+                      leftPanelTab === 'analysis'
+                        ? 'border-brand-violet text-brand-violet'
+                        : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                    }`}
+                  >
+                    VISUAL ANALYSIS
+                  </button>
+                </div>
+
+                {/* Tab Content */}
+                <div className="flex-1 overflow-y-auto p-5 select-text">
+                  {leftPanelTab === 'description' ? (
+                    <div className="space-y-4">
+                      <h3 className="text-xs font-bold text-zinc-200 tracking-wide mb-3 flex items-center gap-1.5 border-b border-zinc-900 pb-2 font-mono uppercase">
+                        <FileCode size={13} className="text-brand-cyan" />
+                        <span>Problem Description</span>
+                      </h3>
+                      <div className="text-xs text-zinc-300 leading-relaxed whitespace-pre-wrap font-sans">
+                        {session.question.description}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <h3 className="text-xs font-bold text-zinc-200 tracking-wide mb-3 flex items-center gap-1.5 border-b border-zinc-900 pb-2 font-mono uppercase">
+                        <Activity size={13} className="text-brand-violet" />
+                        <span>Visual Analysis</span>
+                      </h3>
+                      <ProblemVisualizer questionTitle={session.question.title} />
+                    </div>
+                  )}
                 </div>
               </div>
             )}

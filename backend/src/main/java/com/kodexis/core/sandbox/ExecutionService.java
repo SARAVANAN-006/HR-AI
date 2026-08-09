@@ -173,6 +173,14 @@ public class ExecutionService {
                     compileCmd = List.of("gcc", sourceFile.getAbsolutePath(), "-o", execName);
                     runCmd = List.of(execName);
                 }
+                case CSHARP -> {
+                    execName = tempDir + "/Program.exe";
+                    compileCmd = List.of("csc", "-out:" + execName, sourceFile.getAbsolutePath());
+                    runCmd = List.of(execName);
+                }
+                case GO -> {
+                    runCmd = List.of("go", "run", sourceFile.getAbsolutePath());
+                }
             }
 
             // 1. Compile step (if needed)
@@ -243,7 +251,7 @@ public class ExecutionService {
                 0,
                 1,
                 duration,
-                "Local Runtime Missing: " + e.getMessage() + "\nMake sure the local runtime (e.g. node, python, or javac) is installed and available in system PATH."
+                "Local Runtime Missing: " + e.getMessage() + "\nMake sure the local runtime (e.g. node, python, javac, csc, or go) is installed and available in system PATH."
             );
         }
     }
@@ -255,6 +263,8 @@ public class ExecutionService {
             case JAVASCRIPT -> "javascript";
             case CPP -> "c++";
             case C -> "c";
+            case CSHARP -> "csharp";
+            case GO -> "go";
         };
     }
 
@@ -265,6 +275,8 @@ public class ExecutionService {
             case JAVASCRIPT -> "index.js";
             case CPP -> "main.cpp";
             case C -> "main.c";
+            case CSHARP -> "Program.cs";
+            case GO -> "main.go";
         };
     }
 
