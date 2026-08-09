@@ -8,7 +8,7 @@ const Landing: React.FC = () => {
   const [mockAiMessage, setMockAiMessage] = useState('');
   const [typedTitle, setTypedTitle] = useState('');
   const fullMessage = "Let's check the complexity here. You used a double nested loop which makes this O(N^2). Can you optimize this to linear time using a Hash Map?";
-  const titleText = "DECODE YOUR TECHNICAL DNA";
+  const titleText = "ENCODE YOUR TECHNICAL DNA";
   
   useEffect(() => {
     let index = 0;
