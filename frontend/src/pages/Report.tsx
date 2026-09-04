@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Calendar, CheckCircle2, ShieldAlert, GitCommit } from 'lucide-react';
+import { ArrowLeft, Calendar, CheckCircle2, ShieldAlert, GitCommit, ExternalLink } from 'lucide-react';
 import RadarChart from '../components/RadarChart';
 import CodeQualityInspector from '../components/CodeQualityInspector';
 
@@ -269,8 +269,29 @@ const Report: React.FC = () => {
 
             <div className="p-3 border border-border/40 bg-zinc-950/40 rounded font-mono text-[11px] flex justify-between items-center">
               <div>
-                <span className="text-zinc-500 uppercase text-[9px] block">Recommended Practice Topics</span>
-                <span className="text-zinc-300 mt-1 font-semibold block">{assessment.suggestedPractice}</span>
+                <span className="text-zinc-500 uppercase text-[9px] block mb-1">Recommended Practice Topics</span>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {assessment.suggestedPractice ? (
+                    assessment.suggestedPractice.split(',').map((topic, idx) => {
+                      const trimmed = topic.trim();
+                      return (
+                        <a
+                          key={idx}
+                          href={`https://www.geeksforgeeks.org/search?q=${encodeURIComponent(trimmed)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-brand-cyan hover:text-cyan-300 hover:underline font-semibold bg-brand-cyan/10 border border-brand-cyan/20 px-2 py-0.5 rounded transition-all hover:border-brand-cyan/40 group"
+                          title={`Search ${trimmed} on GeeksforGeeks`}
+                        >
+                          <span>{trimmed}</span>
+                          <ExternalLink size={10} className="opacity-70 group-hover:opacity-100 transition-opacity" />
+                        </a>
+                      );
+                    })
+                  ) : (
+                    <span className="text-zinc-500 italic">None specified</span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
