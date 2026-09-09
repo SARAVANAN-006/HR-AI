@@ -43,10 +43,16 @@ public class InterviewController {
         public Enums.Language language;
         public Integer durationMinutes;
         public String interviewMode;
+        public String candidateAlias;
+        public String targetRole;
+        public String candidateMood;
+        public String interviewerPersona;
     }
 
     public static class MessageRequest {
         public String content;
+        public String code;
+        public String language;
     }
 
     public static class CodeRequest {
@@ -114,7 +120,11 @@ public class InterviewController {
                     request.difficulty != null ? request.difficulty : Enums.Difficulty.MEDIUM,
                     request.language != null ? request.language : Enums.Language.JAVA,
                     request.durationMinutes != null ? request.durationMinutes : 45,
-                    request.interviewMode != null ? request.interviewMode : "Full Simulation"
+                    request.interviewMode != null ? request.interviewMode : "Full Simulation",
+                    request.candidateAlias,
+                    request.targetRole,
+                    request.candidateMood,
+                    request.interviewerPersona
             );
             return ResponseEntity.ok(session);
         } else {
@@ -141,7 +151,7 @@ public class InterviewController {
     @PostMapping("/{id}/message")
     public ResponseEntity<?> postMessage(@PathVariable Long id, @RequestBody MessageRequest request) {
         try {
-            InterviewMessage aiResponse = interviewService.postMessage(id, "CANDIDATE", request.content);
+            InterviewMessage aiResponse = interviewService.postMessage(id, "CANDIDATE", request.content, request.code, request.language);
             return ResponseEntity.ok(aiResponse);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", e.getMessage()));

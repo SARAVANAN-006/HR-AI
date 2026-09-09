@@ -2,12 +2,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Editor from '@monaco-editor/react';
-<<<<<<< HEAD
 import { Brain, Play, Send, Activity, Award, Clock, Code2, Maximize2, Minimize2, FileCode, GitCommit, ChevronLeft, ChevronRight, RotateCcw, Terminal } from 'lucide-react';
 
-=======
-import { Brain, Play, Send, Activity, Award, Clock, Code2, Maximize2, Minimize2, FileCode, GitCommit, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
->>>>>>> 32d61c446b6b5d349e46ff8d61f17b71c3bc2e31
 import ReactMarkdown from 'react-markdown';
 
 interface TestCase {
@@ -424,7 +420,6 @@ const InterviewRoom: React.FC = () => {
   const [chatInput, setChatInput] = useState<string>('');
   const [code, setCode] = useState<string>('');
   const [language, setLanguage] = useState<string>('PYTHON');
-  const [attachCode, setAttachCode] = useState<boolean>(true);
   
   // Sandbox Console States
   const [terminalOutput, setTerminalOutput] = useState<string>('Terminal initialized. Sandbox engine ready.');
@@ -547,12 +542,7 @@ const InterviewRoom: React.FC = () => {
     }));
 
     try {
-      const payload: any = { content: userText };
-      if (attachCode) {
-        payload.code = code;
-        payload.language = language;
-      }
-      const response = await axios.post(`/api/interviews/${id}/message`, payload);
+      const response = await axios.post(`/api/interviews/${id}/message`, { content: userText });
       setMessages((prev) => [...prev, response.data]);
       
       // Update session state locally if AI tells the candidate to code
@@ -566,59 +556,6 @@ const InterviewRoom: React.FC = () => {
       console.error('Failed to post message:', error);
     } finally {
       setAiTyping(false);
-    }
-  };
-
-  const handleExplainCodeWithAi = async () => {
-    setIsLeftSidebarOpen(true);
-    setAiTyping(true);
-    
-    const prompt = "Please review my current code draft for potential bugs, logic flow correctness, or optimizations.";
-    setMessages((prev) => [...prev, { id: Date.now(), sender: 'CANDIDATE', content: prompt, timestamp: new Date().toISOString() }]);
-
-    setSignals(prev => ({
-      ...prev,
-      communication: { value: Math.min(100, prev.communication.value + 5), label: 'Observed' }
-    }));
-
-    try {
-      const response = await axios.post(`/api/interviews/${id}/message`, {
-        content: prompt,
-        code: code,
-        language: language
-      });
-      setMessages((prev) => [...prev, response.data]);
-    } catch (error) {
-      console.error('Failed to explain code:', error);
-    } finally {
-      setAiTyping(false);
-    }
-  };
-
-  const getEditorFilename = (lang: string) => {
-    switch (lang) {
-      case 'JAVA': return 'Main.java';
-      case 'PYTHON': return 'main.py';
-      case 'JAVASCRIPT': return 'index.js';
-      case 'CPP': return 'main.cpp';
-      case 'C': return 'main.c';
-      case 'CSHARP': return 'Program.cs';
-      case 'GO': return 'main.go';
-      default: return 'main.py';
-    }
-  };
-
-  const handleResetCode = () => {
-    if (window.confirm("Are you sure you want to reset your code draft back to the default template? Your current changes will be lost.")) {
-      let template = '';
-      if (language === 'JAVA') template = session?.question.javaTemplate || '';
-      else if (language === 'PYTHON') template = session?.question.pythonTemplate || '';
-      else if (language === 'JAVASCRIPT') template = session?.question.javascriptTemplate || '';
-      else if (language === 'CPP') template = session?.question.cppTemplate || '';
-      else if (language === 'CSHARP') template = session?.question.csharpTemplate || '';
-      else if (language === 'GO') template = session?.question.goTemplate || '';
-      else template = session?.question.cTemplate || '';
-      setCode(template);
     }
   };
 
@@ -948,43 +885,20 @@ const InterviewRoom: React.FC = () => {
           </div>
 
           {/* Form message input */}
-          <form onSubmit={handleSendMessage} className="p-4 border-t border-border bg-background space-y-3 shrink-0">
-            <div className="flex items-center justify-between font-mono text-[9px] text-zinc-500">
-              <label className="flex items-center space-x-1.5 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={attachCode}
-                  onChange={(e) => setAttachCode(e.target.checked)}
-                  className="rounded bg-zinc-900 border-border text-brand-cyan focus:ring-0 focus:ring-offset-0 focus:outline-none w-3 h-3 cursor-pointer"
-                />
-                <span className={attachCode ? "text-brand-cyan font-bold" : "text-zinc-500"}>
-                  ATTACH LIVE EDITOR DRAFT
-                </span>
-              </label>
-              {attachCode && (
-                <span className="text-brand-cyan font-bold animate-pulse text-[8px] bg-brand-cyan/10 border border-brand-cyan/20 px-1.5 py-0.5 rounded">
-                  📎 CODE CONTEXT ACTIVE
-                </span>
-              )}
-            </div>
-
+          <form onSubmit={handleSendMessage} className="p-4 border-t border-border bg-background">
             <div className="relative">
               <input
                 type="text"
                 disabled={aiTyping}
-                placeholder={session ? (session.state === 'DISCUSSION' ? "Explain your approach..." : "Ask for a hint or justify logic...") : "Type a message..."}
+                placeholder={session.state === 'DISCUSSION' ? "Explain your approach..." : "Ask for a hint or justify logic..."}
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
-                className={`w-full bg-background-panel border border-border rounded pl-4 pr-10 py-2.5 text-xs font-mono text-zinc-200 focus:outline-none transition ${
-                  attachCode ? 'focus:border-brand-cyan border-brand-cyan/40 bg-zinc-950/20' : 'focus:border-brand-violet border-border/80'
-                }`}
+                className="w-full bg-background-panel border border-border rounded pl-4 pr-10 py-2.5 text-xs font-mono text-zinc-200 focus:outline-none focus:border-brand-violet"
               />
               <button
                 type="submit"
                 disabled={aiTyping || !chatInput.trim()}
-                className={`absolute right-2 top-2.5 p-1 transition disabled:opacity-50 ${
-                  attachCode ? 'text-brand-cyan hover:text-brand-cyan/80' : 'text-zinc-500 hover:text-brand-violet'
-                }`}
+                className="absolute right-2 top-2.5 p-1 text-zinc-500 hover:text-brand-violet transition disabled:opacity-50"
               >
                 <Send size={14} />
               </button>
@@ -1001,7 +915,6 @@ const InterviewRoom: React.FC = () => {
             <div className="flex items-center space-x-3">
               <div className="px-3 py-1.5 border-r border-t border-l border-border bg-background text-xs font-semibold text-brand-cyan flex items-center gap-1.5">
                 <Code2 size={12} />
-<<<<<<< HEAD
                 <span>solution.{
                   language === 'JAVA' ? 'java' :
                   language === 'PYTHON' ? 'py' :
@@ -1011,9 +924,6 @@ const InterviewRoom: React.FC = () => {
                   language === 'CSHARP' ? 'cs' :
                   language === 'GO' ? 'go' : 'txt'
                 }</span>
-=======
-                <span>{getEditorFilename(language)}</span>
->>>>>>> 32d61c446b6b5d349e46ff8d61f17b71c3bc2e31
               </div>
               
               {/* Language Switcher Dropdown */}
@@ -1067,24 +977,6 @@ const InterviewRoom: React.FC = () => {
               >
                 {!(isLeftSidebarOpen || isRightSidebarOpen) ? <Minimize2 size={10} /> : <Maximize2 size={10} />}
                 <span>{!(isLeftSidebarOpen || isRightSidebarOpen) ? 'Normal View' : 'Focus Mode'}</span>
-              </button>
-
-              <button
-                onClick={handleExplainCodeWithAi}
-                className="flex items-center space-x-1 px-3 py-1 bg-zinc-800 hover:bg-zinc-700/80 rounded border border-border text-[10px] font-bold text-brand-violet transition"
-                title="Send current code editor state to AI Interviewer for feedback"
-              >
-                <Brain size={10} className="text-brand-violet animate-pulse" />
-                <span>Explain Code</span>
-              </button>
-
-              <button
-                onClick={handleResetCode}
-                className="flex items-center space-x-1 px-3 py-1 bg-zinc-800 hover:bg-zinc-700/80 rounded border border-border text-[10px] font-bold text-zinc-400 hover:text-zinc-200 transition"
-                title="Reset editor code back to the default language template"
-              >
-                <RotateCcw size={10} />
-                <span>Reset</span>
               </button>
 
               <button
@@ -1159,8 +1051,8 @@ const InterviewRoom: React.FC = () => {
                         <FileCode size={13} className="text-brand-cyan" />
                         <span>Problem Description</span>
                       </h3>
-                      <div className="text-xs text-zinc-300 leading-relaxed font-sans markdown-content">
-                        <ReactMarkdown>{session.question.description}</ReactMarkdown>
+                      <div className="text-xs text-zinc-300 leading-relaxed whitespace-pre-wrap font-sans">
+                        {session.question.description}
                       </div>
                     </div>
                   ) : (

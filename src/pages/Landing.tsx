@@ -6,33 +6,17 @@ import { motion } from 'framer-motion';
 const Landing: React.FC = () => {
   const navigate = useNavigate();
   const [mockAiMessage, setMockAiMessage] = useState('');
-  const [typedTitle, setTypedTitle] = useState('');
   const fullMessage = "Let's check the complexity here. You used a double nested loop which makes this O(N^2). Can you optimize this to linear time using a Hash Map?";
-  const titleText = "CODE YOUR TECHNICAL DNA";
   
   useEffect(() => {
     let index = 0;
     const interval = setInterval(() => {
-      const char = fullMessage.charAt(index);
-      setMockAiMessage((prev) => prev + char);
+      setMockAiMessage((prev) => prev + fullMessage.charAt(index));
       index++;
       if (index >= fullMessage.length) {
         clearInterval(interval);
       }
     }, 40);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    let index = 0;
-    const interval = setInterval(() => {
-      const char = titleText.charAt(index);
-      setTypedTitle((prev) => prev + char);
-      index++;
-      if (index >= titleText.length) {
-        clearInterval(interval);
-      }
-    }, 70);
     return () => clearInterval(interval);
   }, []);
 
@@ -87,11 +71,10 @@ const Landing: React.FC = () => {
             <span>KODEXIS ASSESSMENT LABORATORY</span>
           </div>
 
-          <h1 className="text-5xl md:text-8xl font-bold tracking-tight text-white leading-none select-none font-mono">
+          <h1 className="text-5xl md:text-8xl font-normal tracking-tight text-white leading-none select-none" style={{ fontFamily: "'Junge', serif" }}>
             DON'T JUST <span className="text-transparent" style={{ WebkitTextStroke: '1px rgba(255, 255, 255, 0.45)' }}>COMPILE.</span><br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-cyan via-zinc-100 to-brand-violet neon-text-cyan font-extrabold italic uppercase pl-2">
-              {typedTitle}
-              <span className="animate-pulse text-brand-cyan font-normal">|</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-cyan via-zinc-100 to-brand-violet neon-text-cyan font-bold italic">
+              DECODE YOUR TECHNICAL DNA
             </span>
           </h1>
 

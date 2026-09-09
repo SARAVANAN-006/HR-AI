@@ -44,7 +44,7 @@ interface Assessment {
 const Report: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-
+  
   const [session, setSession] = useState<Session | null>(null);
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [telemetry, setTelemetry] = useState<any[]>([]);
@@ -144,7 +144,7 @@ const Report: React.FC = () => {
 
   return (
     <div className="p-6 md:p-8 max-w-6xl mx-auto space-y-8 font-sans">
-
+      
       {/* Back button header */}
       <div className="flex items-center justify-between border-b border-border pb-4">
         <button
@@ -160,7 +160,7 @@ const Report: React.FC = () => {
       {/* OVERALL SCORE BLOCK */}
       <div className="grid grid-cols-1 md:grid-cols-12 glass-panel animate-glow-cyan rounded overflow-hidden relative">
         <div className="absolute left-0 top-0 bottom-0 w-[4px] bg-gradient-to-b from-brand-cyan to-transparent" />
-
+        
         {/* Left Side: Score display */}
         <div className="md:col-span-5 border-b md:border-b-0 md:border-r border-border/40 p-8 flex flex-col justify-between items-center text-center">
           <div className="space-y-1">
@@ -181,7 +181,7 @@ const Report: React.FC = () => {
         {/* Right Side: Quick info details */}
         <div className="md:col-span-7 p-8 space-y-6">
           <h3 className="text-lg font-bold font-mono text-zinc-200 uppercase">KODEXIS TECHNICAL REPORT</h3>
-
+          
           <div className="grid grid-cols-2 gap-4 font-mono text-xs text-zinc-400">
             <div>
               <p className="text-[9px] text-zinc-500 uppercase">Problem Solved</p>
@@ -211,7 +211,7 @@ const Report: React.FC = () => {
 
       {/* DETAILED AUTOPSEYS & MULTI-FACTORS */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
+        
         {/* MEMBER 3: MULTI-FACTOR RADAR PROFILE */}
         <div className="lg:col-span-5 glass-panel animate-glow-violet rounded p-6 space-y-4 font-mono relative overflow-hidden">
           <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b from-brand-violet to-transparent" />
@@ -245,7 +245,7 @@ const Report: React.FC = () => {
               <span className="font-mono text-[10px] text-brand-violet uppercase font-semibold">Autopsy Summary</span>
               <p className="text-zinc-300 font-mono bg-zinc-950/45 p-3 border border-border/40 rounded leading-relaxed">{assessment.autopsySummary}</p>
             </div>
-
+            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-3 border border-brand-emerald/20 bg-brand-emerald/5 rounded space-y-1.5 shadow-[0_0_12px_rgba(16,185,129,0.02)]">
                 <span className="font-mono text-[9px] text-brand-emerald uppercase font-bold flex items-center gap-1">
@@ -277,19 +277,11 @@ const Report: React.FC = () => {
                       return (
                         <a
                           key={idx}
-<<<<<<< HEAD
-                          href={`https://www.youtube.com/results?search_query=${encodeURIComponent(trimmed)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-brand-cyan hover:text-cyan-300 hover:underline font-semibold bg-brand-cyan/10 border border-brand-cyan/20 px-2 py-0.5 rounded transition-all hover:border-brand-cyan/40 group"
-                          title={`Search ${trimmed} on Youtube`}
-=======
                           href={`https://www.geeksforgeeks.org/search?q=${encodeURIComponent(trimmed)}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 text-brand-cyan hover:text-cyan-300 hover:underline font-semibold bg-brand-cyan/10 border border-brand-cyan/20 px-2 py-0.5 rounded transition-all hover:border-brand-cyan/40 group"
                           title={`Search ${trimmed} on GeeksforGeeks`}
->>>>>>> 32d61c446b6b5d349e46ff8d61f17b71c3bc2e31
                         >
                           <span>{trimmed}</span>
                           <ExternalLink size={10} className="opacity-70 group-hover:opacity-100 transition-opacity" />
@@ -309,7 +301,7 @@ const Report: React.FC = () => {
 
       {/* CODE & STATIC QUALITY INSPECTOR */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
+        
         {/* MEMBER 3: CODE QUALITY INSPECTOR */}
         <div className="lg:col-span-8 glass-panel animate-glow-cyan rounded p-6 relative overflow-hidden">
           <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b from-brand-cyan to-transparent" />
