@@ -25,13 +25,23 @@ public int[] solveTwoSum(int[] nums, int target) {
   const analyzeCode = (codeText: string) => {
     const stack: string[] = [];
     const lines = codeText.split('\n');
-    
+
+    // Shared safe defaults so no component ever receives undefined arrays
+    const defaultFactorScores = [
+      { factorName: 'Code Correctness',  score: 0,  weight: '30%', status: 'Failed',  observation: 'Code did not compile.' },
+      { factorName: 'Time Efficiency',   score: 0,  weight: '20%', status: 'N/A',     observation: 'Evaluation not possible.' },
+      { factorName: 'Space Efficiency',  score: 0,  weight: '15%', status: 'N/A',     observation: 'Evaluation not possible.' },
+      { factorName: 'Readability Score', score: 0,  weight: '15%', status: 'N/A',     observation: 'Evaluation not possible.' },
+      { factorName: 'Naming Conventions',score: 0,  weight: '10%', status: 'N/A',     observation: 'Evaluation not possible.' },
+      { factorName: 'Code Modularity',   score: 0,  weight: '10%', status: 'N/A',     observation: 'Evaluation not possible.' },
+    ];
+
     // 1. Bracket balance check
     let unbalanced = false;
     let unbalLine = 1;
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      for (let char of line) {
+      for (const char of line) {
         if (char === '{' || char === '(' || char === '[') {
           stack.push(char);
         } else if (char === '}' || char === ')' || char === ']') {
@@ -49,7 +59,7 @@ public int[] solveTwoSum(int[] nums, int target) {
       }
       if (unbalanced) break;
     }
-    
+
     if (stack.length > 0 && !unbalanced) {
       unbalanced = true;
       unbalLine = lines.length;
@@ -60,61 +70,52 @@ public int[] solveTwoSum(int[] nums, int target) {
         overallScore: 10.0,
         testCasesPassed: 0,
         totalTestCases: 18,
-        timeComplexityEstimate: "N/A",
-        spaceComplexityEstimate: "N/A",
+        timeComplexityEstimate: 'N/A',
+        spaceComplexityEstimate: 'N/A',
         cyclomaticComplexity: 0,
+        factorScores: defaultFactorScores,
+        recommendedTopics: ['Review bracket matching and control flow structure.'],
+        refactoredCodeSnippet: undefined,
         detectedCodeSmells: [
           {
             lineNumber: unbalLine,
-            severity: "CRITICAL",
-            smellType: "SyntaxError",
-            description: "Unbalanced brackets or parentheses detected in compile stream. Code contains open braces.",
-            recommendation: "Ensure all opening brackets '{', '(', '[' are properly closed with matching '}', ')', ']'"
-          }
+            severity: 'CRITICAL',
+            smellType: 'SyntaxError',
+            description: 'Unbalanced brackets or parentheses detected.',
+            recommendation: "Ensure all '{', '(', '[' are properly closed.",
+          },
         ],
-        summaryVerdict: "Compilation Failure: Syntax compile exception triggered due to unbalanced control blocks.",
+        summaryVerdict: 'Compilation Failure: Unbalanced control blocks detected.',
         keyStrengths: [],
-        areaForImprovement: ["Fix bracket balance to enable syntax validation."]
+        areaForImprovement: ['Fix bracket balance to enable syntax validation.'],
       };
     }
 
-    // 2. Unresolved symbol / variable check
+    // 2. Unresolved symbol check
     const keywords = new Set([
-      'public', 'class', 'int', 'return', 'for', 'if', 'new', 'length', 'Map', 'HashMap', 
+      'public', 'class', 'int', 'return', 'for', 'if', 'new', 'length', 'Map', 'HashMap',
       'Integer', 'containsKey', 'get', 'put', 'void', 'static', 'import', 'java', 'util',
       'def', 'in', 'enumerate', 'and', 'or', 'not', 'self', 'True', 'False', 'seen', 'nums',
-      'target', 'i', 'map', 'complement', 'solveTwoSum', 'twoSum', 'diff', 'val', 'double', 
-      'String', 'float', 'char', 'boolean'
+      'target', 'i', 'map', 'complement', 'solveTwoSum', 'twoSum', 'diff', 'val', 'double',
+      'String', 'float', 'char', 'boolean',
     ]);
 
-    const wordRegex = /\b[a-zA-Z_][a-zA-Z0-9_]*\b/g;
     const codeSmells: any[] = [];
     const declaredVariables = new Set<string>();
-    
-    // Parse line by line to locate declarations
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       if (line.trim().startsWith('//') || line.trim().startsWith('#')) continue;
-      
-      // Java/C# declarations: "int complement", "Map<...> map"
+
       const typeVarMatch = line.match(/(?:int|Map<Integer,\s*Integer>|var|String|double|float|boolean)\s+([a-zA-Z_][a-zA-Z0-9_]*)\b/);
-      if (typeVarMatch && typeVarMatch[1]) {
-        declaredVariables.add(typeVarMatch[1]);
-      }
-      
-      // Java Loop variable: "for (int i = ..."
+      if (typeVarMatch?.[1]) declaredVariables.add(typeVarMatch[1]);
+
       const loopMatch = line.match(/for\s*\(\s*(?:int|var)\s+([a-zA-Z_][a-zA-Z0-9_]*)/);
-      if (loopMatch && loopMatch[1]) {
-        declaredVariables.add(loopMatch[1]);
-      }
-      
-      // Python assignments: "seen = {}", "diff = target - ..."
+      if (loopMatch?.[1]) declaredVariables.add(loopMatch[1]);
+
       const pyVarMatch = line.match(/^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*=/);
-      if (pyVarMatch && pyVarMatch[1]) {
-        declaredVariables.add(pyVarMatch[1]);
-      }
-      
-      // Python loop: "for i, val in..."
+      if (pyVarMatch?.[1]) declaredVariables.add(pyVarMatch[1]);
+
       const pyLoopMatch = line.match(/for\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*,\s*([a-zA-Z_][a-zA-Z0-9_]*)/);
       if (pyLoopMatch) {
         if (pyLoopMatch[1]) declaredVariables.add(pyLoopMatch[1]);
@@ -122,25 +123,24 @@ public int[] solveTwoSum(int[] nums, int target) {
       }
     }
 
-    // Check all words on each line
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       if (line.trim().startsWith('//') || line.trim().startsWith('#')) continue;
-      
+
+      // Create a fresh regex per line to avoid shared lastIndex contamination
+      const wordRegex = /\b[a-zA-Z_][a-zA-Z0-9_]*\b/g;
       let match;
-      wordRegex.lastIndex = 0;
       while ((match = wordRegex.exec(line)) !== null) {
         const word = match[0];
-        // If it's a word but not declared, spellcheck it
         if (!keywords.has(word) && !declaredVariables.has(word)) {
           codeSmells.push({
             lineNumber: i + 1,
-            severity: "CRITICAL",
-            smellType: "UnresolvedSymbol",
-            description: `Unresolved reference: Symbol '${word}' is not declared or is misspelled in the current scope.`,
-            recommendation: `Verify variable spelling or declare '${word}' prior to reference.`
+            severity: 'CRITICAL',
+            smellType: 'UnresolvedSymbol',
+            description: `Unresolved reference: Symbol '${word}' is not declared or is misspelled.`,
+            recommendation: `Verify variable spelling or declare '${word}' before reference.`,
           });
-          break; // Stop at first error per line
+          break; // one error per line
         }
       }
     }
@@ -150,36 +150,54 @@ public int[] solveTwoSum(int[] nums, int target) {
         overallScore: 40.0,
         testCasesPassed: 0,
         totalTestCases: 18,
-        timeComplexityEstimate: "N/A",
-        spaceComplexityEstimate: "N/A",
+        timeComplexityEstimate: 'N/A',
+        spaceComplexityEstimate: 'N/A',
         cyclomaticComplexity: 2,
+        factorScores: defaultFactorScores,
+        recommendedTopics: ['Declare all variables before use.', 'Fix compilation reference errors.'],
+        refactoredCodeSnippet: undefined,
         detectedCodeSmells: codeSmells,
-        summaryVerdict: `Compilation Error: Reference to undefined symbol detected on line ${codeSmells[0].lineNumber}. Dry run failed.`,
+        summaryVerdict: `Compilation Error: Reference to undefined symbol on line ${codeSmells[0].lineNumber}.`,
         keyStrengths: [],
-        areaForImprovement: ["Declare all variables before use.", "Fix compilation reference errors."]
+        areaForImprovement: ['Declare all variables before use.', 'Fix compilation reference errors.'],
       };
     }
 
-    // Clean O(N) evaluation
+    // Clean O(N) evaluation — all fields present
     return {
       overallScore: 96.0,
       testCasesPassed: 18,
       totalTestCases: 18,
-      timeComplexityEstimate: "O(N)",
-      spaceComplexityEstimate: "O(N)",
+      timeComplexityEstimate: 'O(N)',
+      spaceComplexityEstimate: 'O(N)',
       cyclomaticComplexity: 3,
+      factorScores: [
+        { factorName: 'Code Correctness',   score: 100, weight: '30%', status: 'Excellent', observation: '18/18 test cases passed with zero execution exceptions.' },
+        { factorName: 'Time Efficiency',    score: 95,  weight: '20%', status: 'Excellent', observation: 'Optimal O(N) hash table lookup.' },
+        { factorName: 'Space Efficiency',   score: 85,  weight: '15%', status: 'Good',      observation: 'O(N) auxiliary space.' },
+        { factorName: 'Readability Score',  score: 94,  weight: '15%', status: 'Excellent', observation: 'Clean comments and logical flow.' },
+        { factorName: 'Naming Conventions', score: 92,  weight: '10%', status: 'Excellent', observation: "camelCase variables like 'complement'." },
+        { factorName: 'Code Modularity',    score: 95,  weight: '10%', status: 'Excellent', observation: 'Single responsibility function.' },
+      ],
+      recommendedTopics: [
+        'Sliding Window Technique for Array Subsegments',
+        'HashMap Load Factor & Collision Handling',
+        'Two-Pointer Approaches for Sorted Input Arrays',
+      ],
+      refactoredCodeSnippet: undefined,
       detectedCodeSmells: [],
-      summaryVerdict: "Exceptional solution! The algorithm achieves optimal O(N) time complexity using a HashMap lookup strategy, passing 100% of functional test cases with high readability.",
+      summaryVerdict: 'Exceptional solution! Optimal O(N) time complexity using HashMap lookup, passing 100% of test cases.',
       keyStrengths: [
-        "Used HashMap to achieve single-pass O(N) time efficiency instead of O(N^2) brute force.",
-        "Well-structured variable names ('complement', 'target') enhancing code clarity.",
-        "Comprehensive coverage of edge cases including duplicate values."
+        "Used HashMap to achieve single-pass O(N) time efficiency.",
+        "Well-structured variable names ('complement', 'target').",
+        'Comprehensive coverage of edge cases including duplicate values.',
       ],
       areaForImprovement: [
-        "Consider pre-sizing HashMap initial capacity when array size is known."
-      ]
+        'Consider pre-sizing HashMap initial capacity when array size is known.',
+      ],
     };
   };
+
 
   const handleEvaluate = () => {
     setEvaluating(true);

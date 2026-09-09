@@ -52,6 +52,56 @@ public class InterviewController {
     public static class CodeRequest {
         public String code;
         public Enums.Language language;
+        // Optional: if set, run code against this custom stdin input instead of public test cases
+        public String customInput;
+    }
+
+    /**
+     * Clean result object produced by the Coding Sandbox for consumption by Member 3
+     * (Multi-Factor Assessment module). Contains raw execution data only.
+     * Member 3 is responsible for calculating final assessment scores.
+     */
+    public static class ExecutionData {
+        public Long sessionId;
+        public Long questionId;
+        public String language;
+        public String sourceCode;
+        public String status;
+        public int passedCases;
+        public int totalCases;
+        public long executionTimeMs;
+        public Long memoryUsedKb;   // null when sandbox does not track memory
+        public Object testResults;  // List of TestCaseResult details
+
+        public ExecutionData(Long sessionId, Long questionId, String language, String sourceCode,
+                             String status, int passedCases, int totalCases,
+                             long executionTimeMs, Long memoryUsedKb, Object testResults) {
+            this.sessionId = sessionId;
+            this.questionId = questionId;
+            this.language = language;
+            this.sourceCode = sourceCode;
+            this.status = status;
+            this.passedCases = passedCases;
+            this.totalCases = totalCases;
+            this.executionTimeMs = executionTimeMs;
+            this.memoryUsedKb = memoryUsedKb;
+            this.testResults = testResults;
+        }
+    }
+
+    /**
+     * Full submit response. Contains:
+     * - assessment: the completed KODEXIS multi-factor Assessment entity
+     * - executionData: clean sandbox execution result for Member 3 integration
+     */
+    public static class SubmitResponse {
+        public Assessment assessment;
+        public ExecutionData executionData;
+
+        public SubmitResponse(Assessment assessment, ExecutionData executionData) {
+            this.assessment = assessment;
+            this.executionData = executionData;
+        }
     }
 
     @PostMapping
@@ -101,7 +151,7 @@ public class InterviewController {
     @PostMapping("/{id}/run")
     public ResponseEntity<?> runCode(@PathVariable Long id, @RequestBody CodeRequest request) {
         try {
-            ExecutionService.ExecutionOutcome outcome = interviewService.runCode(id, request.code, request.language);
+            ExecutionService.ExecutionOutcome outcome = interviewService.runCode(id, request.code, request.language, request.customInput);
             return ResponseEntity.ok(outcome);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", e.getMessage()));
@@ -111,8 +161,29 @@ public class InterviewController {
     @PostMapping("/{id}/submit")
     public ResponseEntity<?> submitCode(@PathVariable Long id, @RequestBody CodeRequest request) {
         try {
-            Assessment assessment = interviewService.submitAndEvaluate(id, request.code, request.language);
-            return ResponseEntity.ok(assessment);
+            // interviewService.submitAndEvaluate returns Assessment; the execution outcome
+            // is also needed so we re-run using the run endpoint data already saved.
+            ExecutionService.ExecutionOutcome outcome = interviewService.runCodeForSubmit(id, request.code, request.language);
+            Assessment assessment = interviewService.submitAndEvaluate(id, request.code, request.language, outcome);
+
+            // Build clean ExecutionData payload for Member 3
+            Optional<com.kodexis.core.model.InterviewSession> optSession = sessionRepository.findById(id);
+            Long questionId = optSession.map(s -> s.getQuestion().getId()).orElse(null);
+
+            ExecutionData execData = new ExecutionData(
+                id,
+                questionId,
+                request.language != null ? request.language.name() : "UNKNOWN",
+                request.code,
+                outcome.getStatus().name(),
+                outcome.getPassedCases(),
+                outcome.getTotalCases(),
+                outcome.getExecutionTimeMs(),
+                outcome.getMemoryUsedKb(),
+                outcome.getDetails()
+            );
+
+            return ResponseEntity.ok(new SubmitResponse(assessment, execData));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", e.getMessage()));
         }

@@ -30,6 +30,9 @@ public class ExecutionService {
         private int totalCases;
         private long executionTimeMs;
         private String consoleOutput;
+        // memoryUsed is null when the sandbox does not track memory (local runtime).
+        // The frontend must display "Not available" when this is null.
+        private Long memoryUsedKb = null;
         private List<TestCaseResult> details = new ArrayList<>();
 
         // Constructor
@@ -47,6 +50,7 @@ public class ExecutionService {
         public int getTotalCases() { return totalCases; }
         public long getExecutionTimeMs() { return executionTimeMs; }
         public String getConsoleOutput() { return consoleOutput; }
+        public Long getMemoryUsedKb() { return memoryUsedKb; }
         public List<TestCaseResult> getDetails() { return details; }
     }
 
@@ -217,7 +221,8 @@ public class ExecutionService {
                 if (!finished) {
                     runProcess.destroyForcibly();
                     cleanupDirectory(dir);
-                    return new ExecutionOutcome(Enums.ExecutionResultStatus.RUNTIME_ERROR, 0, 1, duration, "Time Limit Exceeded (Timeout of 5s)");
+                    // Return TIMEOUT status (not RUNTIME_ERROR) so frontend can display TLE clearly
+                    return new ExecutionOutcome(Enums.ExecutionResultStatus.TIMEOUT, 0, 1, duration, "TIME LIMIT EXCEEDED\nYour solution exceeded the 5-second execution limit.\nThis usually indicates an infinite loop or an algorithm with very high time complexity.\nOptimize your approach and try again.");
                 }
 
                 int runExit = runProcess.exitValue();
@@ -231,9 +236,13 @@ public class ExecutionService {
                     return new ExecutionOutcome(Enums.ExecutionResultStatus.RUNTIME_ERROR, 0, 1, duration, errorMsg);
                 }
 
-                // Verify stdout matches expected output
-                String expected = testCase.getExpectedOutput().trim();
-                if (stdout.equals(expected)) {
+                // Verify stdout matches expected output.
+                // Normalize both sides: convert CRLF → LF, trim each line, collapse to a
+                // canonical form so Windows line-endings or trailing spaces don't cause
+                // spurious Wrong Answer verdicts.
+                String normalizedExpected = normalizeOutput(testCase.getExpectedOutput());
+                String normalizedActual   = normalizeOutput(stdout);
+                if (normalizedActual.equals(normalizedExpected)) {
                     return new ExecutionOutcome(Enums.ExecutionResultStatus.SUCCESS, 1, 1, duration, stdout);
                 } else {
                     return new ExecutionOutcome(Enums.ExecutionResultStatus.WRONG_ANSWER, 0, 1, duration, stdout);
@@ -254,6 +263,27 @@ public class ExecutionService {
                 "Local Runtime Missing: " + e.getMessage() + "\nMake sure the local runtime (e.g. node, python, javac, csc, or go) is installed and available in system PATH."
             );
         }
+    }
+
+    /**
+     * Normalizes output for comparison:
+     * - Replaces Windows CRLF (\r\n) and bare CR (\r) with LF (\n)
+     * - Trims leading/trailing whitespace from each individual line
+     * - Removes trailing blank lines
+     * This prevents false Wrong Answer verdicts caused by whitespace differences.
+     */
+    private String normalizeOutput(String raw) {
+        if (raw == null) return "";
+        // Unify line endings
+        String unified = raw.replace("\r\n", "\n").replace("\r", "\n");
+        // Trim each line
+        String[] lines = unified.split("\n", -1);
+        StringBuilder sb = new StringBuilder();
+        for (String line : lines) {
+            sb.append(line.stripTrailing()).append("\n");
+        }
+        // Strip trailing blank lines
+        return sb.toString().stripTrailing();
     }
 
     private String getPistonLanguage(Enums.Language language) {

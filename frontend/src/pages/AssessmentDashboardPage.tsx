@@ -96,11 +96,13 @@ export default function AssessmentDashboardPage() {
   const [currentCode, setCurrentCode] = useState<string>(sampleCodeJava);
   const [history] = useState<any[]>(mockInterviewHistory);
 
-  const handleEvaluationComplete = (newAssessment: any, code: string) => {
-    setCurrentAssessment(newAssessment);
+  const handleEvaluationComplete = (newResult: any, code: string) => {
+    // Merge with existing assessment so components always receive complete data
+    setCurrentAssessment((prev: any) => ({ ...prev, ...newResult }));
     setCurrentCode(code);
     setActiveTab('evaluator');
   };
+
 
   return (
     <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto font-sans">
@@ -240,7 +242,8 @@ export default function AssessmentDashboardPage() {
               Multi-Factor Dimension Weights Overview
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {currentAssessment.factorScores.map((factor: any, idx: number) => (
+              {(currentAssessment.factorScores ?? []).map((factor: any, idx: number) => (
+
                 <div key={idx} className="p-4 border border-border bg-background rounded">
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-bold text-zinc-200 text-xs">{factor.factorName}</span>

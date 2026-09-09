@@ -130,8 +130,20 @@ public class InterviewService {
         return userMsg;
     }
 
+    /**
+     * Convenience overload — regular draft run against public test cases.
+     */
     @Transactional
     public ExecutionService.ExecutionOutcome runCode(Long sessionId, String code, Enums.Language language) {
+        return runCode(sessionId, code, language, null);
+    }
+
+    /**
+     * Runs code against either a custom stdin input (when customInput is non-blank) or the public
+     * test cases of the problem. The existing /run endpoint calls this with an optional customInput.
+     */
+    @Transactional
+    public ExecutionService.ExecutionOutcome runCode(Long sessionId, String code, Enums.Language language, String customInput) {
         InterviewSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("Session not found: " + sessionId));
 
@@ -139,22 +151,59 @@ public class InterviewService {
         session.setLastSubmittedCode(code);
         sessionRepository.save(session);
 
+        if (customInput != null && !customInput.isBlank()) {
+            // Custom input run: execute code with the provided stdin and show raw output.
+            // No expected output — we override WRONG_ANSWER to SUCCESS since we only care about stdout.
+            logTelemetry(sessionId, "Custom input run for " + language.name());
+            TestCase customCase = new TestCase(customInput.trim(), "", false);
+            ExecutionService.ExecutionOutcome outcome = executionService.runCode(code, language, List.of(customCase));
+            if (outcome.getStatus() == Enums.ExecutionResultStatus.WRONG_ANSWER) {
+                // Code ran successfully but output didn't match "" (the empty expected). Override to SUCCESS.
+                ExecutionService.ExecutionOutcome adjusted = new ExecutionService.ExecutionOutcome(
+                        Enums.ExecutionResultStatus.SUCCESS, 1, 1,
+                        outcome.getExecutionTimeMs(), outcome.getConsoleOutput());
+                return adjusted;
+            }
+            return outcome;
+        }
+
         logTelemetry(sessionId, "Code run executed in sandbox for " + language.name());
 
-        // Extract PUBLIC test cases only for Run Code
+        // Extract PUBLIC test cases only for Draft Run
         List<TestCase> publicCases = session.getQuestion().getTestCases().stream()
                 .filter(tc -> !tc.isHidden())
                 .toList();
 
         ExecutionService.ExecutionOutcome outcome = executionService.runCode(code, language, publicCases);
 
-        // Save as temporary submission
+        // Save as temporary submission record
         Submission sub = new Submission(session, code, language, outcome.getPassedCases(), outcome.getTotalCases(), outcome.getStatus());
         sub.setExecutionTimeMs(outcome.getExecutionTimeMs());
         sub.setErrorMessage(outcome.getConsoleOutput());
         submissionRepository.save(sub);
 
         return outcome;
+    }
+
+    /**
+     * Runs ALL test cases (public + hidden) and returns the ExecutionOutcome.
+     * Called by the controller before submitAndEvaluate so the outcome is available
+     * for building the clean ExecutionData payload without running code twice.
+     */
+    @Transactional
+    public ExecutionService.ExecutionOutcome runCodeForSubmit(Long sessionId, String code, Enums.Language language) {
+        InterviewSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Session not found: " + sessionId));
+
+        session.setLanguage(language);
+        session.setLastSubmittedCode(code);
+        sessionRepository.save(session);
+
+        logTelemetry(sessionId, "Pre-submit code execution started for " + language.name());
+
+        // ALL test cases for submission
+        List<TestCase> allCases = session.getQuestion().getTestCases();
+        return executionService.runCode(code, language, allCases);
     }
 
     @Transactional
@@ -173,7 +222,27 @@ public class InterviewService {
         List<TestCase> allCases = session.getQuestion().getTestCases();
 
         ExecutionService.ExecutionOutcome outcome = executionService.runCode(code, language, allCases);
+        return persistSubmitAndEvaluate(sessionId, session, code, language, outcome);
+    }
 
+    /**
+     * Overload used by the controller when it already has a pre-computed ExecutionOutcome
+     * from runCodeForSubmit(). Avoids running the code a second time.
+     */
+    @Transactional
+    public Assessment submitAndEvaluate(Long sessionId, String code, Enums.Language language, ExecutionService.ExecutionOutcome outcome) {
+        InterviewSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Session not found: " + sessionId));
+
+        session.setLanguage(language);
+        session.setLastSubmittedCode(code);
+        session.setState(Enums.SessionState.ASSESSMENT);
+        sessionRepository.save(session);
+
+        return persistSubmitAndEvaluate(sessionId, session, code, language, outcome);
+    }
+
+    private Assessment persistSubmitAndEvaluate(Long sessionId, InterviewSession session, String code, Enums.Language language, ExecutionService.ExecutionOutcome outcome) {
         // Save final submission
         Submission finalSub = new Submission(session, code, language, outcome.getPassedCases(), outcome.getTotalCases(), outcome.getStatus());
         finalSub.setExecutionTimeMs(outcome.getExecutionTimeMs());

@@ -2,7 +2,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Editor from '@monaco-editor/react';
-import { Brain, Play, Send, Activity, Award, Clock, Code2, Maximize2, Minimize2, FileCode, GitCommit, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Brain, Play, Send, Activity, Award, Clock, Code2, Maximize2, Minimize2, FileCode, GitCommit, ChevronLeft, ChevronRight, RotateCcw, Terminal } from 'lucide-react';
+
 import ReactMarkdown from 'react-markdown';
 
 interface TestCase {
@@ -422,7 +423,7 @@ const InterviewRoom: React.FC = () => {
   
   // Sandbox Console States
   const [terminalOutput, setTerminalOutput] = useState<string>('Terminal initialized. Sandbox engine ready.');
-  const [terminalStatus, setTerminalStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
+  const [terminalStatus, setTerminalStatus] = useState<'idle' | 'running' | 'success' | 'error' | 'timeout'>('idle');
   const [consoleTab, setConsoleTab] = useState<'stdout' | 'testcases'>('stdout');
   const [activeTestCaseIdx, setActiveTestCaseIdx] = useState<number>(0);
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState<boolean>(true);
@@ -430,6 +431,25 @@ const InterviewRoom: React.FC = () => {
   const [isDescriptionOpen, setIsDescriptionOpen] = useState<boolean>(true);
   const [leftPanelTab, setLeftPanelTab] = useState<'description' | 'analysis'>('description');
   const [testResults, setTestResults] = useState<any[]>([]);
+  // isRunning controls the Run button visual state
+  const [isRunning, setIsRunning] = useState<boolean>(false);
+  // executionSummary is shown as a banner after each run
+  const [executionSummary, setExecutionSummary] = useState<{
+    status: string;
+    passedCases: number;
+    totalCases: number;
+    executionTimeMs: number;
+    memoryUsedKb: number | null;
+  } | null>(null);
+
+  // Custom Input state
+  const [customInput, setCustomInput] = useState<string>('');
+  const [showCustomInput, setShowCustomInput] = useState<boolean>(false);
+  const [isCustomRunning, setIsCustomRunning] = useState<boolean>(false);
+
+  // Tracks the original starter template for Reset Code feature
+  const [originalCode, setOriginalCode] = useState<string>('');
+
 
   // Telemetry signals states
   const [signals, setSignals] = useState({
@@ -468,7 +488,12 @@ const InterviewRoom: React.FC = () => {
         else if (sData.language === 'GO') startingCode = sData.question.goTemplate;
         else startingCode = sData.question.cTemplate;
 
-        setCode(startingCode || '# Complete your code here');
+        const template = startingCode || '// Complete your code here';
+        setOriginalCode(template);
+        // Restore saved draft from localStorage if one exists for this session+language
+        const savedDraft = localStorage.getItem(`interview-code-${sData.id}-${sData.language}`);
+        setCode(savedDraft && savedDraft !== template ? savedDraft : template);
+
 
         // Load Chat logs
         return axios.get(`/api/interviews/${id}/messages`);
@@ -535,47 +560,83 @@ const InterviewRoom: React.FC = () => {
   };
 
   const handleRunCode = async () => {
+    if (isRunning) return; // Prevent duplicate requests
+    setIsRunning(true);
     setTerminalStatus('running');
     setTerminalOutput('Initializing sandbox runtime...\nConnecting to public execution containers...\nRunning solution...');
     setTestResults([]);
+    setExecutionSummary(null);
 
     try {
       const response = await axios.post(`/api/interviews/${id}/run`, { code, language });
       const outcome = response.data;
-      
-      // Print execution logs
-      let logText = `Execution status: ${outcome.status}\nPassed cases: ${outcome.passedCases} / ${outcome.totalCases}\nTime elapsed: ${outcome.executionTimeMs}ms\n\n`;
-      if (outcome.status === 'COMPILE_ERROR' || outcome.status === 'RUNTIME_ERROR') {
+
+      const isTle = outcome.status === 'TIMEOUT';
+      const isCompileOrRuntime = outcome.status === 'COMPILE_ERROR' || outcome.status === 'RUNTIME_ERROR';
+      const isSuccess = outcome.status === 'SUCCESS';
+
+      // Determine terminal display status
+      if (isTle) {
+        setTerminalStatus('timeout');
+      } else if (isCompileOrRuntime) {
         setTerminalStatus('error');
-        logText += `Error Details:\n${outcome.consoleOutput}`;
-        
-        // Deduct debugging score slightly on compiles/runtime failures
-        setSignals(prev => ({
-          ...prev,
-          debugging: { value: Math.max(20, prev.debugging.value - 15), label: 'Attention Needed' }
-        }));
       } else {
-        setTerminalStatus(outcome.status === 'SUCCESS' ? 'success' : 'error');
-        logText += `Sandbox standard output:\n${outcome.consoleOutput || 'Success (No output)'}`;
+        setTerminalStatus(isSuccess ? 'success' : 'error');
       }
 
+      // Build formatted console output with clearly labelled sections
+      let logText = '';
+      if (isTle) {
+        logText = `STATUS: TIME LIMIT EXCEEDED\n\nERROR:\nYour solution exceeded the 5-second time limit.\nThis typically indicates an infinite loop or quadratic time complexity on a large input.\nOptimize your approach and try again.`;
+      } else if (outcome.status === 'COMPILE_ERROR') {
+        logText = `STATUS: COMPILE ERROR\n\nERROR:\n${outcome.consoleOutput || 'No compiler output.'}`;
+      } else if (outcome.status === 'RUNTIME_ERROR') {
+        logText = `STATUS: RUNTIME ERROR\n\nERROR:\n${outcome.consoleOutput || 'No error details.'}`;
+      } else if (outcome.status === 'SUCCESS') {
+        logText = `STATUS: ACCEPTED\n\nOUTPUT:\n${outcome.consoleOutput || '(empty output)'}\n\nEXECUTION TIME: ${outcome.executionTimeMs} ms`;
+      } else {
+        logText = `STATUS: WRONG ANSWER\n\nOUTPUT:\n${outcome.consoleOutput || '(empty output)'}\n\nEXECUTION TIME: ${outcome.executionTimeMs} ms`;
+      }
+
+
       setTerminalOutput(logText);
-      if (outcome.details) {
+
+      // Populate test case detail results
+      if (outcome.details && outcome.details.length > 0) {
         setTestResults(outcome.details);
         setConsoleTab('testcases');
         setActiveTestCaseIdx(0);
+      } else {
+        setConsoleTab('stdout');
       }
 
-      // Update Live telemetry signals
+      // Set execution summary banner
+      setExecutionSummary({
+        status: outcome.status,
+        passedCases: outcome.passedCases,
+        totalCases: outcome.totalCases,
+        executionTimeMs: outcome.executionTimeMs,
+        memoryUsedKb: outcome.memoryUsedKb ?? null,
+      });
+
+      // Update live telemetry signals
       setSignals(prev => ({
         ...prev,
-        correctness: { value: outcome.totalCases > 0 ? (outcome.passedCases * 100) / outcome.totalCases : 0, label: outcome.status },
-        complexity: { value: 65, label: 'Observed O(N)' }
+        correctness: {
+          value: outcome.totalCases > 0 ? (outcome.passedCases * 100) / outcome.totalCases : 0,
+          label: outcome.status
+        },
+        complexity: { value: 65, label: 'Observed O(N)' },
+        ...(isCompileOrRuntime ? { debugging: { value: Math.max(20, prev.debugging.value - 15), label: 'Attention Needed' } } : {}),
       }));
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       setTerminalStatus('error');
-      setTerminalOutput('Sandbox API call failed. Verify network connectivity.\n' + (error.message || ''));
+      const axiosError = error as { message?: string; response?: { data?: { error?: string } } };
+      const msg = axiosError?.response?.data?.error || axiosError?.message || 'Unknown error';
+      setTerminalOutput(`Sandbox API call failed.\n${msg}`);
+    } finally {
+      setIsRunning(false);
     }
   };
 
@@ -585,16 +646,84 @@ const InterviewRoom: React.FC = () => {
 
     try {
       await axios.post(`/api/interviews/${id}/submit`, { code, language });
-      navigate('/report/1');
-    } catch (error) {
-      console.warn('Backend server offline. Redirecting to Multi-Factor Assessment Report Card...');
-      navigate('/report/1');
-    } finally {
+      // Navigate to the report for THIS session (not hardcoded /report/1)
+      navigate(`/report/${id}`);
+    } catch (error: unknown) {
       setIsSubmitLoading(false);
+      const axiosError = error as { response?: { data?: { error?: string } }; message?: string };
+      const msg = axiosError?.response?.data?.error || axiosError?.message || 'Unknown error occurred.';
+      // Show error in terminal so the candidate can see it and retry
+      setTerminalStatus('error');
+      setTerminalOutput(`Submission failed. You may fix your code and try again.\n\nError: ${msg}`);
+      setConsoleTab('stdout');
+      alert(`Submission failed: ${msg}\n\nPlease fix your code and try submitting again.`);
+      // Do NOT redirect — user must retry
+    }
+  };
+
+  /** Restores current language's starter template. Confirms if code was modified. */
+  const handleResetCode = () => {
+    if (code !== originalCode) {
+      if (!window.confirm('Reset code to the original starter template?\nYour current changes will be lost.')) return;
+    }
+    setCode(originalCode);
+    if (id && language) {
+      localStorage.removeItem(`interview-code-${id}-${language}`);
+    }
+  };
+
+  /** Runs the current code against a user-supplied custom stdin, shows result in STDOUT console. */
+  const handleRunCustomInput = async () => {
+    if (isCustomRunning || !customInput.trim()) return;
+    setIsCustomRunning(true);
+    setTerminalStatus('running');
+    setTerminalOutput('Running with custom input...\nSending code to sandbox execution engine...');
+    setConsoleTab('stdout');
+    setTestResults([]);
+
+    try {
+      const response = await axios.post(`/api/interviews/${id}/run`, {
+        code,
+        language,
+        customInput: customInput.trim(),
+      });
+      const outcome = response.data;
+
+      let logText = '';
+      if (outcome.status === 'TIMEOUT') {
+        logText = `STATUS: TIME LIMIT EXCEEDED\n\nERROR:\nYour solution exceeded the 5-second time limit.`;
+        setTerminalStatus('timeout');
+      } else if (outcome.status === 'COMPILE_ERROR') {
+        logText = `STATUS: COMPILE ERROR\n\nERROR:\n${outcome.consoleOutput || 'No compiler output.'}`;
+        setTerminalStatus('error');
+      } else if (outcome.status === 'RUNTIME_ERROR') {
+        logText = `STATUS: RUNTIME ERROR\n\nERROR:\n${outcome.consoleOutput || 'No error details.'}`;
+        setTerminalStatus('error');
+      } else {
+        logText = `STATUS: SUCCESS (CUSTOM INPUT)\n\nOUTPUT:\n${outcome.consoleOutput || '(no output)'}\n\nEXECUTION TIME: ${outcome.executionTimeMs} ms`;
+        setTerminalStatus('success');
+      }
+
+      setTerminalOutput(logText);
+      setExecutionSummary({
+        status: outcome.status,
+        passedCases: outcome.passedCases ?? 0,
+        totalCases: outcome.totalCases ?? 0,
+        executionTimeMs: outcome.executionTimeMs,
+        memoryUsedKb: outcome.memoryUsedKb ?? null,
+      });
+    } catch (error: unknown) {
+      setTerminalStatus('error');
+      const axiosError = error as { message?: string; response?: { data?: { error?: string } } };
+      const msg = axiosError?.response?.data?.error || axiosError?.message || 'Unknown error';
+      setTerminalOutput(`Custom run failed.\n${msg}`);
+    } finally {
+      setIsCustomRunning(false);
     }
   };
 
   if (!session) {
+
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center font-mono">
         <Activity className="animate-spin text-brand-cyan mb-2" size={24} />
@@ -786,7 +915,15 @@ const InterviewRoom: React.FC = () => {
             <div className="flex items-center space-x-3">
               <div className="px-3 py-1.5 border-r border-t border-l border-border bg-background text-xs font-semibold text-brand-cyan flex items-center gap-1.5">
                 <Code2 size={12} />
-                <span>solution.{language === 'JAVA' ? 'java' : language === 'PYTHON' ? 'py' : language === 'JAVASCRIPT' ? 'js' : language === 'CPP' ? 'cpp' : language === 'CSHARP' ? 'cs' : language === 'GO' ? 'go' : 'c'}</span>
+                <span>solution.{
+                  language === 'JAVA' ? 'java' :
+                  language === 'PYTHON' ? 'py' :
+                  language === 'JAVASCRIPT' ? 'js' :
+                  language === 'CPP' ? 'cpp' :
+                  language === 'C' ? 'c' :
+                  language === 'CSHARP' ? 'cs' :
+                  language === 'GO' ? 'go' : 'txt'
+                }</span>
               </div>
               
               {/* Language Switcher Dropdown */}
@@ -796,23 +933,29 @@ const InterviewRoom: React.FC = () => {
                   const newLang = e.target.value;
                   if (window.confirm(`Switching to ${newLang} will reset your current code draft. Proceed?`)) {
                     setLanguage(newLang);
-                    let template = '';
-                    if (newLang === 'JAVA') template = session.question.javaTemplate;
-                    else if (newLang === 'PYTHON') template = session.question.pythonTemplate;
-                    else if (newLang === 'JAVASCRIPT') template = session.question.javascriptTemplate;
-                    else if (newLang === 'CPP') template = session.question.cppTemplate;
-                    else if (newLang === 'CSHARP') template = session.question.csharpTemplate;
-                    else if (newLang === 'GO') template = session.question.goTemplate;
-                    else template = session.question.cTemplate;
-                    setCode(template || '');
+                    let tmpl = '';
+                    if (newLang === 'JAVA') tmpl = session.question.javaTemplate;
+                    else if (newLang === 'PYTHON') tmpl = session.question.pythonTemplate;
+                    else if (newLang === 'JAVASCRIPT') tmpl = session.question.javascriptTemplate;
+                    else if (newLang === 'CPP') tmpl = session.question.cppTemplate;
+                    else if (newLang === 'CSHARP') tmpl = session.question.csharpTemplate;
+                    else if (newLang === 'GO') tmpl = session.question.goTemplate;
+                    else tmpl = session.question.cTemplate;
+                    const newTemplate = tmpl || '';
+                    setOriginalCode(newTemplate);
+                    // Restore any previously saved draft for this language
+                    const savedDraft = localStorage.getItem(`interview-code-${id}-${newLang}`);
+                    setCode(savedDraft && savedDraft !== newTemplate ? savedDraft : newTemplate);
                   }
                 }}
+
                 className="bg-background-panel border border-border/80 rounded text-[10px] font-semibold text-zinc-400 px-2 py-0.5 outline-none focus:border-brand-cyan cursor-pointer uppercase transition hover:text-zinc-200"
               >
                 <option value="PYTHON">Python</option>
                 <option value="JAVA">Java</option>
                 <option value="JAVASCRIPT">JavaScript</option>
                 <option value="CPP">C++</option>
+                <option value="C">C</option>
                 <option value="CSHARP">C#</option>
                 <option value="GO">Go</option>
               </select>
@@ -838,14 +981,37 @@ const InterviewRoom: React.FC = () => {
 
               <button
                 onClick={handleRunCode}
-                disabled={terminalStatus === 'running'}
-                className="flex items-center space-x-1 px-3 py-1 bg-zinc-800 hover:bg-zinc-700/80 rounded border border-border text-[10px] font-bold text-brand-cyan transition"
+                disabled={isRunning}
+                className={`flex items-center space-x-1.5 px-3 py-1 rounded border text-[10px] font-bold transition ${
+                  isRunning
+                    ? 'bg-brand-cyan/10 border-brand-cyan/50 text-brand-cyan/60 cursor-not-allowed'
+                    : 'bg-zinc-800 hover:bg-zinc-700/80 border-border text-brand-cyan hover:border-brand-cyan/50'
+                }`}
               >
-                <Play size={10} fill="currentColor" />
-                <span>Run Draft</span>
+                {isRunning ? (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-brand-cyan animate-ping" />
+                    <span>Running...</span>
+                  </>
+                ) : (
+                  <>
+                    <Play size={10} fill="currentColor" />
+                    <span>Run Draft</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={handleResetCode}
+                title="Reset to original starter template"
+                className="flex items-center space-x-1 px-2.5 py-1 rounded border text-[10px] font-bold transition bg-zinc-800 hover:bg-zinc-700/80 border-border text-zinc-500 hover:text-zinc-300 hover:border-zinc-500"
+              >
+                <RotateCcw size={10} />
+                <span>Reset</span>
               </button>
             </div>
           </div>
+
 
           {/* HORIZONTAL SPLIT: DESCRIPTION (LEFT) & EDITOR/CONSOLE (RIGHT) */}
           <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
@@ -909,24 +1075,101 @@ const InterviewRoom: React.FC = () => {
               <div className="flex-1 relative">
                 <Editor
                   height="100%"
-                  language={language.toLowerCase() === 'cpp' ? 'cpp' : language.toLowerCase()}
+                  language={
+                    language === 'CPP' ? 'cpp' :
+                    language === 'CSHARP' ? 'csharp' :
+                    language === 'JAVASCRIPT' ? 'javascript' :
+                    language === 'JAVA' ? 'java' :
+                    language === 'PYTHON' ? 'python' :
+                    language === 'GO' ? 'go' :
+                    language === 'C' ? 'c' : 'plaintext'
+                  }
                   theme="vs-dark"
                   value={code}
-                  onChange={(val) => setCode(val || '')}
+                  onChange={(val) => {
+                    const newCode = val || '';
+                    setCode(newCode);
+                    if (id && language) {
+                      localStorage.setItem(`interview-code-${id}-${language}`, newCode);
+                    }
+                  }}
+
+                  onMount={(editor, monaco) => {
+                    // Bind Ctrl+Enter / Cmd+Enter to Run Code
+                    editor.addCommand(
+                      monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
+                      () => { handleRunCode(); }
+                    );
+                  }}
                   options={{
                     minimap: { enabled: false },
                     fontSize: 13,
                     fontFamily: 'JetBrains Mono, Courier New, monospace',
                     lineNumbers: 'on',
                     tabSize: 4,
+                    insertSpaces: true,
                     automaticLayout: true,
-                    padding: { top: 10, bottom: 10 }
+                    wordWrap: 'on',
+                    bracketPairColorization: { enabled: true },
+                    padding: { top: 10, bottom: 10 },
+                    scrollBeyondLastLine: false,
                   }}
                 />
               </div>
 
+              {/* CUSTOM INPUT PANEL — collapsible section above STDOUT console */}
+              <div className="border-t border-border bg-zinc-900/50 shrink-0">
+                <button
+                  onClick={() => setShowCustomInput(!showCustomInput)}
+                  className="w-full h-8 px-4 flex items-center justify-between text-[10px] font-mono font-bold text-zinc-500 hover:text-zinc-300 transition"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Terminal size={10} />
+                    <span>CUSTOM INPUT</span>
+                    {customInput.trim() && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-brand-cyan animate-pulse" />
+                    )}
+                  </span>
+                  <span className="text-zinc-600">{showCustomInput ? '▾' : '▸'}</span>
+                </button>
+
+                {showCustomInput && (
+                  <div className="px-4 pb-3 space-y-2">
+                    <textarea
+                      value={customInput}
+                      onChange={(e) => setCustomInput(e.target.value)}
+                      placeholder="Enter custom stdin here (e.g. 9\n2,7,11,15)..."
+                      rows={3}
+                      className="w-full bg-zinc-950 border border-border/80 rounded text-xs font-mono text-zinc-300 p-2.5 resize-y focus:outline-none focus:border-brand-cyan placeholder-zinc-700"
+                    />
+                    <button
+                      onClick={handleRunCustomInput}
+                      disabled={isCustomRunning || !customInput.trim()}
+                      className={`flex items-center space-x-1.5 px-3 py-1 rounded border text-[10px] font-bold transition ${
+                        isCustomRunning || !customInput.trim()
+                          ? 'bg-zinc-800/50 border-border/50 text-zinc-600 cursor-not-allowed'
+                          : 'bg-zinc-800 hover:bg-zinc-700/80 border-border text-brand-cyan hover:border-brand-cyan/50'
+                      }`}
+                    >
+                      {isCustomRunning ? (
+                        <>
+                          <span className="w-2 h-2 rounded-full bg-brand-cyan animate-ping" />
+                          <span>Running...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play size={10} fill="currentColor" />
+                          <span>Run Custom Input</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+
               {/* CONSOLE / TERMINAL OUTPUT PANEL */}
               <div className="h-56 border-t border-border bg-zinc-950 flex flex-col shrink-0">
+
                 {/* Terminal Header with Tabs */}
                 <div className="h-9 bg-zinc-900 border-b border-border/80 flex items-center justify-between px-4 font-mono text-[10px] shrink-0">
                   <div className="flex space-x-2">
@@ -952,13 +1195,39 @@ const InterviewRoom: React.FC = () => {
                     </button>
                   </div>
                   
-                  <div className="flex items-center space-x-2 text-[9px] text-zinc-500 uppercase">
+                  {/* Execution Status + Metrics */}
+                  <div className="flex items-center space-x-3 text-[9px] font-mono">
+                    {executionSummary && (
+                      <>
+                        <span className="text-zinc-600">|</span>
+                        <span className="text-zinc-500">
+                          <span className="text-zinc-400">Passed: </span>
+                          <span className={executionSummary.passedCases === executionSummary.totalCases ? 'text-brand-emerald font-bold' : 'text-red-400 font-bold'}>
+                            {executionSummary.passedCases}/{executionSummary.totalCases}
+                          </span>
+                        </span>
+                        <span className="text-zinc-600">|</span>
+                        <span className="text-zinc-500">
+                          <span className="text-zinc-400">Time: </span>
+                          <span className="text-zinc-300">{executionSummary.executionTimeMs}ms</span>
+                        </span>
+                        <span className="text-zinc-600">|</span>
+                        <span className="text-zinc-500">
+                          <span className="text-zinc-400">Mem: </span>
+                          <span className="text-zinc-300">
+                            {executionSummary.memoryUsedKb != null ? `${executionSummary.memoryUsedKb}KB` : 'Not available'}
+                          </span>
+                        </span>
+                      </>
+                    )}
+                    <span className="text-zinc-600">|</span>
                     <span className={
-                      terminalStatus === 'success' ? 'text-brand-emerald' :
-                      terminalStatus === 'error' ? 'text-red-400 animate-pulse' :
-                      terminalStatus === 'running' ? 'text-brand-cyan animate-pulse' : 'text-zinc-500'
+                      terminalStatus === 'success' ? 'text-brand-emerald uppercase font-bold' :
+                      terminalStatus === 'timeout' ? 'text-yellow-400 uppercase font-bold animate-pulse' :
+                      terminalStatus === 'error' ? 'text-red-400 uppercase animate-pulse' :
+                      terminalStatus === 'running' ? 'text-brand-cyan uppercase animate-pulse' : 'text-zinc-500 uppercase'
                     }>
-                      {terminalStatus}
+                      {terminalStatus === 'timeout' ? 'TLE' : terminalStatus}
                     </span>
                   </div>
                 </div>
@@ -1012,10 +1281,25 @@ const InterviewRoom: React.FC = () => {
                                 <span className={`inline-block px-2.5 py-1 rounded font-bold text-[10px] uppercase border ${
                                   result.passed
                                     ? 'text-brand-emerald border-brand-emerald/20 bg-brand-emerald/5'
+                                    : executionSummary?.status === 'TIMEOUT'
+                                    ? 'text-yellow-400 border-yellow-400/20 bg-yellow-400/5'
+                                    : result.error?.toLowerCase().includes('compile')
+                                    ? 'text-orange-400 border-orange-400/20 bg-orange-400/5'
+                                    : result.error
+                                    ? 'text-red-400 border-red-400/20 bg-red-400/5'
                                     : 'text-red-400 border-red-500/20 bg-red-500/5'
                                 }`}>
-                                  {result.passed ? 'Accepted' : 'Wrong Answer'}
+                                  {result.passed
+                                    ? '✓ Accepted'
+                                    : executionSummary?.status === 'TIMEOUT'
+                                    ? '✗ Time Limit Exceeded'
+                                    : result.error?.toLowerCase().includes('compile')
+                                    ? '✗ Compile Error'
+                                    : result.error
+                                    ? '✗ Runtime Error'
+                                    : '✗ Wrong Answer'}
                                 </span>
+
                               </div>
                             )}
 
@@ -1051,42 +1335,87 @@ const InterviewRoom: React.FC = () => {
 
         </div>
 
-        {/* RIGHT PANEL: INTERVIEW SIGNAL PANEL */}
+        {/* RIGHT PANEL: EXECUTION DETAILS */}
         {isRightSidebarOpen && (
-          <div className="w-full lg:w-[260px] border-t lg:border-t-0 lg:border-l border-border bg-background-panel/60 backdrop-blur-md p-4 space-y-6 shrink-0 font-mono relative overflow-hidden animate-glow-cyan">
+          <div className="w-full lg:w-[260px] border-t lg:border-t-0 lg:border-l border-border bg-background-panel/60 backdrop-blur-md p-4 space-y-5 shrink-0 font-mono relative overflow-hidden animate-glow-cyan">
             <div className="absolute right-0 top-0 bottom-0 w-[2px] bg-gradient-to-b from-brand-cyan to-transparent" />
+
             <div className="border-b border-border pb-3">
-              <span className="text-[9px] text-zinc-500 uppercase tracking-widest block">TELEMETRY SCANNER</span>
-              <h3 className="text-xs font-bold text-zinc-200 uppercase">SESSION SIGNALS</h3>
+              <span className="text-[9px] text-zinc-500 uppercase tracking-widest block">SANDBOX OUTPUT</span>
+              <h3 className="text-xs font-bold text-zinc-200 uppercase">Execution Details</h3>
             </div>
 
-            <div className="space-y-4">
-              {[
-                { name: 'Correctness', value: signals.correctness.value, label: signals.correctness.label, color: 'bg-brand-cyan', glow: '0 0 8px #22d3ee' },
-                { name: 'Complexity', value: signals.complexity.value, label: signals.complexity.label, color: 'bg-brand-violet', glow: '0 0 8px #8b5cf6' },
-                { name: 'Code Quality', value: signals.codeQuality.value, label: signals.codeQuality.label, color: 'bg-brand-violet', glow: '0 0 8px #8b5cf6' },
-                { name: 'Edge Cases', value: signals.edgeCases.value, label: signals.edgeCases.label, color: 'bg-yellow-500', glow: '0 0 8px #f59e0b' },
-                { name: 'Debugging', value: signals.debugging.value, label: signals.debugging.label, color: 'bg-brand-emerald', glow: '0 0 8px #10b981' },
-                { name: 'Communication', value: signals.communication.value, label: signals.communication.label, color: 'bg-brand-cyan', glow: '0 0 8px #22d3ee' }
-              ].map((sig) => (
-                <div key={sig.name} className="space-y-1">
-                  <div className="flex justify-between text-[11px]">
-                    <span className="text-zinc-400">{sig.name}</span>
-                    <span className="text-zinc-500 font-bold">{sig.label}</span>
-                  </div>
-                  <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
-                    <div className={`h-full ${sig.color} transition-all duration-300`} style={{ width: `${sig.value}%`, boxShadow: sig.glow }}></div>
-                  </div>
+            <div className="space-y-5">
+              {/* Status */}
+              <div className="space-y-1">
+                <span className="text-[9px] text-zinc-500 uppercase tracking-wider block">Status</span>
+                <div className={`font-bold text-sm ${
+                  !executionSummary ? 'text-zinc-600' :
+                  executionSummary.status === 'SUCCESS' ? 'text-brand-emerald' :
+                  executionSummary.status === 'TIMEOUT' ? 'text-yellow-400' :
+                  executionSummary.status === 'COMPILE_ERROR' ? 'text-orange-400' :
+                  executionSummary.status === 'RUNTIME_ERROR' ? 'text-red-400' :
+                  'text-red-400'
+                }`}>
+                  {!executionSummary ? '—' :
+                    executionSummary.status === 'SUCCESS' ? '✓ Accepted' :
+                    executionSummary.status === 'WRONG_ANSWER' ? '✗ Wrong Answer' :
+                    executionSummary.status === 'COMPILE_ERROR' ? '✗ Compile Error' :
+                    executionSummary.status === 'RUNTIME_ERROR' ? '✗ Runtime Error' :
+                    executionSummary.status === 'TIMEOUT' ? '✗ Time Limit Exceeded' :
+                    executionSummary.status}
                 </div>
-              ))}
+              </div>
+
+              {/* Test Cases */}
+              <div className="space-y-2">
+                <span className="text-[9px] text-zinc-500 uppercase tracking-wider block">Test Cases</span>
+                <div className="font-bold text-sm text-zinc-200">
+                  {executionSummary
+                    ? `${executionSummary.passedCases} / ${executionSummary.totalCases} Passed`
+                    : '—'}
+                </div>
+                {executionSummary && executionSummary.totalCases > 0 && (
+                  <div className="flex space-x-1 pt-0.5">
+                    {Array.from({ length: executionSummary.totalCases }).map((_, i) => (
+                      <div
+                        key={i}
+                        className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
+                          i < executionSummary.passedCases ? 'bg-brand-emerald' : 'bg-red-500/60'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Execution Time */}
+              <div className="space-y-1">
+                <span className="text-[9px] text-zinc-500 uppercase tracking-wider block">Execution Time</span>
+                <div className="font-bold text-sm text-zinc-200">
+                  {executionSummary ? `${executionSummary.executionTimeMs} ms` : '—'}
+                </div>
+              </div>
+
+              {/* Memory Usage */}
+              <div className="space-y-1">
+                <span className="text-[9px] text-zinc-500 uppercase tracking-wider block">Memory Usage</span>
+                <div className="font-bold text-sm text-zinc-500">
+                  {executionSummary?.memoryUsedKb != null
+                    ? `${executionSummary.memoryUsedKb} KB`
+                    : 'Not Available'}
+                </div>
+              </div>
             </div>
 
-            <div className="p-3 border border-border bg-zinc-950/30 rounded text-[9px] text-zinc-500 leading-relaxed space-y-1">
-              <p className="uppercase font-bold text-zinc-400">INSTRUMENTATION NOTE:</p>
-              <p>Signals are transient observations representing current session activities. They do not constitute final grades until the autopsy grading engine executes upon completion.</p>
-            </div>
+            {!executionSummary && (
+              <div className="p-3 border border-border/50 bg-zinc-950/30 rounded text-[9px] text-zinc-600 leading-relaxed">
+                Run your code to see execution results here.
+              </div>
+            )}
           </div>
         )}
+
 
       </div>
 
