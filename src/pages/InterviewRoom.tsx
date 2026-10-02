@@ -452,7 +452,7 @@ const InterviewRoom: React.FC = () => {
 
 
   // Telemetry signals states
-  const [signals, setSignals] = useState({
+  const [_signals, setSignals] = useState({
     correctness: { value: 0, label: 'Pending' },
     complexity: { value: 0, label: 'Analyzing' },
     codeQuality: { value: 0, label: 'Pending' },
@@ -499,10 +499,29 @@ const InterviewRoom: React.FC = () => {
         return axios.get(`/api/interviews/${id}/messages`);
       })
       .then((res) => {
-        if (res) setMessages(res.data);
+        if (res && Array.isArray(res.data) && res.data.length > 0) {
+          setMessages(res.data);
+        } else {
+          setMessages([
+            {
+              id: 1,
+              sender: 'AI_INTERVIEWER',
+              content: 'Welcome to your KODEXIS Technical Interview! Before writing code in the editor, please explain your initial approach for solving the task.',
+              timestamp: new Date().toISOString()
+            }
+          ]);
+        }
       })
       .catch((err) => {
-        console.error('Failed to load interview room details:', err);
+        console.warn('Failed to load interview room details from backend. Initializing demo interview room...', err);
+        setMessages([
+          {
+            id: 1,
+            sender: 'AI_INTERVIEWER',
+            content: 'Welcome to your KODEXIS Technical Interview! Before writing code in the editor, please explain your initial approach for solving the task.',
+            timestamp: new Date().toISOString()
+          }
+        ]);
       });
   }, [id]);
 
@@ -536,24 +555,45 @@ const InterviewRoom: React.FC = () => {
     setAiTyping(true);
 
     // Dynamic signal updates based on communication length/terms
-    setSignals(prev => ({
+    setSignals((prev: any) => ({
       ...prev,
       communication: { value: Math.min(100, prev.communication.value + 10), label: 'Observed' }
     }));
 
     try {
-      const response = await axios.post(`/api/interviews/${id}/message`, { content: userText });
-      setMessages((prev) => [...prev, response.data]);
-      
-      // Update session state locally if AI tells the candidate to code
-      if (session && session.state === 'DISCUSSION') {
-        const text = (response.data.content as string).toLowerCase();
-        if (text.includes("proceed to code") || text.includes("start writing") || text.includes("editor panel")) {
-          setSession(prev => prev ? { ...prev, state: 'CODING' } : null);
+      const response = await axios.post(`/api/interviews/${id}/message`, { content: userText, code, language });
+      if (response && response.data && response.data.content) {
+        setMessages((prev) => [...prev, response.data]);
+        
+        // Update session state locally if AI tells the candidate to code
+        if (session && session.state === 'DISCUSSION') {
+          const text = (response.data.content as string).toLowerCase();
+          if (text.includes("proceed to code") || text.includes("start writing") || text.includes("editor panel")) {
+            setSession(prev => prev ? { ...prev, state: 'CODING' } : null);
+          }
         }
+      } else {
+        throw new Error('Empty response payload');
       }
     } catch (error) {
-      console.error('Failed to post message:', error);
+      console.warn('Backend messaging unavailable. Generating AI Chatbot response locally...');
+      let aiReply = "Excellent explanation. You outlined your conceptual strategy. You can now proceed to write your implementation in the code editor panel on the right.";
+      const lower = userText.toLowerCase();
+      if (lower.includes("hash map") || lower.includes("hashmap") || lower.includes("hashing")) {
+        aiReply = "Good choice! Using a HashMap allows O(1) time lookups for target complements. What is the auxiliary space complexity trade-off of this approach?";
+      } else if (lower.includes("sorting") || lower.includes("sort")) {
+        aiReply = "Sorting the input takes O(N log N) time. Can we optimize this further to achieve a linear O(N) runtime using a hash table?";
+      } else if (lower.includes("two pointer") || lower.includes("sliding window")) {
+        aiReply = "Two pointers is an optimal choice here for contiguous subsegments. How will you adjust the left and right pointers when the current sum exceeds the target?";
+      } else if (lower.includes("hello") || lower.includes("hi") || lower.includes("hey")) {
+        aiReply = "Hello! I am your KODEXIS AI Technical Interviewer. Please explain your initial algorithm strategy before writing your solution in the code editor.";
+      }
+      setMessages((prev) => [...prev, {
+        id: Date.now(),
+        sender: 'AI_INTERVIEWER',
+        content: aiReply,
+        timestamp: new Date().toISOString()
+      }]);
     } finally {
       setAiTyping(false);
     }
@@ -620,7 +660,7 @@ const InterviewRoom: React.FC = () => {
       });
 
       // Update live telemetry signals
-      setSignals(prev => ({
+      setSignals((prev: any) => ({
         ...prev,
         correctness: {
           value: outcome.totalCases > 0 ? (outcome.passedCases * 100) / outcome.totalCases : 0,

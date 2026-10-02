@@ -154,15 +154,6 @@ public class DataInitializer implements CommandLineRunner {
                             new TestCase("3\n3", "3,3", true)
                     ));
 
-<<<<<<< HEAD
-        q2.setJavaTemplate("import java.util.*;\n\npublic class Main {\n    public static int longestSubarray(int[] nums, int k) {\n        // Write O(n) code\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int k = Integer.parseInt(sc.nextLine().trim());\n        String[] parts = sc.nextLine().trim().split(\",\");\n        int[] nums = Arrays.stream(parts).mapToInt(Integer::parseInt).toArray();\n        System.out.println(longestSubarray(nums, k));\n    }\n}");
-        q2.setPythonTemplate("import sys\n\ndef longestSubarray(nums, k):\n    # Write your O(n) solution here\n    return 0\n\nif __name__ == '__main__':\n    lines = sys.stdin.read().splitlines()\n    if len(lines) >= 2:\n        k = int(lines[0].strip())\n        nums = [int(x) for x in lines[1].strip().split(',') if x.strip()]\n        print(longestSubarray(nums, k))");
-        q2.setJavascriptTemplate("const fs = require('fs');\n\nfunction longestSubarray(nums, k) {\n    // Write your O(n) solution here\n    return 0;\n}\n\nfunction main() {\n    const lines = fs.readFileSync(0, 'utf-8').trim().split('\\n');\n    if (lines.length >= 2) {\n        const k = parseInt(lines[0].trim(), 10);\n        const nums = lines[1].trim().split(',').map(Number);\n        console.log(longestSubarray(nums, k));\n    }\n}\nmain();");
-        q2.setCppTemplate("#include <iostream>\n#include <vector>\n#include <sstream>\n#include <unordered_map>\nusing namespace std;\n\nint longestSubarray(vector<int>& nums, int k) {\n    // Write your O(n) solution here\n    return 0;\n}\n\nint main() {\n    int k;\n    cin >> k;\n    string s;\n    cin >> s;\n    stringstream ss(s);\n    vector<int> nums;\n    while (ss.good()) {\n        string tok;\n        getline(ss, tok, ',');\n        if (!tok.empty()) nums.push_back(stoi(tok));\n    }\n    cout << longestSubarray(nums, k) << endl;\n    return 0;\n}");
-        q2.setCTemplate("#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n\nint longestSubarray(int* nums, int n, int k) {\n    // Write your O(n) solution here\n    return 0;\n}\n\nint main() {\n    int k;\n    scanf(\"%d\", &k);\n    char s[10000];\n    scanf(\"%s\", s);\n    int nums[10000], n = 0;\n    char* tok = strtok(s, \",\");\n    while (tok) { nums[n++] = atoi(tok); tok = strtok(NULL, \",\"); }\n    printf(\"%d\\n\", longestSubarray(nums, n, k));\n    return 0;\n}");
-        q2.setCsharpTemplate("using System;\nusing System.Collections.Generic;\nusing System.Linq;\n\npublic class Main {\n    public static int LongestSubarray(int[] nums, int k) {\n        // Write your O(n) solution here\n        return 0;\n    }\n\n    public static void Main(string[] args) {\n        string line1 = Console.ReadLine();\n        if (line1 == null) return;\n        int k = int.Parse(line1.Trim());\n        string line2 = Console.ReadLine();\n        if (line2 == null) return;\n        int[] nums = line2.Trim().Split(\",\").Select(int.Parse).ToArray();\n        Console.WriteLine(LongestSubarray(nums, k));\n    }\n}");
-        q2.setGoTemplate("package main\n\nimport (\n\t\"bufio\"\n\t\"fmt\"\n\t\"os\"\n\t\"strconv\"\n\t\"strings\"\n)\n\nfunc longestSubarray(nums []int, k int) int {\n\t// Write your O(n) solution here\n\treturn 0\n}\n\nfunc main() {\n\tscanner := bufio.NewScanner(os.Stdin)\n\tif scanner.Scan() {\n\t\tk, _ := strconv.Atoi(strings.TrimSpace(scanner.Text()))\n\t\tif scanner.Scan() {\n\t\t\tparts := strings.Split(strings.TrimSpace(scanner.Text()), \",\")\n\t\t\tvar nums []int\n\t\t\tfor _, p := range parts {\n\t\t\t\tval, _ := strconv.Atoi(strings.TrimSpace(p))\n\t\t\t\tnums = append(nums, val)\n\t\t\t}\n\t\t\tfmt.Println(longestSubarray(nums, k))\n\t\t}\n\t}\n}");
-=======
             InterviewQuestion q4 = createQ("Best Time to Buy and Sell Stock",
                     "Maximize profit from single stock buy/sell.\n\n" +
                     "**Input Format:**\nComma-separated prices array.",
@@ -180,7 +171,6 @@ public class DataInitializer implements CommandLineRunner {
                             new TestCase("5,4,3,2,1", "0", true),
                             new TestCase("1", "0", true)
                     ));
->>>>>>> 32d61c446b6b5d349e46ff8d61f17b71c3bc2e31
 
             InterviewQuestion q5 = createQ("Valid Palindrome",
                     "Determine if a string is a palindrome ignoring cases and symbols.\n\n" +
@@ -200,29 +190,6 @@ public class DataInitializer implements CommandLineRunner {
                             new TestCase("ab", "false", true)
                     ));
 
-<<<<<<< HEAD
-        // Question 3: Valid Parentheses
-        InterviewQuestion q3 = new InterviewQuestion(
-                "Valid Parentheses",
-                "Given a string `s` containing just the characters `'('`, `')'`, `'{'`, `'}'`, `'['` and `']'`, determine if the input string is valid.\n\n" +
-                        "**Input Format:**\n" +
-                        "Single string of brackets.\n\n" +
-                        "**Output Format:**\n" +
-                        "`true` or `false`.",
-                Enums.Difficulty.EASY,
-                "Stacks / Queues"
-        );
-        q3.setExpectedTimeComplexity("O(n)");
-        q3.setExpectedSpaceComplexity("O(n)");
-        q3.setOptimalSolutionConcept("Push opening brackets onto a stack. When a closing bracket is encountered, verify if the top of the stack matches its corresponding pair. If mismatch or empty stack, return false.");
-        q3.setPythonTemplate("import sys\n\ndef isValid(s: str) -> bool:\n    # Write your O(n) solution here\n    return False\n\nif __name__ == '__main__':\n    s = sys.stdin.read().strip()\n    print(str(isValid(s)).lower())");
-        q3.setJavascriptTemplate("const fs = require('fs');\nfunction isValid(s) {\n    // Write your O(n) solution here\n    return false;\n}\nconsole.log(isValid(fs.readFileSync(0, 'utf-8').trim()));");
-        q3.setJavaTemplate("import java.util.*;\npublic class Main {\n    public static boolean isValid(String s) {\n        // Write your O(n) solution here\n        return false;\n    }\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if(sc.hasNextLine()) System.out.println(isValid(sc.nextLine().trim()));\n    }\n}");
-        q3.setCppTemplate("#include <iostream>\n#include <stack>\n#include <string>\nusing namespace std;\n\nbool isValid(string s) {\n    // Write your O(n) solution here\n    return false;\n}\n\nint main() {\n    string s;\n    cin >> s;\n    cout << (isValid(s) ? \"true\" : \"false\") << endl;\n    return 0;\n}");
-        q3.setCTemplate("#include <stdio.h>\n#include <string.h>\n#include <stdbool.h>\n\nbool isValid(char* s) {\n    // Write your O(n) solution here\n    return false;\n}\n\nint main() {\n    char s[10000];\n    scanf(\"%s\", s);\n    printf(\"%s\\n\", isValid(s) ? \"true\" : \"false\");\n    return 0;\n}");
-        q3.setCsharpTemplate("using System;\nusing System.Collections.Generic;\n\npublic class Main {\n    public static bool IsValid(string s) {\n        // Write your O(n) solution here\n        return false;\n    }\n\n    public static void Main(string[] args) {\n        string s = Console.ReadLine()?.Trim() ?? \"\";\n        Console.WriteLine(IsValid(s).ToString().ToLower());\n    }\n}");
-        q3.setGoTemplate("package main\n\nimport (\n\t\"bufio\"\n\t\"fmt\"\n\t\"os\"\n\t\"strings\"\n)\n\nfunc isValid(s string) bool {\n\t// Write your O(n) solution here\n\treturn false\n}\n\nfunc main() {\n\tscanner := bufio.NewScanner(os.Stdin)\n\tif scanner.Scan() {\n\t\ts := strings.TrimSpace(scanner.Text())\n\t\tfmt.Println(isValid(s))\n\t}\n}");
-=======
             InterviewQuestion q6 = createQ("Invert Binary Tree",
                     "Invert a binary tree (swap left and right subtrees).\n\n" +
                     "**Input:** Level order traversal csv.\n\n" +
@@ -241,7 +208,6 @@ public class DataInitializer implements CommandLineRunner {
                             new TestCase("1,2,3,4", "1,3,2,null,null,null,4", true),
                             new TestCase("1,null,2", "1,2", true)
                     ));
->>>>>>> 32d61c446b6b5d349e46ff8d61f17b71c3bc2e31
 
             InterviewQuestion q7 = createQ("Binary Search",
                     "Locate element in sorted array.\n\n" +

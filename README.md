@@ -1,51 +1,69 @@
-<<<<<<< HEAD
-# KODEXIS
+# KODEXIS — Member 3: Multi-Factor Coding Proficiency Assessment Framework
 
 ### AI Technical Interview Intelligence & Coding Assessment Sandbox
 
 > **Don't just write code. Prove how you think.**
 
-KODEXIS is an AI-powered technical interview simulation and coding assessment sandbox. It integrates a Monaco-powered development IDE, an online Docker-sandboxed compiler API, live telemetry tracking, and a multi-factor assessment engine.
+KODEXIS is an AI-powered technical interview simulation and coding assessment sandbox. Member 3 delivers a comprehensive **Multi-Factor Coding Proficiency Assessment Framework** built with **Spring Boot, AI APIs, PostgreSQL/H2, and Recharts/Chart.js**.
 
 ---
 
-## 1. Core Feature Set
-1. **Interactive AI Interviewer**: A conversational AI voice/waveform simulated agent powered by the **NVIDIA NIM API** that leads candidates through DSA scope evaluations, code refactor hints, and edge-case followups.
-2. **Piston Sandboxed Execution**: Executes candidate solutions (Java, Python, C++, JavaScript, C) inside sandboxed runtimes securely on public EMKC servers, returning runtime time scopes, compilation bugs, and detailed test outputs.
-3. **9-Factor Assessment Engine**: Computes comprehensive scores derived from:
-   - *Code Correctness* (passed hidden/public cases)
-   - *Problem Solving Approach*
-   - *Complexity Optimization* (Big-O analysis)
-   - *Code Quality* (naming, modularity, length)
-   - *Edge-Case Handling* (null inputs, duplicate arrays)
-   - *Debugging Resilience* (speed of compilation error resolution)
-   - *Communication Logic* (conceptual explanations)
-4. **Technical DNA Profile**: Evolving candidate proficiency radar chart mapping vectors across 13 major topics (Arrays, Trees, Hashing, Recursion, System Design, etc.).
-5. **Interview Autopsy & Timeline**: Historical timeline log tracking developer event sequences (Problem Opened -> First Code -> Compiles -> Test runs -> Edits -> Submission -> Evaluation).
+## 1. Member 3 Core Feature Set
+
+1. **Code Correctness Evaluation**:
+   - Compiles and runs candidate solutions against hidden and public test suites via Piston Docker Sandbox.
+   - Calculates exact test case pass rate percentages (e.g. 18/18 passed) and detects execution errors/exceptions.
+
+2. **Time & Space Complexity Estimation**:
+   - Automated asymptotic analysis of time complexity (e.g. $O(N)$, $O(N \log N)$, $O(N^2)$) and space complexity (e.g. $O(1)$, $O(N)$).
+   - Generates dedicated efficiency scores based on optimal vs brute-force algorithm selection.
+
+3. **Code Quality & Modularity Analysis**:
+   - Computes cyclomatic complexity index, function line counts, single responsibility compliance, and overall modularity metrics.
+
+4. **Static Code Analysis (Naming, Readability, Modularity)**:
+   - Evaluates variable naming conventions (camelCase, descriptive naming vs single-character or magic constants).
+   - AST / pattern inspection for static code smells (`UnresolvedSymbol`, `UnusedVariable`, `UnbalancedBrackets`, etc.).
+
+5. **AI-Generated Feedback & Improvement Suggestions**:
+   - Powered by NVIDIA NIM / Mistral AI APIs with deterministic fallback.
+   - Generates executive autopsy summaries, key strengths ("What Went Well"), developmental points ("Areas to Improve"), scorecard feedback, refactored clean code snippets, and targeted practice recommendations.
+
+6. **Performance Dashboard with Reports & Analytics**:
+   - Interactive React dashboard (`/assessment-dashboard`, `/report`) with Recharts visual components:
+     - Multi-factor radar breakdown charts
+     - Interview progress trajectory line charts
+     - Programming language proficiency distribution charts
+
+7. **Progress Tracking Across Interviews**:
+   - Tracks candidates' evolving performance across sequential mock interviews.
+   - Updates candidate Technical DNA and cumulative readiness score percentage.
 
 ---
 
 ## 2. Technology Stack & Directory Structure
-- **Backend**: Java 21, Spring Boot 3.3.2, Spring Security + JWT, JPA, Hibernate, H2 Database (with Postgres mode).
-- **Frontend**: React 19, Vite, TypeScript, Tailwind CSS, Monaco Editor (`@monaco-editor/react`), Recharts, Framer Motion.
+
+- **Backend**: Java 21, Spring Boot 3.3.2, Spring Security + JWT, JPA, Hibernate, PostgreSQL / H2 Database.
+- **AI Integrations**: NVIDIA NIM API (Llama 3.1 70B / Nemotron) / Mistral AI API.
+- **Frontend**: React 19, Vite, TypeScript, Tailwind CSS, Monaco Editor (`@monaco-editor/react`), Recharts.
 
 ```
-/backend          --> Spring Boot server source
-/frontend         --> Vite React TypeScript source
-.env              --> NVIDIA API secrets (git ignored)
-.gitignore        --> Version control configurations
+/backend          --> Spring Boot server source (Controllers, Services, Models, Repositories)
+/src              --> React TypeScript frontend source (Components, Pages, Contexts)
+.env              --> NVIDIA / AI API key configuration
 ```
 
 ---
 
 ## 3. Configuration & API Credentials
-Create a `.env` file in the root workspace directory with your NVIDIA NIM API Key.
+
+Create a `.env` file in the root directory with your AI API keys:
 ```ini
 NVIDIA_API_KEY=your_key_here
 NVIDIA_API_URL=https://integrate.api.nvidia.com/v1/chat/completions
 NVIDIA_MODEL=nvidia/llama-3.1-nemotron-70b-instruct
 ```
-*Note: If no API key is provided, the backend automatically triggers **Demo Mode** fallback using context-aware offline mock responses. This ensures 100% reliable functionality for presentations and local demonstrations.*
+*Note: If no API key is provided, the backend automatically triggers context-aware offline fallback responses.*
 
 ---
 
@@ -58,83 +76,38 @@ NVIDIA_MODEL=nvidia/llama-3.1-nemotron-70b-instruct
 ### Step 1: Run Backend Server
 ```bash
 cd backend
-# Build the Spring Boot application (using Maven wrapper if mvn path is not global)
 ./mvnw clean package -DskipTests
-# Run the server
 ./mvnw spring-boot:run
 ```
-The server will bind to `http://localhost:8080`.
-- **H2 Database Console**: Accessible at `http://localhost:8080/h2-console` (JDBC URL: `jdbc:h2:file:./data/kodexisdb`, Username: `sa`, Password: `password`).
+The Spring Boot server binds to `http://localhost:8080`.
+- **H2 Console**: `http://localhost:8080/h2-console` (JDBC URL: `jdbc:h2:file:./data/kodexisdb`, User: `sa`, Pass: `password`).
 
-### Step 2: Run React Frontend Client
+### Step 2: Run React Frontend
 ```bash
-cd frontend
 npm install
 npm run dev
 ```
-The client will launch at `http://localhost:5173`.
+The React client runs at `http://localhost:5173`.
 
 ---
 
 ## 5. Seed Data Details
-The system pre-seeds realistic records for candidate evaluations on launch:
-- **Candidate Username**: `vicky` | **Password**: `password`
-- **Full Profile**: Vigneshwaran S P
-- **Role Targets**: Software Engineer @ NVIDIA, Google, Meta
-- **Seeded History**: 2 Completed mock interviews (Two Sum, Valid Parentheses) populate the Technical DNA and dashboard telemetry immediately.
+Pre-seeded evaluation credentials:
+- **Candidate Username**: `vicky` | **Password**: `password` (Candidate: Vigneshwaran S P)
 - **Admin Username**: `admin` | **Password**: `admin123`
 
 ---
 
 ## 6. REST API Design Summary
 
-### Authentication Services
-- `POST /api/auth/register` : Create candidate record and profile mapping.
+### Authentication
+- `POST /api/auth/register` : Candidate registration.
 - `POST /api/auth/login` : Return JWT token.
-- `POST /api/auth/onboard` : Update preferred language and company targets.
-- `GET /api/auth/me` : Return current authenticated user.
+- `GET /api/auth/me` : Current user session.
 
-### Interview Services
-- `POST /api/interviews` : Start new interview (resolves adaptive questions).
-- `GET /api/interviews/{id}` : Get session properties.
-- `GET /api/interviews/{id}/messages` : Load chat history.
-- `POST /api/interviews/{id}/message` : Post response to AI Interviewer.
-- `POST /api/interviews/{id}/run` : Execute current IDE code on public test cases.
-- `POST /api/interviews/{id}/submit` : Commit solution on all cases and execute Assessment Engine.
+### Assessment & Interview Engine
+- `POST /api/interviews` : Start adaptive interview session.
+- `POST /api/interviews/{id}/run` : Execute IDE code via sandbox runner.
+- `POST /api/interviews/{id}/submit` : Run full multi-factor assessment engine.
+- `GET /api/progress/dashboard` : Fetch candidate analytics and performance trajectory.
 
-### Progress & Telemetry
-- `GET /api/progress/dashboard` : Fetch dashboard metrics, matrices, and weakness loop diagnostic alerts.
-=======
-# React + TypeScript + Vite
-
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
-
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
-
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
->>>>>>> 9c5f859 (Initial commit)
