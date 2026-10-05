@@ -1,16 +1,41 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { UiSwitcherModal } from './components/UiSwitcherModal';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Onboarding from './pages/Onboarding';
 import Dashboard from './pages/Dashboard';
 import StartInterview from './pages/StartInterview';
+import VoicePoweredOrbDemo from './pages/VoicePoweredOrbDemo';
 import InterviewRoom from './pages/InterviewRoom';
 import Report from './pages/Report';
 import AdminDashboard from './pages/AdminDashboard';
 import AssessmentDashboardPage from './pages/AssessmentDashboardPage';
-import { LayoutDashboard, Play, ShieldAlert, LogOut, Code, Activity, BrainCircuit, BarChart3 } from 'lucide-react';
+import { KnowledgeBasePage } from './pages/KnowledgeBasePage';
+import { SocraticTutorPage } from './pages/SocraticTutorPage';
+import { AdaptiveAssessmentPage } from './pages/AdaptiveAssessmentPage';
+import { LearnerModelPage } from './pages/LearnerModelPage';
+import { RevisionStudioPage } from './pages/RevisionStudioPage';
+import { StudyCalendarPage } from './pages/StudyCalendarPage';
+import { SystemEvaluationPage } from './pages/SystemEvaluationPage';
+import {
+  LayoutDashboard,
+  Play,
+  ShieldAlert,
+  LogOut,
+  Activity,
+  BrainCircuit,
+  BookOpen,
+  MessageSquare,
+  GraduationCap,
+  GitBranch,
+  RotateCw,
+  Calendar as CalendarIcon,
+  Target,
+  Palette
+} from 'lucide-react';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode; requireAdmin?: boolean }> = ({ children, requireAdmin }) => {
   const { token, user, loading } = useAuth();
@@ -41,6 +66,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; requireAdmin?: boole
 
 const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, logout } = useAuth();
+  const { themeConfig, isSwitcherOpen, setIsSwitcherOpen } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -53,8 +79,14 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
     ? [{ name: 'Admin Console', path: '/admin', icon: ShieldAlert }]
     : [
         { name: 'Dashboard Console', path: '/dashboard', icon: LayoutDashboard },
-        { name: 'Assessment Engine (Mem 3)', path: '/assessment-dashboard', icon: BarChart3 },
-        { name: 'Start AI Interview', path: '/start-interview', icon: Play },
+        { name: 'Multimodal Knowledge', path: '/knowledge', icon: BookOpen },
+        { name: 'Socratic AI Tutor', path: '/tutor', icon: MessageSquare },
+        { name: 'Adaptive Assessment', path: '/assessment', icon: GraduationCap },
+        { name: 'Learner Model & DAG', path: '/learner-model', icon: GitBranch },
+        { name: 'Targeted Revision', path: '/revision', icon: RotateCw },
+        { name: 'Study Calendar', path: '/calendar', icon: CalendarIcon },
+        { name: 'RAGAS & Cohort Eval', path: '/system-eval', icon: Target },
+        { name: 'Interview Lab', path: '/start-interview', icon: Play },
       ];
 
   return (
@@ -62,9 +94,23 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
       {/* SIDEBAR NAVIGATION */}
       <aside className="w-full md:w-64 bg-background-panel border-r border-border flex flex-col justify-between shrink-0">
         <div>
-          <div className="p-6 border-b border-border flex items-center space-x-2">
-            <div className="w-8 h-8 rounded bg-brand-cyan/20 border border-brand-cyan flex items-center justify-center">
-              <Code size={16} className="text-brand-cyan" />
+          <div className="p-6 border-b border-border flex items-center space-x-2.5">
+            <div className="relative flex items-center justify-center">
+              <svg viewBox="0 0 100 100" className="w-8 h-8 filter drop-shadow-[0_0_8px_rgba(34,211,238,0.35)]" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="sidebar-logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#22d3ee" />
+                    <stop offset="100%" stopColor="#8b5cf6" />
+                  </linearGradient>
+                </defs>
+                <polygon points="50,8 86,29 86,71 50,92 14,71 14,29" stroke="url(#sidebar-logo-grad)" strokeWidth="3" strokeLinejoin="round" className="opacity-40" />
+                <polygon points="50,15 80,32 80,68 50,85 20,68 20,32" stroke="rgba(255, 255, 255, 0.1)" strokeWidth="1" strokeLinejoin="round" />
+                <path d="M 36 38 L 24 50 L 36 62" stroke="#22d3ee" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M 64 38 L 76 50 L 64 62" stroke="#8b5cf6" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M 44 42 C 48 46, 52 54, 56 58" stroke="rgba(255, 255, 255, 0.7)" strokeWidth="2.5" strokeLinecap="round" />
+                <path d="M 56 42 C 52 46, 48 54, 44 58" stroke="rgba(255, 255, 255, 0.7)" strokeWidth="2.5" strokeLinecap="round" />
+                <circle cx="50" cy="50" r="4" fill="#22d3ee" />
+              </svg>
             </div>
             <div>
               <h1 className="text-md font-mono font-bold tracking-widest text-zinc-100 uppercase">KODEXIS</h1>
@@ -94,42 +140,70 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
           </nav>
         </div>
 
-        {/* Status readouts at sidebar bottom */}
-        <div className="p-4 border-t border-border space-y-4">
-          <div className="space-y-2">
-            <p className="text-[10px] font-mono text-zinc-500 uppercase">Telemetry Status</p>
-            <div className="space-y-1.5 font-mono text-[10px]">
-              <div className="flex justify-between items-center">
-                <span className="text-zinc-400 flex items-center gap-1">
-                  <Activity size={10} className="text-brand-cyan" /> Piston API:
-                </span>
-                <span className="text-brand-emerald flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-brand-emerald animate-pulse"></span> ONLINE
-                </span>
+        <div>
+          {/* UI Theme Switcher Quick Bar */}
+          <div className="p-4 border-t border-border">
+            <button
+              onClick={() => setIsSwitcherOpen(true)}
+              className="w-full p-2.5 rounded-lg border border-border bg-background hover:border-brand-cyan/50 hover:bg-background-elevated transition flex items-center justify-between text-left group"
+            >
+              <div className="flex items-center space-x-2.5">
+                <div 
+                  className="w-3.5 h-3.5 rounded-full border border-white/20 shadow-sm"
+                  style={{ backgroundColor: themeConfig.accentColor }}
+                />
+                <div>
+                  <p className="text-[11px] font-mono font-bold text-zinc-200 group-hover:text-brand-cyan transition">
+                    {themeConfig.name}
+                  </p>
+                  <p className="text-[8px] font-mono text-zinc-500 uppercase tracking-wider">
+                    {themeConfig.category} Mode · Click to switch
+                  </p>
+                </div>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-zinc-400 flex items-center gap-1">
-                  <BrainCircuit size={10} className="text-brand-violet" /> Assessment Brain:
-                </span>
-                <span className="text-brand-emerald flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-brand-emerald animate-pulse"></span> READY
-                </span>
-              </div>
-            </div>
+              <span className="p-1 rounded bg-zinc-800 text-zinc-400 group-hover:text-zinc-200 transition">
+                <Palette size={13} />
+              </span>
+            </button>
           </div>
 
-          <div className="flex justify-between items-center pt-2 border-t border-border/50">
-            <div className="truncate pr-2">
-              <p className="text-xs font-semibold text-zinc-300 truncate">{user?.fullName}</p>
-              <p className="text-[9px] font-mono text-zinc-500 truncate uppercase">{user?.role.replace('ROLE_', '')}</p>
+          {/* Status readouts at sidebar bottom */}
+          <div className="p-4 border-t border-border space-y-4">
+            <div className="space-y-2">
+              <p className="text-[10px] font-mono text-zinc-500 uppercase">Telemetry Status</p>
+              <div className="space-y-1.5 font-mono text-[10px]">
+                <div className="flex justify-between items-center">
+                  <span className="text-zinc-400 flex items-center gap-1">
+                    <Activity size={10} className="text-brand-cyan" /> Piston API:
+                  </span>
+                  <span className="text-brand-emerald flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand-emerald animate-pulse"></span> ONLINE
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-zinc-400 flex items-center gap-1">
+                    <BrainCircuit size={10} className="text-brand-violet" /> Assessment Brain:
+                  </span>
+                  <span className="text-brand-emerald flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand-emerald animate-pulse"></span> READY
+                  </span>
+                </div>
+              </div>
             </div>
-            <button
-              onClick={handleLogout}
-              className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded transition"
-              title="Logout session"
-            >
-              <LogOut size={16} />
-            </button>
+
+            <div className="flex justify-between items-center pt-2 border-t border-border/50">
+              <div className="truncate pr-2">
+                <p className="text-xs font-semibold text-zinc-300 truncate">{user?.fullName}</p>
+                <p className="text-[9px] font-mono text-zinc-500 truncate uppercase">{user?.role.replace('ROLE_', '')}</p>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded transition"
+                title="Logout session"
+              >
+                <LogOut size={16} />
+              </button>
+            </div>
           </div>
         </div>
       </aside>
@@ -138,6 +212,8 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
       <main className="flex-1 overflow-y-auto">
         {children}
       </main>
+
+      <UiSwitcherModal isOpen={isSwitcherOpen} onClose={() => setIsSwitcherOpen(false)} showLayoutOptions={false} />
     </div>
   );
 };
@@ -181,11 +257,91 @@ const App: React.FC = () => {
           }
         />
         <Route
+          path="/knowledge"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <KnowledgeBasePage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tutor"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <SocraticTutorPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/assessment"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <AdaptiveAssessmentPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/learner-model"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <LearnerModelPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/revision"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <RevisionStudioPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/calendar"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <StudyCalendarPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/system-eval"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <SystemEvaluationPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/start-interview"
           element={
             <ProtectedRoute>
               <DashboardLayout>
                 <StartInterview />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/orb-demo"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <VoicePoweredOrbDemo />
               </DashboardLayout>
             </ProtectedRoute>
           }
@@ -232,9 +388,11 @@ const App: React.FC = () => {
 };
 
 const RootApp: React.FC = () => (
-  <AuthProvider>
-    <App />
-  </AuthProvider>
+  <ThemeProvider>
+    <AuthProvider>
+      <App />
+    </AuthProvider>
+  </ThemeProvider>
 );
 
 export default RootApp;

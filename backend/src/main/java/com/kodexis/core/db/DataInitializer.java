@@ -43,7 +43,9 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) throws Exception {
-        boolean questionsNeedSeed = questionRepository.count() < 30;
+        boolean questionsNeedSeed = questionRepository.count() < 30 ||
+                questionRepository.findAll().stream().anyMatch(q -> q.getPythonTemplate() != null &&
+                        (q.getPythonTemplate().contains("seen = {}") || q.getPythonTemplate().contains("diff in seen") || q.getPythonTemplate().contains("st = []")));
 
         if (userRepository.existsByUsername("vicky") && !questionsNeedSeed) {
             return; // Already initialized
@@ -292,8 +294,8 @@ public class DataInitializer implements CommandLineRunner {
                     "import java.util.*;\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int k = Integer.parseInt(sc.nextLine().trim());\n        String[] parts = sc.nextLine().trim().split(\",\");\n        int[] nums = Arrays.stream(parts).mapToInt(Integer::parseInt).toArray();\n        Map<Integer, Integer> map = new HashMap<>();\n        map.put(0, -1);\n        int sum = 0, max = 0;\n        for(int i = 0; i < nums.length; i++) {\n            sum += nums[i];\n            if(map.containsKey(sum - k)) max = Math.max(max, i - map.get(sum - k));\n            map.putIfAbsent(sum, i);\n        }\n        System.out.println(max);\n    }\n}",
                     "import sys\nlines = sys.stdin.read().splitlines()\nk = int(lines[0].strip())\nnums = [int(x) for x in lines[1].strip().split(',')]\nm, s, mx = {0:-1}, 0, 0\nfor i, x in enumerate(nums):\n    s += x\n    if s - k in m: mx = max(mx, i - m[s-k])\n    if s not in m: m[s] = i\nprint(mx)",
                     Arrays.asList(
-                            new TestCase("15\n1,2,3,7,5", "4", false),
-                            new TestCase("3\n-1,2,3", "2", false),
+                            new TestCase("15\n1,2,3,7,5", "3", false),
+                            new TestCase("3\n-1,2,3", "1", false),
                             new TestCase("0\n1,-1,5,-2,3", "2", false),
                             new TestCase("5\n5,1,2,3", "1", false),
                             new TestCase("6\n1,2,3,0,0,6", "5", false),
@@ -663,8 +665,8 @@ public class DataInitializer implements CommandLineRunner {
         q.setExpectedTimeComplexity(time);
         q.setExpectedSpaceComplexity(space);
         q.setOptimalSolutionConcept(concept);
-        q.setJavaTemplate(javaCode);
-        q.setPythonTemplate(pythonCode);
+        q.setJavaTemplate(buildJavaStarterTemplate(javaCode, title));
+        q.setPythonTemplate(buildPythonStarterTemplate(pythonCode, title));
         q.setJavascriptTemplate("// Write solution\n");
         q.setCppTemplate("// Write solution\n");
         q.setCTemplate("// Write solution\n");
@@ -674,6 +676,78 @@ public class DataInitializer implements CommandLineRunner {
             q.addTestCase(tc);
         }
         return questionRepository.save(q);
+    }
+
+    public static String buildPythonStarterTemplate(String fullCode, String title) {
+        if (fullCode == null || fullCode.trim().isEmpty()) {
+            return "import sys\n\ndef solution():\n    # TODO: Implement your solution here\n    pass\n\nif __name__ == '__main__':\n    pass\n";
+        }
+        int defIdx = fullCode.indexOf("def ");
+        int mainIdx = fullCode.indexOf("if __name__");
+        if (defIdx != -1 && mainIdx != -1 && mainIdx > defIdx) {
+            int colonIdx = fullCode.indexOf(":", defIdx);
+            if (colonIdx != -1 && colonIdx < mainIdx) {
+                String header = fullCode.substring(0, colonIdx + 1);
+                String driver = fullCode.substring(mainIdx);
+                return header + "\n    # TODO: Implement your solution here\n    pass\n\n\n" + driver;
+            }
+        } else if (defIdx != -1) {
+            int colonIdx = fullCode.indexOf(":", defIdx);
+            if (colonIdx != -1) {
+                String header = fullCode.substring(0, colonIdx + 1);
+                return header + "\n    # TODO: Implement your solution here\n    pass\n";
+            }
+        }
+
+        // Script-style python: extract imports & input parsing lines, insert TODO
+        String[] lines = fullCode.split("\n");
+        StringBuilder sb = new StringBuilder();
+        sb.append("import sys\n\ndef solve():\n");
+        boolean hasInput = false;
+        for (String line : lines) {
+            String trimmed = line.trim();
+            if (trimmed.startsWith("lines =") || trimmed.startsWith("s =") || trimmed.startsWith("k =") || 
+                trimmed.startsWith("nums =") || trimmed.startsWith("t =") || trimmed.startsWith("n =") || 
+                trimmed.startsWith("w1 =") || trimmed.startsWith("w2 =") || trimmed.startsWith("l1 =") || 
+                trimmed.startsWith("l2 =") || trimmed.startsWith("h =") || trimmed.startsWith("p =") ||
+                trimmed.startsWith("r =") || trimmed.startsWith("target =") || trimmed.startsWith("line =")) {
+                sb.append("    ").append(trimmed).append("\n");
+                hasInput = true;
+            }
+        }
+        if (!hasInput) {
+            sb.append("    input_data = sys.stdin.read().strip()\n");
+        }
+        sb.append("\n    # TODO: Implement your solution here\n    pass\n\n");
+        sb.append("if __name__ == '__main__':\n    solve()\n");
+        return sb.toString();
+    }
+
+    public static String buildJavaStarterTemplate(String fullCode, String title) {
+        if (fullCode == null || fullCode.trim().isEmpty()) {
+            return "import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        // TODO: Implement your solution here\n    }\n}\n";
+        }
+        int mainMethodIdx = fullCode.indexOf("public static void main");
+        int firstMethodIdx = fullCode.indexOf("public static ");
+        if (firstMethodIdx != -1 && mainMethodIdx != -1 && firstMethodIdx < mainMethodIdx) {
+            int braceOpen = fullCode.indexOf("{", firstMethodIdx);
+            if (braceOpen != -1 && braceOpen < mainMethodIdx) {
+                String methodSig = fullCode.substring(firstMethodIdx, braceOpen + 1);
+                String beforeMethod = fullCode.substring(0, firstMethodIdx);
+                String mainPart = fullCode.substring(mainMethodIdx);
+
+                String defaultReturn = "return 0;";
+                if (methodSig.contains("int[]")) defaultReturn = "return new int[0];";
+                else if (methodSig.contains("boolean")) defaultReturn = "return false;";
+                else if (methodSig.contains("String")) defaultReturn = "return \"\";";
+                else if (methodSig.contains("List<")) defaultReturn = "return new ArrayList<>();";
+                else if (methodSig.contains("void")) defaultReturn = "";
+
+                return beforeMethod + methodSig + "\n        // TODO: Implement your solution here\n        " + defaultReturn + "\n    }\n\n    " + mainPart;
+            }
+        }
+
+        return "import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        // TODO: Implement your solution here\n    }\n}\n";
     }
 
     private void seedMockHistory(User user, InterviewQuestion q1, InterviewQuestion q3) {

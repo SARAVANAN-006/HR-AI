@@ -8,30 +8,30 @@ export default {
     extend: {
       colors: {
         background: {
-          DEFAULT: '#09090b', // near-black
-          panel: '#121215',      // dark graphite
-          card: '#18181b',       // slate-grey
-          elevated: '#202024'    // lighter panel
+          DEFAULT: 'var(--color-bg-default, #09090b)',
+          panel: 'var(--color-bg-panel, #121215)',
+          card: 'var(--color-bg-card, #18181b)',
+          elevated: 'var(--color-bg-elevated, #202024)'
         },
         border: {
-          DEFAULT: '#27272a',    // 1px border graphite
-          active: '#3f3f46'      // highlighted border
+          DEFAULT: 'var(--color-border, #27272a)',
+          active: 'var(--color-border-active, #3f3f46)'
         },
         brand: {
           cyan: {
-            DEFAULT: '#22d3ee',  // electric cyan
-            hover: '#0891b2',
-            dim: 'rgba(34, 211, 238, 0.15)'
+            DEFAULT: 'var(--color-brand-cyan, #22d3ee)',
+            hover: 'var(--color-brand-cyan-hover, #0891b2)',
+            dim: 'var(--color-brand-cyan-dim, rgba(34, 211, 238, 0.15))'
           },
           violet: {
-            DEFAULT: '#a78bfa',  // soft violet
-            hover: '#7c3aed',
-            dim: 'rgba(167, 139, 250, 0.15)'
+            DEFAULT: 'var(--color-brand-violet, #a78bfa)',
+            hover: 'var(--color-brand-violet-hover, #7c3aed)',
+            dim: 'var(--color-brand-violet-dim, rgba(167, 139, 250, 0.15))'
           },
           emerald: {
-            DEFAULT: '#34d399',  // emerald
-            hover: '#059669',
-            dim: 'rgba(52, 211, 153, 0.15)'
+            DEFAULT: 'var(--color-brand-emerald, #34d399)',
+            hover: 'var(--color-brand-emerald-hover, #059669)',
+            dim: 'var(--color-brand-emerald-dim, rgba(52, 211, 153, 0.15))'
           }
         }
       },

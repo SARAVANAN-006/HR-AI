@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '../lib/api';
 
 interface User {
   username: string;
@@ -26,8 +27,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Axios Base URL configuration pointing to backend Spring Boot
-axios.defaults.baseURL = 'http://localhost:8080';
+// Axios Base URL configuration pointing to backend Spring Boot (local or Render cloud)
+axios.defaults.baseURL = API_BASE_URL;
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);

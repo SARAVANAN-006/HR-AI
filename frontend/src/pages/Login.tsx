@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Code, Key, User, ShieldAlert, Sparkles, Activity } from 'lucide-react';
+import { Key, User, ShieldAlert, Sparkles, Activity } from 'lucide-react';
 
 const Login: React.FC = () => {
   const { login, register } = useAuth();
@@ -49,8 +49,22 @@ const Login: React.FC = () => {
         
         {/* Header Title */}
         <div className="flex flex-col items-center mb-6">
-          <div className="w-12 h-12 rounded bg-brand-cyan/20 border border-brand-cyan flex items-center justify-center mb-2">
-            <Code size={24} className="text-brand-cyan" />
+          <div className="relative flex items-center justify-center mb-2">
+            <svg viewBox="0 0 100 100" className="w-12 h-12 filter drop-shadow-[0_0_12px_rgba(34,211,238,0.4)]" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="login-logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#22d3ee" />
+                  <stop offset="100%" stopColor="#8b5cf6" />
+                </linearGradient>
+              </defs>
+              <polygon points="50,8 86,29 86,71 50,92 14,71 14,29" stroke="url(#login-logo-grad)" strokeWidth="3" strokeLinejoin="round" className="opacity-40" />
+              <polygon points="50,15 80,32 80,68 50,85 20,68 20,32" stroke="rgba(255, 255, 255, 0.1)" strokeWidth="1" strokeLinejoin="round" />
+              <path d="M 36 38 L 24 50 L 36 62" stroke="#22d3ee" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M 64 38 L 76 50 L 64 62" stroke="#8b5cf6" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M 44 42 C 48 46, 52 54, 56 58" stroke="rgba(255, 255, 255, 0.7)" strokeWidth="2.5" strokeLinecap="round" />
+              <path d="M 56 42 C 52 46, 48 54, 44 58" stroke="rgba(255, 255, 255, 0.7)" strokeWidth="2.5" strokeLinecap="round" />
+              <circle cx="50" cy="50" r="4" fill="#22d3ee" />
+            </svg>
           </div>
           <h2 className="text-2xl font-bold font-mono tracking-widest text-zinc-100 uppercase">KODEXIS</h2>
           <p className="text-[10px] text-zinc-500 font-mono tracking-wider">AI INTERVIEW LABORATORY</p>

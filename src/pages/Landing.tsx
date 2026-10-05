@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Terminal, Brain, ShieldAlert, ArrowRight, Play, Code2, Sparkles } from 'lucide-react';
+import { Terminal, Brain, ShieldAlert, ArrowRight, Play, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { VoicePoweredOrb } from '../components/ui/voice-powered-orb';
 
 const Landing: React.FC = () => {
   const navigate = useNavigate();
   const [mockAiMessage, setMockAiMessage] = useState('');
   const fullMessage = "Let's check the complexity here. You used a double nested loop which makes this O(N^2). Can you optimize this to linear time using a Hash Map?";
   
+
+
   useEffect(() => {
     let index = 0;
     const interval = setInterval(() => {
@@ -16,7 +19,7 @@ const Landing: React.FC = () => {
       if (index >= fullMessage.length) {
         clearInterval(interval);
       }
-    }, 40);
+    }, 45);
     return () => clearInterval(interval);
   }, []);
 
@@ -27,9 +30,23 @@ const Landing: React.FC = () => {
       {/* HEADER NAVBAR */}
       <header className="border-b border-border/40 bg-background/60 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded bg-brand-cyan/20 border border-brand-cyan flex items-center justify-center">
-              <Code2 size={16} className="text-brand-cyan" />
+          <div className="flex items-center space-x-2.5">
+            <div className="relative flex items-center justify-center">
+              <svg viewBox="0 0 100 100" className="w-9 h-9 filter drop-shadow-[0_0_8px_rgba(34,211,238,0.35)]" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#22d3ee" />
+                    <stop offset="100%" stopColor="#8b5cf6" />
+                  </linearGradient>
+                </defs>
+                <polygon points="50,8 86,29 86,71 50,92 14,71 14,29" stroke="url(#logo-grad)" strokeWidth="3" strokeLinejoin="round" className="opacity-40" />
+                <polygon points="50,15 80,32 80,68 50,85 20,68 20,32" stroke="rgba(255, 255, 255, 0.1)" strokeWidth="1" strokeLinejoin="round" />
+                <path d="M 36 38 L 24 50 L 36 62" stroke="#22d3ee" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M 64 38 L 76 50 L 64 62" stroke="#8b5cf6" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M 44 42 C 48 46, 52 54, 56 58" stroke="rgba(255, 255, 255, 0.7)" strokeWidth="2.5" strokeLinecap="round" />
+                <path d="M 56 42 C 52 46, 48 54, 44 58" stroke="rgba(255, 255, 255, 0.7)" strokeWidth="2.5" strokeLinecap="round" />
+                <circle cx="50" cy="50" r="4" fill="#22d3ee" />
+              </svg>
             </div>
             <div>
               <span className="text-md font-mono font-bold tracking-widest text-zinc-100 uppercase">KODEXIS</span>
@@ -60,56 +77,86 @@ const Landing: React.FC = () => {
           <p>TELEMETRY: DUP_ON</p>
         </div>
 
+        {/* Rotating 3D Wireframe Dotted Globe Background */}
+        <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[580px] h-[580px] opacity-[0.06] pointer-events-none select-none z-0">
+          <svg viewBox="0 0 200 200" className="w-full h-full text-brand-cyan" fill="none">
+            <defs>
+              <linearGradient id="globe-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#22d3ee" />
+                <stop offset="100%" stopColor="#8b5cf6" />
+              </linearGradient>
+            </defs>
+            {/* Outer boundary circle */}
+            <circle cx="100" cy="100" r="95" stroke="url(#globe-grad)" strokeWidth="1" strokeDasharray="3 3" />
+            <circle cx="100" cy="100" r="95" stroke="rgba(255,255,255,0.05)" strokeWidth="0.5" />
+            
+            {/* Horizontal Latitudes */}
+            <ellipse cx="100" cy="100" rx="95" ry="30" stroke="url(#globe-grad)" strokeWidth="0.75" strokeDasharray="2 4" />
+            <ellipse cx="100" cy="100" rx="95" ry="60" stroke="url(#globe-grad)" strokeWidth="0.75" strokeDasharray="2 4" />
+            <ellipse cx="100" cy="100" rx="90" ry="15" stroke="url(#globe-grad)" strokeWidth="0.5" strokeDasharray="1 3" />
+            <ellipse cx="100" cy="70" rx="76" ry="18" stroke="url(#globe-grad)" strokeWidth="0.5" strokeDasharray="2 4" />
+            <ellipse cx="100" cy="130" rx="76" ry="18" stroke="url(#globe-grad)" strokeWidth="0.5" strokeDasharray="2 4" />
+            <ellipse cx="100" cy="40" rx="43" ry="10" stroke="url(#globe-grad)" strokeWidth="0.5" strokeDasharray="1 3" />
+            <ellipse cx="100" cy="160" rx="43" ry="10" stroke="url(#globe-grad)" strokeWidth="0.5" strokeDasharray="1 3" />
+
+            {/* Rotating Vertical Longitudes */}
+            <motion.ellipse
+              cx="100" cy="100" rx="95" ry="95"
+              stroke="url(#globe-grad)" strokeWidth="0.75" strokeDasharray="2 4"
+              animate={{ scaleX: [1, 0, -1, 0, 1] }}
+              transition={{ repeat: Infinity, duration: 25, ease: "linear" }}
+            />
+            <motion.ellipse
+              cx="100" cy="100" rx="95" ry="95"
+              stroke="url(#globe-grad)" strokeWidth="0.75" strokeDasharray="2 4"
+              animate={{ scaleX: [0.5, -0.5, 0.5] }}
+              transition={{ repeat: Infinity, duration: 18, ease: "linear" }}
+            />
+            <motion.ellipse
+              cx="100" cy="100" rx="95" ry="95"
+              stroke="url(#globe-grad)" strokeWidth="0.75" strokeDasharray="2 4"
+              animate={{ scaleX: [-0.8, 0.8, -0.8] }}
+              transition={{ repeat: Infinity, duration: 32, ease: "linear" }}
+            />
+            <motion.ellipse
+              cx="100" cy="100" rx="95" ry="95"
+              stroke="url(#globe-grad)" strokeWidth="0.5" strokeDasharray="3 5"
+              animate={{ scaleX: [-0.2, 0.2, -0.2] }}
+              transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
+            />
+
+            {/* Matrix grid lines */}
+            <line x1="5" y1="100" x2="195" y2="100" stroke="url(#globe-grad)" strokeWidth="0.5" strokeDasharray="4 4" className="opacity-60" />
+            <line x1="100" y1="5" x2="100" y2="195" stroke="url(#globe-grad)" strokeWidth="0.5" strokeDasharray="4 4" className="opacity-60" />
+          </svg>
+        </div>
+
+        {/* Floating WebGL Voice Orb Background Core (Voice disabled) */}
+        <div className="absolute top-[36%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] opacity-[0.24] pointer-events-none select-none z-0">
+          <VoicePoweredOrb enableVoiceControl={false} hue={280} maxRotationSpeed={2.5} maxHoverIntensity={1.8} />
+        </div>
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="space-y-6"
+          className="space-y-6 relative z-10"
         >
           <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full border border-brand-cyan/35 bg-brand-cyan/5 text-brand-cyan text-xs font-mono mb-4 shadow-[0_0_15px_rgba(34,211,238,0.05)]">
             <Sparkles size={12} />
             <span>KODEXIS ASSESSMENT LABORATORY</span>
           </div>
 
-          <h1 className="text-5xl md:text-8xl font-normal tracking-tight text-white leading-none select-none" style={{ fontFamily: "'Junge', serif" }}>
-            DON'T JUST <span className="text-transparent" style={{ WebkitTextStroke: '1px rgba(255, 255, 255, 0.45)' }}>COMPILE.</span><br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-cyan via-zinc-100 to-brand-violet neon-text-cyan font-bold italic">
-              DECODE YOUR TECHNICAL DNA
+          <h1 className="text-5xl md:text-8xl font-extrabold tracking-tight text-white leading-none uppercase select-none" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            WELCOME TO <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-cyan via-zinc-100 to-brand-violet neon-text-cyan font-extrabold tracking-tight">
+              KODEXIS
             </span>
           </h1>
 
           <p className="max-w-2xl mx-auto text-zinc-400 text-sm md:text-base leading-relaxed font-sans">
             Enter the KODEXIS assessment laboratory. Run algorithm drafts in a secure local sandbox under real-time AI interviewer observations, generating multi-factor telemetry reports on your engineering depth.
           </p>
-
-          {/* Animated ECG Heartbeat Oscilloscope */}
-          <div className="w-full max-w-lg mx-auto h-16 flex items-center justify-center my-6 opacity-35 pointer-events-none select-none relative">
-            <svg viewBox="0 0 400 100" className="w-full h-full text-brand-cyan" fill="none">
-              <defs>
-                <linearGradient id="ecg-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.1" />
-                  <stop offset="50%" stopColor="#22d3ee" stopOpacity="1" />
-                  <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.1" />
-                </linearGradient>
-                <filter id="glow">
-                  <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-                  <feMerge>
-                    <feMergeNode in="coloredBlur"/>
-                    <feMergeNode in="SourceGraphic"/>
-                  </feMerge>
-                </filter>
-              </defs>
-              <path
-                d="M 0 50 Q 20 50 40 50 Q 50 50 55 45 T 60 55 T 65 50 L 95 50 L 105 10 L 115 90 L 125 50 L 155 50 Q 160 40 165 60 T 170 50 L 220 50 Q 230 50 235 45 T 240 55 T 245 50 L 275 50 L 285 10 L 295 90 L 305 50 L 335 50 Q 340 40 345 60 T 350 50 L 400 50"
-                stroke="url(#ecg-gradient)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="animate-ecg"
-                filter="url(#glow)"
-              />
-            </svg>
-          </div>
 
           <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-4">
             <button

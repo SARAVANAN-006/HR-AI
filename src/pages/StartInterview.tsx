@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Play, Settings, BrainCircuit } from 'lucide-react';
+import { Play, Settings, BrainCircuit, Lock, Unlock, Sparkles, Code2 } from 'lucide-react';
 
 const StartInterview: React.FC = () => {
   const navigate = useNavigate();
   const [difficulty, setDifficulty] = useState<string>('MEDIUM');
   const [language, setLanguage] = useState<string>('PYTHON');
   const [duration, setDuration] = useState<number>(45);
-  const [mode, setMode] = useState<string>('Full Simulation');
+  const [mode, setMode] = useState<string>('AI Interview');
   const [loading, setLoading] = useState<boolean>(false);
 
   const handleStart = async () => {
@@ -114,26 +114,80 @@ const StartInterview: React.FC = () => {
               </div>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Interviewer Feedback Mode</label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { name: 'AI Interviewer', desc: 'Chat reasoning check' },
-                  { name: 'Full Simulation', desc: 'Code + Chat follow-up' }
-                ].map((item) => (
-                  <button
-                    key={item.name}
-                    onClick={() => setMode(item.name)}
-                    className={`p-3 border rounded text-left font-mono hover:border-zinc-500 transition ${
-                      mode === item.name
-                        ? 'bg-brand-violet/10 border-brand-violet text-zinc-100'
-                        : 'border-border bg-background text-zinc-400'
-                    }`}
-                  >
-                    <p className="text-xs font-bold">{item.name}</p>
-                    <p className="text-[9px] text-zinc-500 mt-0.5">{item.desc}</p>
-                  </button>
-                ))}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <label className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Assessment Protocol Mode</label>
+                <span className="text-[9px] font-mono text-zinc-500">Select interview style</span>
+              </div>
+              
+              <div className="grid grid-cols-1 gap-3">
+                {/* Mode 1: AI Interview */}
+                <button
+                  type="button"
+                  onClick={() => setMode('AI Interview')}
+                  className={`p-3.5 border rounded-lg text-left transition relative overflow-hidden ${
+                    mode === 'AI Interview'
+                      ? 'bg-brand-violet/10 border-brand-violet shadow-[0_0_15px_rgba(139,92,246,0.15)] ring-1 ring-brand-violet/50'
+                      : 'border-border bg-background/50 hover:bg-zinc-900/60'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1 rounded bg-brand-violet/20 text-brand-violet">
+                        <Lock size={13} />
+                      </div>
+                      <span className="text-xs font-bold font-mono text-zinc-100">AI Interview</span>
+                    </div>
+                    <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-brand-violet/20 border border-brand-violet/30 text-brand-violet uppercase">
+                      2-Phase Gated Logic
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-300 font-sans leading-relaxed mb-2">
+                    <strong className="text-brand-violet font-semibold">Strict Logic Gate:</strong> Editor is locked 🔒 in Phase 1. You must defend your conceptual approach, data structures, and Big-O runtime with the AI Interviewer. The code editor unlocks ✅ only after your logic is approved.
+                  </p>
+                  <div className="flex flex-wrap gap-2 text-[9px] font-mono text-zinc-400">
+                    <span className="flex items-center gap-1 bg-zinc-950/60 px-2 py-0.5 rounded border border-zinc-800">
+                      <Sparkles size={10} className="text-brand-violet" /> Socratic AI Feedback
+                    </span>
+                    <span className="flex items-center gap-1 bg-zinc-950/60 px-2 py-0.5 rounded border border-zinc-800">
+                      <Lock size={10} className="text-amber-400" /> Editor Locked Until Approved
+                    </span>
+                  </div>
+                </button>
+
+                {/* Mode 2: Full Simulation */}
+                <button
+                  type="button"
+                  onClick={() => setMode('Full Simulation')}
+                  className={`p-3.5 border rounded-lg text-left transition relative overflow-hidden ${
+                    mode === 'Full Simulation'
+                      ? 'bg-brand-cyan/10 border-brand-cyan shadow-[0_0_15px_rgba(34,211,238,0.15)] ring-1 ring-brand-cyan/50'
+                      : 'border-border bg-background/50 hover:bg-zinc-900/60'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1 rounded bg-brand-cyan/20 text-brand-cyan">
+                        <Unlock size={13} />
+                      </div>
+                      <span className="text-xs font-bold font-mono text-zinc-100">Full Simulation</span>
+                    </div>
+                    <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-brand-cyan/20 border border-brand-cyan/30 text-brand-cyan uppercase">
+                      Timed OA Sandbox
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-300 font-sans leading-relaxed mb-2">
+                    <strong className="text-brand-cyan font-semibold">Immediate Sandbox:</strong> Editor is unlocked from second 0 (LeetCode / Online Assessment style). Code freely, execute against public/hidden tests, with optional chat assistance.
+                  </p>
+                  <div className="flex flex-wrap gap-2 text-[9px] font-mono text-zinc-400">
+                    <span className="flex items-center gap-1 bg-zinc-950/60 px-2 py-0.5 rounded border border-zinc-800">
+                      <Code2 size={10} className="text-brand-cyan" /> Instant Code Access
+                    </span>
+                    <span className="flex items-center gap-1 bg-zinc-950/60 px-2 py-0.5 rounded border border-zinc-800">
+                      <Unlock size={10} className="text-green-400" /> Multi-Test Suite Runner
+                    </span>
+                  </div>
+                </button>
               </div>
             </div>
           </div>
