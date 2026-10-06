@@ -38,9 +38,9 @@ export default {
       fontFamily: {
         sans: ['Inter', 'IBM Plex Sans', 'sans-serif'],
         mono: ['JetBrains Mono', 'IBM Plex Mono', 'monospace'],
-        display: ['Junge', 'Outfit', 'serif'],
-        junge: ['Junge', 'serif'],
-        cursive: ['Junge', '"Dancing Script"', 'cursive'],
+        display: ['"Space Grotesk"', 'Syne', 'Outfit', 'sans-serif'],
+        space: ['"Space Grotesk"', 'sans-serif'],
+        syne: ['Syne', 'sans-serif'],
         outfit: ['Outfit', 'sans-serif'],
       },
       animation: {

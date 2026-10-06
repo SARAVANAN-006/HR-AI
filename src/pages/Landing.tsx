@@ -49,7 +49,7 @@ const Landing: React.FC = () => {
               </svg>
             </div>
             <div>
-              <span className="text-md font-bold tracking-widest text-zinc-100 uppercase" style={{ fontFamily: "'Junge', serif" }}>KODEXIS</span>
+              <span className="text-base font-bold tracking-widest text-zinc-100 uppercase" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>KODEXIS</span>
             </div>
           </div>
           <div>
@@ -148,10 +148,10 @@ const Landing: React.FC = () => {
             <span className="tracking-wider uppercase font-semibold">Level Up Your Interview Mastery</span>
           </div>
 
-          {/* Main Headline with Junge Font */}
-          <h1 className="text-5xl sm:text-7xl md:text-8xl font-normal tracking-wider text-white leading-[1.08] select-none" style={{ fontFamily: "'Junge', serif" }}>
+          {/* Main Headline */}
+          <h1 className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-extrabold tracking-tight text-white leading-[1.05] select-none" style={{ fontFamily: "'Space Grotesk', 'Syne', sans-serif" }}>
             LEVEL UP WITH <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-cyan via-cyan-200 to-brand-violet neon-text-cyan font-normal tracking-widest">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-cyan via-teal-200 to-brand-violet neon-text-cyan font-black tracking-tight drop-shadow-[0_0_35px_rgba(34,211,238,0.35)]">
               KODEXIS
             </span>
           </h1>
@@ -334,7 +334,7 @@ const Landing: React.FC = () => {
       <section className="max-w-7xl mx-auto px-6 py-24 border-t border-border/40">
         <div className="text-center space-y-4 mb-16">
           <span className="text-xs font-mono text-brand-violet uppercase tracking-widest block">THE KODEXIS METHOD</span>
-          <h3 className="text-3xl md:text-5xl font-extrabold text-white tracking-tight" style={{ fontFamily: "'Outfit', sans-serif" }}>Correctness ≠ Interview Readiness</h3>
+          <h3 className="text-3xl md:text-5xl font-bold text-white tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Correctness ≠ Interview Readiness</h3>
           <p className="max-w-xl mx-auto text-xs md:text-sm text-zinc-400 font-sans leading-relaxed">
             Passing test cases is only 30% of an assessment. The engineering logic, complexity awareness, edge-case checking, and communication determine true technical fit.
           </p>
@@ -346,7 +346,7 @@ const Landing: React.FC = () => {
             <div className="w-10 h-10 rounded bg-brand-cyan/10 border border-brand-cyan/20 flex items-center justify-center">
               <Brain className="text-brand-cyan" size={20} />
             </div>
-            <h4 className="text-md font-mono font-semibold text-zinc-200">Algorithmic Complexity</h4>
+            <h4 className="text-md font-semibold text-zinc-200">Algorithmic Complexity</h4>
             <p className="text-xs text-zinc-400 leading-relaxed font-sans">
               We extract Big-O time and space complexities statically and via AI review, benchmarking candidates against the optimal implementation.
             </p>
@@ -356,7 +356,7 @@ const Landing: React.FC = () => {
             <div className="w-10 h-10 rounded bg-brand-violet/10 border border-brand-violet/20 flex items-center justify-center">
               <ShieldAlert className="text-brand-violet" size={20} />
             </div>
-            <h4 className="text-md font-mono font-semibold text-zinc-200">Defensive Edge Cases</h4>
+            <h4 className="text-md font-semibold text-zinc-200">Defensive Edge Cases</h4>
             <p className="text-xs text-zinc-400 leading-relaxed font-sans">
               We test if code handles blank collections, null values, single element sequences, duplicate bounds, and overflow limits.
             </p>
@@ -366,7 +366,7 @@ const Landing: React.FC = () => {
             <div className="w-10 h-10 rounded bg-brand-emerald/10 border border-brand-emerald/20 flex items-center justify-center">
               <Terminal className="text-brand-emerald" size={20} />
             </div>
-            <h4 className="text-md font-mono font-semibold text-zinc-200">Debugging Resilience</h4>
+            <h4 className="text-md font-semibold text-zinc-200">Debugging Resilience</h4>
             <p className="text-xs text-zinc-400 leading-relaxed font-sans">
               We map code telemetry events, tracking compiler errors, failed submissions, time to resolve, and recovery loops.
             </p>
@@ -378,7 +378,7 @@ const Landing: React.FC = () => {
       <section id="how-it-works" className="max-w-7xl mx-auto px-6 py-24 border-t border-border/40">
         <div className="text-center space-y-4 mb-16">
           <span className="text-xs font-mono text-brand-cyan uppercase tracking-widest text-center block">JOURNEY TIMELINE</span>
-          <h3 className="text-3xl md:text-5xl font-extrabold text-white tracking-tight" style={{ fontFamily: "'Outfit', sans-serif" }}>The Assessment Loop</h3>
+          <h3 className="text-3xl md:text-5xl font-bold text-white tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>The Assessment Loop</h3>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 font-mono">
@@ -401,7 +401,7 @@ const Landing: React.FC = () => {
       {/* FINAL CTA */}
       <section className="border-t border-border/40 bg-zinc-950/40 py-24 text-center relative z-10">
         <div className="max-w-4xl mx-auto px-6 space-y-8">
-          <h3 className="text-3xl md:text-6xl font-normal text-white tracking-wide" style={{ fontFamily: "'Junge', serif" }}>
+          <h3 className="text-3xl md:text-6xl font-bold text-white tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
             Ready to Level Up Your Career?
           </h3>
           <p className="text-zinc-300 text-sm max-w-xl mx-auto font-sans leading-relaxed">
