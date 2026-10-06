@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Calendar, CheckCircle2, ShieldAlert, GitCommit, ExternalLink, Printer, FileDown } from 'lucide-react';
+import { ArrowLeft, Calendar, CheckCircle2, ShieldAlert, GitCommit, ExternalLink, Printer, FileDown, Youtube } from 'lucide-react';
 import RadarChart from '../components/RadarChart';
 import CodeQualityInspector from '../components/CodeQualityInspector';
 
@@ -389,7 +389,7 @@ ${session.lastSubmittedCode || '// No code submitted'}
 
             <div className="p-3 border border-border/40 bg-zinc-950/40 rounded font-mono text-[11px] flex justify-between items-center">
               <div>
-                <span className="text-zinc-500 uppercase text-[9px] block mb-1">Recommended Practice Topics</span>
+                <span className="text-zinc-500 uppercase text-[9px] block mb-1">Recommended Practice Topics (YouTube Tutorials)</span>
                 <div className="flex flex-wrap gap-2 mt-1">
                   {assessment.suggestedPractice ? (
                     assessment.suggestedPractice.split(',').map((topic, idx) => {
@@ -397,12 +397,13 @@ ${session.lastSubmittedCode || '// No code submitted'}
                       return (
                         <a
                           key={idx}
-                          href={`https://www.geeksforgeeks.org/search?q=${encodeURIComponent(trimmed)}`}
+                          href={`https://www.youtube.com/results?search_query=${encodeURIComponent(trimmed + ' dsa tutorial')}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-brand-cyan hover:text-cyan-300 hover:underline font-semibold bg-brand-cyan/10 border border-brand-cyan/20 px-2 py-0.5 rounded transition-all hover:border-brand-cyan/40 group"
-                          title={`Search ${trimmed} on GeeksforGeeks`}
+                          className="inline-flex items-center gap-1.5 text-red-400 hover:text-red-300 hover:underline font-semibold bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded transition-all hover:border-red-500/40 group"
+                          title={`Watch ${trimmed} tutorials on YouTube`}
                         >
+                          <Youtube size={12} className="text-red-400 group-hover:scale-110 transition-transform" />
                           <span>{trimmed}</span>
                           <ExternalLink size={10} className="opacity-70 group-hover:opacity-100 transition-opacity" />
                         </a>
