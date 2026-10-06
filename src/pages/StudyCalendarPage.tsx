@@ -387,7 +387,7 @@ export const StudyCalendarPage: React.FC = () => {
 
     const item = updated.find((e) => e.id === id);
     if (item?.completed) {
-      showToast(`🎉 Completed: "${item.title}"!`);
+      showToast(`Completed: "${item.title}"!`);
     }
 
     try {
