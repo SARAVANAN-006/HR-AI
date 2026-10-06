@@ -149,10 +149,10 @@ const Landing: React.FC = () => {
           </div>
 
           {/* Main Headline */}
-          <h1 className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tight text-white leading-[1.05] select-none" style={{ fontFamily: "'Outfit', 'Space Grotesk', sans-serif" }}>
-            LEVEL UP WITH <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-cyan via-cyan-200 to-brand-violet neon-text-cyan font-black tracking-tight">
-              KODEXIS
+          <h1 className="text-6xl sm:text-8xl md:text-9xl font-bold tracking-normal text-white leading-[1.15] select-none font-cursive" style={{ fontFamily: "'Dancing Script', 'Kaushan Script', 'Pacifico', cursive" }}>
+            Level Up With <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-cyan via-cyan-200 to-brand-violet neon-text-cyan font-extrabold tracking-wide">
+              Kodexis
             </span>
           </h1>
 
@@ -401,7 +401,7 @@ const Landing: React.FC = () => {
       {/* FINAL CTA */}
       <section className="border-t border-border/40 bg-zinc-950/40 py-24 text-center relative z-10">
         <div className="max-w-4xl mx-auto px-6 space-y-8">
-          <h3 className="text-3xl md:text-6xl font-extrabold text-white tracking-tight" style={{ fontFamily: "'Outfit', sans-serif" }}>
+          <h3 className="text-4xl md:text-7xl font-bold text-white tracking-normal font-cursive" style={{ fontFamily: "'Dancing Script', 'Kaushan Script', 'Pacifico', cursive" }}>
             Ready to Level Up Your Career?
           </h3>
           <p className="text-zinc-300 text-sm max-w-xl mx-auto font-sans leading-relaxed">

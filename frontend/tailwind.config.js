@@ -39,6 +39,7 @@ export default {
         sans: ['Inter', 'IBM Plex Sans', 'sans-serif'],
         mono: ['JetBrains Mono', 'IBM Plex Mono', 'monospace'],
         display: ['Outfit', 'Space Grotesk', 'Inter', 'sans-serif'],
+        cursive: ['"Dancing Script"', '"Kaushan Script"', 'Pacifico', 'cursive'],
         outfit: ['Outfit', 'sans-serif'],
       },
       animation: {
