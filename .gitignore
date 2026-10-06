@@ -50,3 +50,4 @@ backend/data/
 .DS_Store
 Thumbs.db
 Desktop.ini
+.vercel
