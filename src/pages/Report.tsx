@@ -387,6 +387,34 @@ ${session.lastSubmittedCode || '// No code submitted'}
               <p className="text-zinc-400 italic bg-zinc-950/20 p-3 border border-border/30 rounded">"{assessment.interviewerFeedback}"</p>
             </div>
 
+            {/* Proctoring & Tab Switch Integrity Scorecard */}
+            {(() => {
+              const tabSwitchesCount = (() => {
+                const local = id ? (localStorage.getItem(`interview-tab-switches-${id}`) || sessionStorage.getItem(`interview-tab-switches-${id}`)) : null;
+                if (local) return parseInt(local, 10);
+                return telemetry.filter(t => (t.event || '').toLowerCase().includes('tab switch')).length;
+              })();
+
+              return (
+                <div className="p-3 border border-border/40 bg-zinc-950/40 rounded font-mono text-[11px] flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <ShieldAlert size={14} className={tabSwitchesCount === 0 ? "text-brand-emerald" : "text-yellow-400"} />
+                    <span className="text-zinc-400 uppercase text-[10px] font-bold">Proctoring Telemetry:</span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      tabSwitchesCount === 0
+                        ? 'bg-brand-emerald/10 text-brand-emerald border border-brand-emerald/30'
+                        : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/30'
+                    }`}>
+                      {tabSwitchesCount === 0 ? 'Clean Record (0 Tab Switches)' : `${tabSwitchesCount} Tab Switch Violation${tabSwitchesCount > 1 ? 's' : ''}`}
+                    </span>
+                  </div>
+                  <span className="text-zinc-500 text-[10px]">
+                    {tabSwitchesCount === 0 ? '✓ Standard FAANG Proctoring Compliance Passed' : '⚠️ Anti-Cheat Infractions Recorded in Assessment Stream'}
+                  </span>
+                </div>
+              );
+            })()}
+
             <div className="p-3 border border-border/40 bg-zinc-950/40 rounded font-mono text-[11px] flex justify-between items-center">
               <div>
                 <span className="text-zinc-500 uppercase text-[9px] block mb-1">Recommended Practice Topics (YouTube Tutorials)</span>

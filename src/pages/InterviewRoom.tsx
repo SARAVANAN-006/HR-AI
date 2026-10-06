@@ -6,6 +6,8 @@ import { Brain, Play, Send, Activity, Award, Clock, Code2, Maximize2, Minimize2,
 import { useTheme } from '../context/ThemeContext';
 import { UiSwitcherModal } from '../components/UiSwitcherModal';
 import ReactMarkdown from 'react-markdown';
+import { isFeatureEnabled } from '../lib/featureFlags';
+import { logUserActivity } from '../lib/auditLogs';
 
 interface TestCase {
   id: number;
@@ -646,6 +648,68 @@ const InterviewRoom: React.FC = () => {
     }
   };
 
+  // Fullscreen prompt for coding start
+  const [showFullscreenPrompt, setShowFullscreenPrompt] = useState<boolean>(false);
+  const [hasPromptedFullscreen, setHasPromptedFullscreen] = useState<boolean>(false);
+
+  // Tab switch proctoring tracking
+  const [tabSwitchCount, setTabSwitchCount] = useState<number>(() => {
+    try {
+      const saved = sessionStorage.getItem(`interview-tab-switches-${id}`) || localStorage.getItem(`interview-tab-switches-${id}`);
+      return saved ? parseInt(saved, 10) : 0;
+    } catch (e) {
+      return 0;
+    }
+  });
+  const [tabSwitchWarning, setTabSwitchWarning] = useState<string | null>(null);
+
+  const isAiInterviewMode = (session?.interviewMode || '').toLowerCase().includes('ai');
+  const isEditorLocked = isFeatureEnabled('STRICT_LOGIC_GATE') && isAiInterviewMode && session?.state === 'DISCUSSION';
+
+  // Trigger fullscreen prompt when candidate enters coding phase
+  useEffect(() => {
+    if (session && !isEditorLocked && !isFullscreen && !hasPromptedFullscreen && isFeatureEnabled('FULLSCREEN_PROCTORING_PROMPT')) {
+      setShowFullscreenPrompt(true);
+      setHasPromptedFullscreen(true);
+    }
+  }, [session, isEditorLocked, isFullscreen, hasPromptedFullscreen]);
+
+  // Tab switch detection listener
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        if (!isFeatureEnabled('TAB_SWITCH_TRACKER')) return;
+
+        setTabSwitchCount((prev) => {
+          const next = prev + 1;
+          try {
+            sessionStorage.setItem(`interview-tab-switches-${id}`, next.toString());
+            localStorage.setItem(`interview-tab-switches-${id}`, next.toString());
+          } catch (e) {}
+
+          const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          setTabSwitchWarning(`⚠️ Proctoring Warning: Tab switch #${next} detected (${now}). All window/tab changes are logged in your evaluation autopsy.`);
+
+          logUserActivity({
+            actionType: 'TAB_SWITCH',
+            description: `Browser tab switch violation #${next} recorded during interview session.`,
+            questionTitle: session?.question?.title || 'Coding Simulation',
+            difficulty: session?.question?.difficulty || 'MEDIUM',
+            status: 'WARNING',
+            metrics: { tabSwitches: next }
+          });
+
+          return next;
+        });
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [id, session?.question?.title, session?.question?.difficulty]);
+
   // Logic validation modal state for AI Interview mode
   const [showLogicModal, setShowLogicModal] = useState<boolean>(false);
   const [logicInput, setLogicInput] = useState<string>('');
@@ -1253,6 +1317,19 @@ if (input.length >= 2) {
     setIsSubmitLoading(true);
 
     try {
+      if (id) {
+        localStorage.setItem(`interview-final-${id}`, code);
+        localStorage.setItem(`interview-tab-switches-${id}`, tabSwitchCount.toString());
+      }
+      logUserActivity({
+        actionType: 'SUBMIT',
+        description: `Submitted solution for ${session?.question?.title || 'Problem'} with ${tabSwitchCount} tab switch violations.`,
+        questionTitle: session?.question?.title || 'Problem',
+        difficulty: session?.question?.difficulty || 'MEDIUM',
+        status: 'PASSED',
+        metrics: { tabSwitches: tabSwitchCount }
+      });
+
       await axios.post(`/api/interviews/${id}/submit`, { code, language });
       // Navigate to the report for THIS session (not hardcoded /report/1)
       navigate(`/report/${id}`);
@@ -1269,6 +1346,7 @@ if (input.length >= 2) {
         console.warn('Backend unavailable during final evaluation submission, storing submission locally and loading report...');
         if (id) {
           localStorage.setItem(`interview-final-${id}`, code);
+          localStorage.setItem(`interview-tab-switches-${id}`, tabSwitchCount.toString());
         }
         navigate(`/report/${id}`);
       }
@@ -1357,9 +1435,6 @@ if (input.length >= 2) {
     );
   }
 
-  const isAiInterviewMode = (session?.interviewMode || '').toLowerCase().includes('ai');
-  const isEditorLocked = isAiInterviewMode && session?.state === 'DISCUSSION';
-
   return (
     <div className={`${isFullscreen ? 'fixed inset-0 z-[9999] w-screen h-screen' : 'h-screen'} bg-background flex flex-col font-sans text-zinc-100 overflow-hidden relative`}>
       
@@ -1391,6 +1466,14 @@ if (input.length >= 2) {
             <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-brand-cyan/10 border border-brand-cyan/30 text-brand-cyan flex items-center gap-1.5">
               <Unlock size={10} />
               <span>FULL SIMULATION (OA SANDBOX)</span>
+            </span>
+          )}
+
+          {/* Live Tab Switch Violation Badge */}
+          {tabSwitchCount > 0 && (
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-red-500/10 border border-red-500/30 text-red-400 flex items-center gap-1.5 shadow-[0_0_10px_rgba(239,68,68,0.2)] animate-pulse">
+              <ShieldAlert size={10} />
+              <span>TAB SWITCHES: {tabSwitchCount}</span>
             </span>
           )}
         </div>
@@ -1738,14 +1821,99 @@ if (input.length >= 2) {
                 {/* Tab Content */}
                 <div className="flex-1 overflow-y-auto p-5 select-text">
                   {leftPanelTab === 'description' ? (
-                    <div className="space-y-4">
-                      <h3 className="text-xs font-bold text-zinc-200 tracking-wide mb-3 flex items-center gap-1.5 border-b border-zinc-900 pb-2 font-mono uppercase">
-                        <FileCode size={13} className="text-brand-cyan" />
-                        <span>Problem Description</span>
-                      </h3>
-                      <div className="text-xs text-zinc-300 leading-relaxed whitespace-pre-wrap font-sans">
-                        {session.question.description}
+                    <div className="space-y-6">
+                      {/* Problem Header & Badges */}
+                      <div className="border-b border-zinc-900 pb-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                          <h3 className="text-sm font-bold text-zinc-100 font-mono tracking-tight flex items-center gap-2">
+                            <FileCode size={15} className="text-brand-cyan" />
+                            <span>{session.question.title}</span>
+                          </h3>
+                          <div className="flex items-center gap-1.5">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${
+                              session.question.difficulty === 'EASY' ? 'text-brand-emerald bg-brand-emerald/10 border-brand-emerald/30' :
+                              session.question.difficulty === 'MEDIUM' ? 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30' :
+                              'text-red-400 bg-red-400/10 border-red-400/30'
+                            }`}>
+                              {session.question.difficulty}
+                            </span>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono text-brand-violet bg-brand-violet/10 border border-brand-violet/30">
+                              {session.question.topic}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-4 text-[10px] font-mono text-zinc-400 mt-2">
+                          <span>⏱️ Expected Runtime: <strong className="text-zinc-200">{session.question.expectedTimeComplexity || 'O(N)'}</strong></span>
+                          <span>💾 Memory Limit: <strong className="text-zinc-200">{session.question.expectedSpaceComplexity || 'O(1)'}</strong></span>
+                        </div>
                       </div>
+
+                      {/* Rich React Markdown Description */}
+                      <div className="prose prose-invert max-w-none text-xs leading-relaxed text-zinc-300 font-sans">
+                        <ReactMarkdown
+                          components={{
+                            h1: ({ node, ...props }) => <h1 className="text-sm font-bold font-mono text-zinc-100 mt-4 mb-2 pb-1 border-b border-zinc-800" {...props} />,
+                            h2: ({ node, ...props }) => <h2 className="text-xs font-bold font-mono text-brand-cyan mt-3 mb-1.5 uppercase tracking-wider" {...props} />,
+                            h3: ({ node, ...props }) => <h3 className="text-xs font-semibold font-mono text-brand-violet mt-3 mb-1" {...props} />,
+                            p: ({ node, ...props }) => <p className="mb-3 leading-relaxed text-zinc-300 text-xs" {...props} />,
+                            strong: ({ node, ...props }) => <strong className="font-semibold text-zinc-100 font-mono" {...props} />,
+                            ul: ({ node, ...props }) => <ul className="list-disc pl-5 my-2 space-y-1 text-zinc-300" {...props} />,
+                            ol: ({ node, ...props }) => <ol className="list-decimal pl-5 my-2 space-y-1 text-zinc-300" {...props} />,
+                            li: ({ node, ...props }) => <li className="text-xs leading-relaxed" {...props} />,
+                            blockquote: ({ node, ...props }) => <blockquote className="border-l-2 border-brand-violet pl-3 my-2 text-zinc-400 italic bg-brand-violet/5 py-1 rounded-r" {...props} />,
+                            code: ({ inline, className, children, ...props }: any) => {
+                              return inline ? (
+                                <code className="px-1.5 py-0.5 rounded bg-zinc-900 border border-border/80 font-mono text-[11px] text-brand-cyan font-semibold" {...props}>
+                                  {children}
+                                </code>
+                              ) : (
+                                <pre className="p-3 my-2 bg-zinc-950 border border-border/60 rounded font-mono text-[11px] text-zinc-200 overflow-x-auto leading-normal">
+                                  <code {...props}>{children}</code>
+                                </pre>
+                              );
+                            }
+                          }}
+                        >
+                          {session.question.description}
+                        </ReactMarkdown>
+                      </div>
+
+                      {/* Detailed Sample Test Cases in React Markdown / Cards */}
+                      {session.question.testCases && session.question.testCases.filter(tc => !tc.isHidden).length > 0 && (
+                        <div className="pt-4 border-t border-zinc-900 space-y-3 font-mono">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-xs font-bold text-zinc-200 uppercase tracking-wider flex items-center gap-1.5">
+                              <span className="text-brand-emerald">🧪</span>
+                              <span>Sample Test Cases & Walkthrough</span>
+                            </h4>
+                            <span className="text-[10px] text-zinc-500">
+                              {session.question.testCases.filter(tc => !tc.isHidden).length} Public Cases Seeded
+                            </span>
+                          </div>
+
+                          <div className="space-y-3">
+                            {session.question.testCases.filter(tc => !tc.isHidden).map((tc, idx) => (
+                              <div key={idx} className="p-3.5 bg-zinc-950/70 border border-border/70 rounded-lg space-y-2 text-xs shadow-sm">
+                                <div className="flex items-center justify-between text-[11px] text-brand-cyan font-bold border-b border-zinc-900/80 pb-1.5">
+                                  <span>Example #{idx + 1}</span>
+                                  <span className="text-zinc-500 font-normal text-[10px]">Standard I/O Verification</span>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]">
+                                  <div className="space-y-1">
+                                    <span className="text-[9px] text-zinc-500 uppercase block font-semibold">Sample Input:</span>
+                                    <pre className="p-2 bg-zinc-900/90 rounded border border-border/50 text-zinc-200 overflow-x-auto whitespace-pre-wrap font-mono">{tc.input}</pre>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <span className="text-[9px] text-zinc-500 uppercase block font-semibold">Expected Output:</span>
+                                    <pre className="p-2 bg-zinc-900/90 rounded border border-border/50 text-brand-emerald font-semibold overflow-x-auto whitespace-pre-wrap font-mono">{tc.expectedOutput}</pre>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -2138,6 +2306,37 @@ if (input.length >= 2) {
                     : 'Not Available'}
                 </div>
               </div>
+
+              {/* Proctoring & Integrity Telemetry Card */}
+              <div className="pt-3 border-t border-border/60 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] text-zinc-500 uppercase tracking-wider block font-bold">Proctoring Telemetry</span>
+                  <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase border ${
+                    tabSwitchCount === 0
+                      ? 'text-brand-emerald bg-brand-emerald/10 border-brand-emerald/30'
+                      : tabSwitchCount <= 2
+                      ? 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30'
+                      : 'text-red-400 bg-red-400/10 border-red-400/30'
+                  }`}>
+                    {tabSwitchCount === 0 ? 'Clean Record' : `${tabSwitchCount} Switch${tabSwitchCount > 1 ? 'es' : ''}`}
+                  </span>
+                </div>
+
+                <div className="space-y-1.5 bg-zinc-950/40 p-2 rounded border border-border/40">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-zinc-500 text-[10px]">Tab Switches:</span>
+                    <span className={`font-bold ${tabSwitchCount === 0 ? 'text-zinc-300' : 'text-red-400'}`}>
+                      {tabSwitchCount}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-zinc-500 text-[10px]">Display Mode:</span>
+                    <span className={`font-bold text-[10px] ${isFullscreen ? 'text-brand-emerald' : 'text-yellow-400'}`}>
+                      {isFullscreen ? 'FULLSCREEN ⛶' : 'WINDOWED 🗗'}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {!executionSummary && (
@@ -2234,6 +2433,94 @@ if (input.length >= 2) {
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* FULLSCREEN PROCTORING PROMPT ON CODING START */}
+      {showFullscreenPrompt && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+          <div className="w-full max-w-md bg-background-panel border border-brand-cyan/40 rounded-2xl shadow-[0_0_50px_rgba(6,182,212,0.25)] p-6 space-y-5 text-center relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-brand-cyan via-brand-violet to-brand-emerald" />
+            
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-brand-cyan/10 border border-brand-cyan/30 flex items-center justify-center text-brand-cyan shadow-[0_0_30px_rgba(6,182,212,0.25)]">
+              <Maximize2 size={30} className="animate-pulse" />
+            </div>
+
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-brand-cyan font-bold px-2.5 py-0.5 rounded-full bg-brand-cyan/10 border border-brand-cyan/20">
+                Proctoring Requirement
+              </span>
+              <h3 className="text-lg font-bold text-zinc-100 font-mono tracking-tight">
+                Ready to Code? Enable Full Screen
+              </h3>
+              <p className="text-xs text-zinc-400 leading-relaxed font-sans">
+                You are entering the active Coding Phase. For optimal focus and simulated technical interview proctoring compliance, please switch to <strong className="text-zinc-200">Full Screen mode</strong>.
+              </p>
+            </div>
+
+            <div className="p-3 bg-zinc-950/70 border border-border/60 rounded-lg text-left text-[11px] font-mono text-zinc-400 space-y-1">
+              <div className="flex items-center gap-1.5 text-zinc-300 font-semibold">
+                <ShieldAlert size={12} className="text-yellow-400" />
+                <span>Anti-Cheat Integrity Rules</span>
+              </div>
+              <p className="text-[10px] text-zinc-500 leading-normal">
+                • Tab switches and window minimize events are tracked in your candidate autopsy.<br />
+                • Fullscreen mode prevents accidental tab switches.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  toggleFullscreen();
+                  setShowFullscreenPrompt(false);
+                  logUserActivity({
+                    actionType: 'FULLSCREEN',
+                    description: 'Candidate enabled Full-screen proctoring mode on coding start prompt.',
+                    questionTitle: session?.question?.title || 'Coding Simulation',
+                    difficulty: session?.question?.difficulty || 'MEDIUM',
+                    status: 'INFO'
+                  });
+                }}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-brand-cyan hover:bg-brand-cyan/90 text-zinc-950 text-xs font-mono font-bold transition flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.35)]"
+              >
+                <Maximize2 size={14} />
+                <span>Enable Full Screen</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowFullscreenPrompt(false)}
+                className="py-2.5 px-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-border text-zinc-400 hover:text-zinc-200 text-xs font-mono transition"
+              >
+                Continue in Window
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB SWITCH PROCTORING ALERT BANNER */}
+      {tabSwitchWarning && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 max-w-lg w-full px-4 animate-bounce-subtle">
+          <div className="p-3.5 bg-red-950/95 border border-red-500/60 backdrop-blur-md rounded-xl shadow-[0_0_30px_rgba(239,68,68,0.35)] flex items-center justify-between text-xs font-mono text-red-200">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1 rounded bg-red-500/20 text-red-400">
+                <ShieldAlert size={16} className="animate-pulse" />
+              </div>
+              <div>
+                <span className="font-bold block text-red-100">Proctoring Warning</span>
+                <span className="text-[11px] text-red-300">{tabSwitchWarning}</span>
+              </div>
+            </div>
+            <button
+              onClick={() => setTabSwitchWarning(null)}
+              className="p-1 hover:bg-red-900/50 rounded text-red-400 hover:text-red-200 transition"
+              title="Dismiss Warning"
+            >
+              <X size={14} />
+            </button>
           </div>
         </div>
       )}
