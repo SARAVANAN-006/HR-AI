@@ -149,7 +149,7 @@ const Landing: React.FC = () => {
           </div>
 
           {/* Main Headline */}
-          <h1 className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tight text-white leading-[1.05] select-none" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+          <h1 className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tight text-white leading-[1.05] select-none" style={{ fontFamily: "'Outfit', 'Space Grotesk', sans-serif" }}>
             LEVEL UP WITH <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-cyan via-cyan-200 to-brand-violet neon-text-cyan font-black tracking-tight">
               KODEXIS
@@ -334,7 +334,7 @@ const Landing: React.FC = () => {
       <section className="max-w-7xl mx-auto px-6 py-24 border-t border-border/40">
         <div className="text-center space-y-4 mb-16">
           <span className="text-xs font-mono text-brand-violet uppercase tracking-widest block">THE KODEXIS METHOD</span>
-          <h3 className="text-3xl md:text-5xl font-bold font-mono text-white">Correctness ≠ Interview Readiness</h3>
+          <h3 className="text-3xl md:text-5xl font-extrabold text-white tracking-tight" style={{ fontFamily: "'Outfit', sans-serif" }}>Correctness ≠ Interview Readiness</h3>
           <p className="max-w-xl mx-auto text-xs md:text-sm text-zinc-400 font-sans leading-relaxed">
             Passing test cases is only 30% of an assessment. The engineering logic, complexity awareness, edge-case checking, and communication determine true technical fit.
           </p>
@@ -378,7 +378,7 @@ const Landing: React.FC = () => {
       <section id="how-it-works" className="max-w-7xl mx-auto px-6 py-24 border-t border-border/40">
         <div className="text-center space-y-4 mb-16">
           <span className="text-xs font-mono text-brand-cyan uppercase tracking-widest text-center block">JOURNEY TIMELINE</span>
-          <h3 className="text-3xl md:text-5xl font-bold font-mono text-white">The Assessment Loop</h3>
+          <h3 className="text-3xl md:text-5xl font-extrabold text-white tracking-tight" style={{ fontFamily: "'Outfit', sans-serif" }}>The Assessment Loop</h3>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 font-mono">
@@ -401,7 +401,7 @@ const Landing: React.FC = () => {
       {/* FINAL CTA */}
       <section className="border-t border-border/40 bg-zinc-950/40 py-24 text-center relative z-10">
         <div className="max-w-4xl mx-auto px-6 space-y-8">
-          <h3 className="text-3xl md:text-6xl font-sans font-extrabold text-white tracking-tight">
+          <h3 className="text-3xl md:text-6xl font-extrabold text-white tracking-tight" style={{ fontFamily: "'Outfit', sans-serif" }}>
             Ready to Level Up Your Career?
           </h3>
           <p className="text-zinc-300 text-sm max-w-xl mx-auto font-sans leading-relaxed">

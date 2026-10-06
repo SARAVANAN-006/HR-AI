@@ -38,6 +38,8 @@ export default {
       fontFamily: {
         sans: ['Inter', 'IBM Plex Sans', 'sans-serif'],
         mono: ['JetBrains Mono', 'IBM Plex Mono', 'monospace'],
+        display: ['Outfit', 'Space Grotesk', 'Inter', 'sans-serif'],
+        outfit: ['Outfit', 'sans-serif'],
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
