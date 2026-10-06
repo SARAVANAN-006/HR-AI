@@ -870,7 +870,7 @@ const InterviewRoom: React.FC = () => {
   };
 
   // Telemetry signals states
-  const [_signals, setSignals] = useState({
+  const [signals, setSignals] = useState({
     correctness: { value: 0, label: 'Pending' },
     complexity: { value: 0, label: 'Analyzing' },
     codeQuality: { value: 0, label: 'Pending' },
