@@ -49,7 +49,7 @@ const Landing: React.FC = () => {
               </svg>
             </div>
             <div>
-              <span className="text-md font-mono font-bold tracking-widest text-zinc-100 uppercase">KODEXIS</span>
+              <span className="text-md font-bold tracking-widest text-zinc-100 uppercase" style={{ fontFamily: "'Junge', serif" }}>KODEXIS</span>
             </div>
           </div>
           <div>
@@ -148,11 +148,11 @@ const Landing: React.FC = () => {
             <span className="tracking-wider uppercase font-semibold">Level Up Your Interview Mastery</span>
           </div>
 
-          {/* Main Headline */}
-          <h1 className="text-6xl sm:text-8xl md:text-9xl font-bold tracking-normal text-white leading-[1.15] select-none font-cursive" style={{ fontFamily: "'Dancing Script', 'Kaushan Script', 'Pacifico', cursive" }}>
-            Level Up With <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-cyan via-cyan-200 to-brand-violet neon-text-cyan font-extrabold tracking-wide">
-              Kodexis
+          {/* Main Headline with Junge Font */}
+          <h1 className="text-5xl sm:text-7xl md:text-8xl font-normal tracking-wider text-white leading-[1.08] select-none" style={{ fontFamily: "'Junge', serif" }}>
+            LEVEL UP WITH <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-cyan via-cyan-200 to-brand-violet neon-text-cyan font-normal tracking-widest">
+              KODEXIS
             </span>
           </h1>
 
@@ -401,7 +401,7 @@ const Landing: React.FC = () => {
       {/* FINAL CTA */}
       <section className="border-t border-border/40 bg-zinc-950/40 py-24 text-center relative z-10">
         <div className="max-w-4xl mx-auto px-6 space-y-8">
-          <h3 className="text-4xl md:text-7xl font-bold text-white tracking-normal font-cursive" style={{ fontFamily: "'Dancing Script', 'Kaushan Script', 'Pacifico', cursive" }}>
+          <h3 className="text-3xl md:text-6xl font-normal text-white tracking-wide" style={{ fontFamily: "'Junge', serif" }}>
             Ready to Level Up Your Career?
           </h3>
           <p className="text-zinc-300 text-sm max-w-xl mx-auto font-sans leading-relaxed">
