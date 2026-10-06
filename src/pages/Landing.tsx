@@ -142,37 +142,61 @@ const Landing: React.FC = () => {
           transition={{ duration: 0.6 }}
           className="space-y-6 relative z-10"
         >
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full border border-brand-cyan/35 bg-brand-cyan/5 text-brand-cyan text-xs font-mono mb-4 shadow-[0_0_15px_rgba(34,211,238,0.05)]">
-            <Sparkles size={12} />
-            <span>KODEXIS ASSESSMENT LABORATORY</span>
+          {/* Level Up Pill Badge */}
+          <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full border border-brand-cyan/30 bg-brand-cyan/10 backdrop-blur-md text-brand-cyan text-xs font-medium mb-3 shadow-[0_0_20px_rgba(34,211,238,0.15)] hover:border-brand-cyan/60 transition">
+            <Sparkles size={13} className="text-brand-cyan animate-pulse" />
+            <span className="tracking-wider uppercase font-semibold">Level Up Your Interview Mastery</span>
           </div>
 
-          <h1 className="text-5xl md:text-8xl font-extrabold tracking-tight text-white leading-none uppercase select-none" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            WELCOME TO <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-cyan via-zinc-100 to-brand-violet neon-text-cyan font-extrabold tracking-tight">
+          {/* Main Headline */}
+          <h1 className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tight text-white leading-[1.05] select-none" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            LEVEL UP WITH <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-cyan via-cyan-200 to-brand-violet neon-text-cyan font-black tracking-tight">
               KODEXIS
             </span>
           </h1>
 
-          <p className="max-w-2xl mx-auto text-zinc-400 text-sm md:text-base leading-relaxed font-sans">
-            Enter the KODEXIS assessment laboratory. Run algorithm drafts in a secure local sandbox under real-time AI interviewer observations, generating multi-factor telemetry reports on your engineering depth.
+          {/* Leveled Up Description */}
+          <p className="max-w-2xl mx-auto text-zinc-300 text-sm md:text-base leading-relaxed font-sans font-normal">
+            Master algorithms and conquer high-stakes technical interviews. Defend your logic in real time against an adaptive AI interviewer, execute code in a secure sandbox, and receive deep telemetry benchmarks to land your dream engineering role.
           </p>
 
-          <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-4">
+          {/* Action CTAs */}
+          <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-2">
             <button
               onClick={() => navigate('/login')}
-              className="w-full sm:w-auto flex items-center justify-center space-x-2 px-8 py-3.5 rounded bg-brand-cyan text-background font-bold font-mono text-sm hover:bg-brand-cyan/95 transition duration-200 shadow-[0_0_20px_rgba(34,211,238,0.25)] transform hover:scale-[1.02]"
+              className="w-full sm:w-auto flex items-center justify-center space-x-2 px-8 py-3.5 rounded-lg bg-brand-cyan text-zinc-950 font-bold text-sm hover:bg-brand-cyan/90 transition duration-200 shadow-[0_0_25px_rgba(34,211,238,0.3)] transform hover:scale-[1.02] active:scale-[0.98]"
             >
               <span>Start AI Interview</span>
               <Play size={15} fill="currentColor" />
             </button>
             <a
               href="#how-it-works"
-              className="w-full sm:w-auto flex items-center justify-center space-x-2 px-8 py-3.5 rounded border border-brand-violet/30 bg-brand-violet/5 text-brand-violet font-mono text-sm hover:border-brand-violet transition duration-300 transform hover:scale-[1.02]"
+              className="w-full sm:w-auto flex items-center justify-center space-x-2 px-8 py-3.5 rounded-lg border border-brand-violet/40 bg-brand-violet/10 backdrop-blur-sm text-brand-violet font-semibold text-sm hover:border-brand-violet hover:bg-brand-violet/20 transition duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
             >
               <span>Explore Assessment Engine</span>
               <ArrowRight size={15} />
             </a>
+          </div>
+
+          {/* Leveled Up Feature Highlights */}
+          <div className="pt-3 flex flex-wrap justify-center items-center gap-2 sm:gap-4 text-xs text-zinc-400">
+            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-900/70 border border-zinc-800">
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-cyan"></span>
+              2-Phase Gated Logic
+            </span>
+            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-900/70 border border-zinc-800">
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-violet"></span>
+              Live Speech & Waveforms
+            </span>
+            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-900/70 border border-zinc-800">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              Big-O & Telemetry Profiler
+            </span>
+            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-900/70 border border-zinc-800">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+              Instant Readiness Score
+            </span>
           </div>
         </motion.div>
 
@@ -377,18 +401,18 @@ const Landing: React.FC = () => {
       {/* FINAL CTA */}
       <section className="border-t border-border/40 bg-zinc-950/40 py-24 text-center relative z-10">
         <div className="max-w-4xl mx-auto px-6 space-y-8">
-          <h3 className="text-3xl md:text-6xl font-mono font-bold text-white tracking-tight">
-            Ready to prove how you think?
+          <h3 className="text-3xl md:text-6xl font-sans font-extrabold text-white tracking-tight">
+            Ready to Level Up Your Career?
           </h3>
-          <p className="text-zinc-400 text-sm max-w-xl mx-auto font-sans leading-relaxed">
-            Create a profile, load the coding laboratory, and evaluate your programming abilities under real AI-interview constraints.
+          <p className="text-zinc-300 text-sm max-w-xl mx-auto font-sans leading-relaxed">
+            Create your profile, launch the coding laboratory, and evaluate your programming depth under realistic AI-interview constraints.
           </p>
           <div>
             <button
               onClick={() => navigate('/login')}
-              className="flex items-center space-x-2 px-8 py-4 bg-brand-cyan text-background font-bold font-mono text-sm rounded mx-auto hover:bg-brand-cyan/95 transition duration-200 shadow-[0_0_25px_rgba(34,211,238,0.3)] transform hover:scale-[1.02]"
+              className="flex items-center space-x-2 px-8 py-4 bg-brand-cyan text-zinc-950 font-bold text-sm rounded-lg mx-auto hover:bg-brand-cyan/90 transition duration-200 shadow-[0_0_25px_rgba(34,211,238,0.3)] transform hover:scale-[1.02] active:scale-[0.98]"
             >
-              <span>Enter the KODEXIS Interview Lab</span>
+              <span>Level Up with KODEXIS Now</span>
               <ArrowRight size={16} />
             </button>
           </div>
