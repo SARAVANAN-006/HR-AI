@@ -60,7 +60,7 @@ export const UiSwitcherModal: React.FC<UiSwitcherModalProps> = ({ isOpen, onClos
                 <span>1. Select Interface Theme & Morph UI</span>
               </label>
               <span className="text-[10px] text-zinc-400 font-mono">
-                Active: <strong className="text-brand-cyan">{THEME_PRESETS[theme]?.name || 'Royal Junge'}</strong>
+                Active: <strong className="text-brand-cyan">{THEME_PRESETS[theme]?.name || 'Obsidian Luxe'}</strong>
               </span>
             </div>
 

@@ -28,6 +28,22 @@ export interface ThemeConfig {
 }
 
 export const THEME_PRESETS: Record<UiTheme, ThemeConfig> = {
+  'obsidian-luxe': {
+    id: 'obsidian-luxe',
+    name: 'Obsidian Luxe',
+    category: 'Executive Dark',
+    accentColor: '#38bdf8',
+    secondaryAccent: '#818cf8',
+    bgPreview: '#08090b',
+    cardPreview: '#10141c',
+    monacoTheme: 'vs-dark',
+    badge: 'DEFAULT • EXECUTIVE LINEAR',
+    typography: 'Plus Jakarta Sans (Modern Neo-Grotesque)',
+    shape: '10px Refined Precision Bevels & Matte Glass',
+    fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif",
+    borderRadius: '10px',
+    description: 'Polished graphite titanium with crisp Plus Jakarta Sans typography and refined 10px subtle bevels'
+  },
   'royal-junge': {
     id: 'royal-junge',
     name: 'Royal Junge',
@@ -76,22 +92,6 @@ export const THEME_PRESETS: Record<UiTheme, ThemeConfig> = {
     borderRadius: '4px',
     description: 'Futuristic sci-fi display typography, 4px tech chamfer edges, and dual magenta-cyan laser glow'
   },
-  'obsidian-luxe': {
-    id: 'obsidian-luxe',
-    name: 'Obsidian Luxe',
-    category: 'Executive Dark',
-    accentColor: '#38bdf8',
-    secondaryAccent: '#818cf8',
-    bgPreview: '#08090b',
-    cardPreview: '#10141c',
-    monacoTheme: 'vs-dark',
-    badge: 'EXECUTIVE LINEAR',
-    typography: 'Plus Jakarta Sans (Modern Neo-Grotesque)',
-    shape: '10px Refined Precision Bevels & Matte Glass',
-    fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif",
-    borderRadius: '10px',
-    description: 'Polished graphite titanium with crisp Plus Jakarta Sans typography and refined 10px subtle bevels'
-  },
   'nebula-violet': {
     id: 'nebula-violet',
     name: 'Nebula Violet',
@@ -127,12 +127,12 @@ export const THEME_PRESETS: Record<UiTheme, ThemeConfig> = {
 };
 
 export const normalizeTheme = (raw: string | null): UiTheme => {
-  if (!raw) return 'royal-junge';
+  if (!raw) return 'obsidian-luxe';
   if (raw in THEME_PRESETS) return raw as UiTheme;
   if (raw === 'cyber-neon') return 'synthwave-neon';
   if (raw === 'enterprise-slate') return 'obsidian-luxe';
-  if (raw === 'nordic-light') return 'royal-junge';
-  return 'royal-junge';
+  if (raw === 'nordic-light') return 'obsidian-luxe';
+  return 'obsidian-luxe';
 };
 
 export interface ThemeContextType {
@@ -187,10 +187,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const toggleTheme = () => {
     const themeKeys: UiTheme[] = [
+      'obsidian-luxe',
       'royal-junge',
       'cyber-matrix',
       'synthwave-neon',
-      'obsidian-luxe',
       'nebula-violet',
       'midnight-amoled'
     ];
@@ -202,7 +202,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  const themeConfig = THEME_PRESETS[theme] || THEME_PRESETS['royal-junge'];
+  const themeConfig = THEME_PRESETS[theme] || THEME_PRESETS['obsidian-luxe'];
 
   return (
     <ThemeContext.Provider

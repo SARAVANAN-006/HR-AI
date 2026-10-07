@@ -13,8 +13,41 @@
    4. Colors (Rich dark backgrounds, zero white/light canvases)
    ========================================================================== */
 
-/* 1. ROYAL JUNGE (DEFAULT & SIGNATURE CLASSICAL SERIF) */
+/* 1. OBSIDIAN LUXE (DEFAULT & EXECUTIVE LINEAR) */
 :root,
+[data-theme='obsidian-luxe'],
+[data-theme='enterprise-slate'] {
+  --theme-font: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  --theme-font-mono: 'JetBrains Mono', monospace;
+  --theme-font-display: 'Plus Jakarta Sans', sans-serif;
+  --theme-letter-spacing: -0.015em;
+  --theme-radius: 10px;
+  --theme-radius-sm: 6px;
+  --theme-radius-lg: 14px;
+  --theme-radius-pill: 9999px;
+  --theme-panel-shadow: 0 12px 35px -8px rgba(0, 0, 0, 0.7), 0 0 1px rgba(255, 255, 255, 0.1);
+
+  --color-bg-default: #08090b;
+  --color-bg-panel: #0e1116;
+  --color-bg-card: #141820;
+  --color-bg-elevated: #1c222d;
+  --color-border: #232a38;
+  --color-border-active: #38bdf8;
+  --color-brand-cyan: #38bdf8;
+  --color-brand-cyan-hover: #0284c7;
+  --color-brand-cyan-dim: rgba(56, 189, 248, 0.14);
+  --color-brand-violet: #818cf8;
+  --color-brand-violet-hover: #6366f1;
+  --color-brand-violet-dim: rgba(129, 140, 248, 0.14);
+  --color-brand-emerald: #10b981;
+  --color-brand-emerald-hover: #059669;
+  --color-brand-emerald-dim: rgba(16, 185, 129, 0.14);
+  --glass-bg: rgba(14, 17, 22, 0.9);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  color-scheme: dark;
+}
+
+/* 2. ROYAL JUNGE (SIGNATURE CLASSICAL SERIF) */
 [data-theme='royal-junge'] {
   --theme-font: 'Junge', serif;
   --theme-font-mono: 'JetBrains Mono', monospace;
@@ -46,7 +79,7 @@
   color-scheme: dark;
 }
 
-/* 2. CYBER MATRIX (SHARP 0PX BRUTALIST & MONOSPACE TERMINAL) */
+/* 3. CYBER MATRIX (SHARP 0PX BRUTALIST & MONOSPACE TERMINAL) */
 [data-theme='cyber-matrix'] {
   --theme-font: 'JetBrains Mono', monospace;
   --theme-font-mono: 'JetBrains Mono', monospace;
@@ -78,7 +111,7 @@
   color-scheme: dark;
 }
 
-/* 3. SYNTHWAVE NEON (4PX TECH CHAMFER, ORBITRON & MAGENTA-CYAN GLOW) */
+/* 4. SYNTHWAVE NEON (4PX TECH CHAMFER, ORBITRON & MAGENTA-CYAN GLOW) */
 [data-theme='synthwave-neon'],
 [data-theme='cyber-neon'] {
   --theme-font: 'Space Grotesk', 'Orbitron', sans-serif;
@@ -108,39 +141,6 @@
   --color-brand-emerald-dim: rgba(244, 63, 94, 0.2);
   --glass-bg: rgba(19, 9, 30, 0.88);
   --glass-border: rgba(236, 72, 153, 0.25);
-  color-scheme: dark;
-}
-
-/* 4. OBSIDIAN LUXE (10PX BEVELS, PLUS JAKARTA SANS & GRAPHITE TITANIUM) */
-[data-theme='obsidian-luxe'],
-[data-theme='enterprise-slate'] {
-  --theme-font: 'Plus Jakarta Sans', 'Inter', sans-serif;
-  --theme-font-mono: 'JetBrains Mono', monospace;
-  --theme-font-display: 'Plus Jakarta Sans', sans-serif;
-  --theme-letter-spacing: -0.015em;
-  --theme-radius: 10px;
-  --theme-radius-sm: 6px;
-  --theme-radius-lg: 14px;
-  --theme-radius-pill: 9999px;
-  --theme-panel-shadow: 0 12px 35px -8px rgba(0, 0, 0, 0.7), 0 0 1px rgba(255, 255, 255, 0.1);
-
-  --color-bg-default: #08090b;
-  --color-bg-panel: #0e1116;
-  --color-bg-card: #141820;
-  --color-bg-elevated: #1c222d;
-  --color-border: #232a38;
-  --color-border-active: #38bdf8;
-  --color-brand-cyan: #38bdf8;
-  --color-brand-cyan-hover: #0284c7;
-  --color-brand-cyan-dim: rgba(56, 189, 248, 0.14);
-  --color-brand-violet: #818cf8;
-  --color-brand-violet-hover: #6366f1;
-  --color-brand-violet-dim: rgba(129, 140, 248, 0.14);
-  --color-brand-emerald: #10b981;
-  --color-brand-emerald-hover: #059669;
-  --color-brand-emerald-dim: rgba(16, 185, 129, 0.14);
-  --glass-bg: rgba(14, 17, 22, 0.9);
-  --glass-border: rgba(255, 255, 255, 0.08);
   color-scheme: dark;
 }
 
