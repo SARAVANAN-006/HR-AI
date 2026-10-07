@@ -124,6 +124,15 @@ export const StudyCalendarPage: React.FC = () => {
   const [notificationMsg, setNotificationMsg] = useState<string | null>(null);
 
   useEffect(() => {
+    // Instant cache hydration for zero-latency display
+    const cached = localStorage.getItem('kodexis_study_calendar_events');
+    if (cached) {
+      try {
+        setEvents(JSON.parse(cached));
+      } catch {}
+    } else {
+      loadFallbackEvents();
+    }
     fetchEvents();
   }, []);
 
@@ -133,11 +142,9 @@ export const StudyCalendarPage: React.FC = () => {
       if (res.data && Array.isArray(res.data) && res.data.length > 0) {
         setEvents(res.data);
         localStorage.setItem('kodexis_study_calendar_events', JSON.stringify(res.data));
-      } else {
-        loadFallbackEvents();
       }
     } catch {
-      loadFallbackEvents();
+      // Retain active events
     }
   };
 

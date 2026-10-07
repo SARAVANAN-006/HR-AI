@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { withFastTimeout } from '../lib/api';
 import { Play, Settings, BrainCircuit, Lock, Unlock, Sparkles, Code2 } from 'lucide-react';
 
 const StartInterview: React.FC = () => {
@@ -14,16 +15,21 @@ const StartInterview: React.FC = () => {
   const handleStart = async () => {
     setLoading(true);
     try {
-      const response = await axios.post('/api/interviews', {
-        difficulty,
-        language,
-        durationMinutes: duration,
-        interviewMode: mode
-      });
+      const response = await withFastTimeout(
+        axios.post('/api/interviews', {
+          difficulty,
+          language,
+          durationMinutes: duration,
+          interviewMode: mode
+        }),
+        2500,
+        'Interview initialization'
+      );
       const session = response.data;
       navigate(`/interview/${session.id}`);
     } catch (error) {
-      console.warn('Backend server offline. Launching Demo Interview Room...');
+      console.warn('Backend server offline or high latency. Launching Demo Interview Room instantly...');
+      sessionStorage.setItem('kodexis_offline_pref', JSON.stringify({ difficulty, language, duration, mode }));
       navigate('/interview/1');
     } finally {
       setLoading(false);

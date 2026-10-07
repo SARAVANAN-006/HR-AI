@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { withFastTimeout } from '../lib/api';
 import {
   Shield, Database, Plus, Trash2, Edit2, Code, Activity, Users,
   Sliders, Search, Eye, RefreshCw, X, Award, Flame, BookOpen
@@ -85,66 +86,82 @@ const AdminDashboard: React.FC = () => {
   const [newFeatureEnabled, setNewFeatureEnabled] = useState(true);
 
   const loadQuestions = () => {
-    setLoading(true);
-    axios.get('/api/admin/questions')
+    const cached = localStorage.getItem('kodexis_admin_questions');
+    if (cached) {
+      try {
+        setQuestions(JSON.parse(cached));
+        setLoading(false);
+      } catch {
+        setLoading(true);
+      }
+    } else {
+      setLoading(true);
+    }
+
+    withFastTimeout(axios.get('/api/admin/questions'), 2500, 'Questions repository fetch')
       .then((res) => {
         setQuestions(res.data);
+        localStorage.setItem('kodexis_admin_questions', JSON.stringify(res.data));
         setLoading(false);
       })
       .catch((err) => {
         console.warn('Backend unavailable, seeding mock questions repository:', err);
-        setQuestions([
-          {
-            id: 1,
-            title: "Two Sum",
-            description: "Given an array of integers `nums` and an integer `target`, return indices of the two numbers such that they add up to `target`.",
-            difficulty: "EASY",
-            topic: "Arrays / Hashing",
-            expectedTimeComplexity: "O(n)",
-            expectedSpaceComplexity: "O(n)",
-            optimalSolutionConcept: "Use Hash Map for one-pass complement lookup.",
-            javaTemplate: "",
-            pythonTemplate: "",
-            javascriptTemplate: "",
-            testCases: [
-              { input: "9\n2,7,11,15", expectedOutput: "0,1", isHidden: false },
-              { input: "6\n3,2,4", expectedOutput: "1,2", isHidden: true }
-            ]
-          },
-          {
-            id: 2,
-            title: "Longest Subarray With Target Sum",
-            description: "Find the maximum length of contiguous subarray whose elements sum to `k`.",
-            difficulty: "MEDIUM",
-            topic: "Arrays / Hashing",
-            expectedTimeComplexity: "O(n)",
-            expectedSpaceComplexity: "O(n)",
-            optimalSolutionConcept: "Prefix sums stored in a HashMap mapped to first seen index.",
-            javaTemplate: "",
-            pythonTemplate: "",
-            javascriptTemplate: "",
-            testCases: [
-              { input: "15\n1,2,3,7,5", expectedOutput: "3", isHidden: false },
-              { input: "3\n-1,2,3", expectedOutput: "1", isHidden: true }
-            ]
-          },
-          {
-            id: 3,
-            title: "Merge K Sorted Lists",
-            description: "Merge `k` sorted linked lists and return it as one sorted list.",
-            difficulty: "HARD",
-            topic: "Heaps & Priority Queues",
-            expectedTimeComplexity: "O(N log k)",
-            expectedSpaceComplexity: "O(k)",
-            optimalSolutionConcept: "Min-Heap storing list head nodes.",
-            javaTemplate: "",
-            pythonTemplate: "",
-            javascriptTemplate: "",
-            testCases: [
-              { input: "[[1,4,5],[1,3,4],[2,6]]", expectedOutput: "[1,1,2,3,4,4,5,6]", isHidden: false }
-            ]
-          }
-        ]);
+        if (!cached) {
+          const fallbackQuestions: Question[] = [
+            {
+              id: 1,
+              title: "Two Sum",
+              description: "Given an array of integers `nums` and an integer `target`, return indices of the two numbers such that they add up to `target`.",
+              difficulty: "EASY",
+              topic: "Arrays / Hashing",
+              expectedTimeComplexity: "O(n)",
+              expectedSpaceComplexity: "O(n)",
+              optimalSolutionConcept: "Use Hash Map for one-pass complement lookup.",
+              javaTemplate: "",
+              pythonTemplate: "",
+              javascriptTemplate: "",
+              testCases: [
+                { input: "9\n2,7,11,15", expectedOutput: "0,1", isHidden: false },
+                { input: "6\n3,2,4", expectedOutput: "1,2", isHidden: true }
+              ]
+            },
+            {
+              id: 2,
+              title: "Longest Subarray With Target Sum",
+              description: "Find the maximum length of contiguous subarray whose elements sum to `k`.",
+              difficulty: "MEDIUM",
+              topic: "Arrays / Hashing",
+              expectedTimeComplexity: "O(n)",
+              expectedSpaceComplexity: "O(n)",
+              optimalSolutionConcept: "Prefix sums stored in a HashMap mapped to first seen index.",
+              javaTemplate: "",
+              pythonTemplate: "",
+              javascriptTemplate: "",
+              testCases: [
+                { input: "15\n1,2,3,7,5", expectedOutput: "3", isHidden: false },
+                { input: "3\n-1,2,3", expectedOutput: "1", isHidden: true }
+              ]
+            },
+            {
+              id: 3,
+              title: "Merge K Sorted Lists",
+              description: "Merge `k` sorted linked lists and return it as one sorted list.",
+              difficulty: "HARD",
+              topic: "Heaps & Priority Queues",
+              expectedTimeComplexity: "O(N log k)",
+              expectedSpaceComplexity: "O(k)",
+              optimalSolutionConcept: "Min-Heap storing list head nodes.",
+              javaTemplate: "",
+              pythonTemplate: "",
+              javascriptTemplate: "",
+              testCases: [
+                { input: "[[1,4,5],[1,3,4],[2,6]]", expectedOutput: "[1,1,2,3,4,4,5,6]", isHidden: false }
+              ]
+            }
+          ];
+          setQuestions(fallbackQuestions);
+          localStorage.setItem('kodexis_admin_questions', JSON.stringify(fallbackQuestions));
+        }
         setLoading(false);
       });
   };
@@ -199,19 +216,22 @@ const AdminDashboard: React.FC = () => {
 
     try {
       if (editId) {
-        await axios.put(`/api/admin/questions/${editId}`, payload);
+        await withFastTimeout(axios.put(`/api/admin/questions/${editId}`, payload), 2500, 'Question update');
       } else {
-        await axios.post('/api/admin/questions', payload);
+        await withFastTimeout(axios.post('/api/admin/questions', payload), 2500, 'Question create');
       }
       resetForm();
       loadQuestions();
     } catch (error) {
-      console.warn('Backend unavailable, updating questions locally:', error);
+      console.warn('Backend unavailable or slow, updating questions locally:', error);
+      let updated: Question[];
       if (editId) {
-        setQuestions(prev => prev.map(q => q.id === editId ? { ...payload, id: editId } : q));
+        updated = questions.map(q => q.id === editId ? { ...payload, id: editId } : q);
       } else {
-        setQuestions(prev => [...prev, { ...payload, id: Date.now() }]);
+        updated = [...questions, { ...payload, id: Date.now() }];
       }
+      setQuestions(updated);
+      localStorage.setItem('kodexis_admin_questions', JSON.stringify(updated));
       resetForm();
     }
   };
@@ -251,11 +271,13 @@ const AdminDashboard: React.FC = () => {
   const handleDelete = async (qid: number) => {
     if (!window.confirm("Permanently delete this question and all its test cases?")) return;
     try {
-      await axios.delete(`/api/admin/questions/${qid}`);
+      await withFastTimeout(axios.delete(`/api/admin/questions/${qid}`), 2500, 'Question delete');
       loadQuestions();
     } catch (error) {
-      console.warn('Backend unavailable, deleting locally:', error);
-      setQuestions(prev => prev.filter(q => q.id !== qid));
+      console.warn('Backend unavailable or slow, deleting locally:', error);
+      const updated = questions.filter(q => q.id !== qid);
+      setQuestions(updated);
+      localStorage.setItem('kodexis_admin_questions', JSON.stringify(updated));
     }
   };
 

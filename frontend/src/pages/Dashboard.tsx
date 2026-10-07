@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { withFastTimeout } from '../lib/api';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 import { Activity, ShieldAlert, ArrowUpRight, Plus, UserCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -40,112 +41,123 @@ const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [radarData, setRadarData] = useState<any[]>([]);
 
+  const computeRadar = (d: DashboardData) => {
+    const history = d.history;
+    let correctness = 0, problemSolving = 0, complexity = 0, codeQuality = 0, debugging = 0, communication = 0;
+    
+    if (history && history.length > 0) {
+      correctness = d.readinessScore + 5;
+      problemSolving = d.readinessScore + 2;
+      complexity = d.readinessScore - 4;
+      codeQuality = d.readinessScore + 4;
+      debugging = d.readinessScore - 10;
+      communication = d.readinessScore - 1;
+    } else {
+      const score = d.readinessScore || 50;
+      correctness = score;
+      problemSolving = score;
+      complexity = score;
+      codeQuality = score;
+      debugging = score;
+      communication = score;
+    }
+
+    return [
+      { subject: 'Correctness', A: Math.min(100, correctness), B: 100 },
+      { subject: 'Problem Solving', A: Math.min(100, problemSolving), B: 100 },
+      { subject: 'Complexity', A: Math.min(100, complexity), B: 100 },
+      { subject: 'Code Quality', A: Math.min(100, codeQuality), B: 100 },
+      { subject: 'Debugging', A: Math.min(100, debugging), B: 100 },
+      { subject: 'Communication', A: Math.min(100, communication), B: 100 },
+    ];
+  };
+
   useEffect(() => {
     if (user?.role === 'ROLE_ADMIN') {
       navigate('/admin', { replace: true });
       return;
     }
 
-    axios.get('/api/progress/dashboard')
+    // Instant local cache hydration for zero latency
+    const cached = localStorage.getItem('kodexis_candidate_dashboard');
+    if (cached) {
+      try {
+        const parsed: DashboardData = JSON.parse(cached);
+        setData(parsed);
+        setRadarData(computeRadar(parsed));
+        setLoading(false);
+      } catch {
+        // Fall through to network
+      }
+    }
+
+    withFastTimeout(axios.get('/api/progress/dashboard'), 2500, 'Dashboard metrics fetch')
       .then((res) => {
         setData(res.data);
-        // Calculate Radar dimensions from completed history averages
-        // If history is empty, use standard base values based on readinessScore
-        const history = res.data.history;
-        let correctness = 0, problemSolving = 0, complexity = 0, codeQuality = 0, debugging = 0, communication = 0;
-        
-        if (history && history.length > 0) {
-          // Since history matches are simplified, we will map seeded profile ratios
-          correctness = res.data.readinessScore + 5;
-          problemSolving = res.data.readinessScore + 2;
-          complexity = res.data.readinessScore - 4;
-          codeQuality = res.data.readinessScore + 4;
-          debugging = res.data.readinessScore - 10; // default debugging curve
-          communication = res.data.readinessScore - 1;
-        } else {
-          const score = res.data.readinessScore || 50;
-          correctness = score;
-          problemSolving = score;
-          complexity = score;
-          codeQuality = score;
-          debugging = score;
-          communication = score;
-        }
-
-        setRadarData([
-          { subject: 'Correctness', A: Math.min(100, correctness), B: 100 },
-          { subject: 'Problem Solving', A: Math.min(100, problemSolving), B: 100 },
-          { subject: 'Complexity', A: Math.min(100, complexity), B: 100 },
-          { subject: 'Code Quality', A: Math.min(100, codeQuality), B: 100 },
-          { subject: 'Debugging', A: Math.min(100, debugging), B: 100 },
-          { subject: 'Communication', A: Math.min(100, communication), B: 100 },
-        ]);
+        localStorage.setItem('kodexis_candidate_dashboard', JSON.stringify(res.data));
+        setRadarData(computeRadar(res.data));
         setLoading(false);
       })
       .catch(() => {
-        console.warn('Backend offline. Loading candidate dashboard telemetry...');
-        const mockDashboard: DashboardData = {
-          fullName: "Vigneshwaran S P",
-          targetRole: "Software Engineer",
-          targetCompanies: "NVIDIA, Google, Meta",
-          experienceLevel: "MEDIUM",
-          preferredLanguage: "PYTHON",
-          readinessScore: 88,
-          skills: {
-            "Arrays / Hashing": "EXPERT",
-            "Strings": "STRONG",
-            "Stacks / Queues": "STRONG",
-            "Sorting / Searching": "STRONG",
-            "System Design": "STRONG",
-            "Recursion": "INTERMEDIATE",
-            "LinkedLists": "INTERMEDIATE",
-            "Trees": "DEVELOPING",
-            "Dynamic Programming": "DEVELOPING",
-            "Graphs": "WEAK"
-          },
-          history: [
-            {
-              sessionId: 101,
-              topic: "Arrays / Hashing",
-              title: "Two Sum - Hash Map Lookup",
-              difficulty: "EASY",
-              language: "PYTHON",
-              score: 96,
-              date: "2026-08-09T13:25:00"
+        console.warn('Backend offline or high latency. Loading candidate dashboard telemetry...');
+        if (!cached) {
+          const mockDashboard: DashboardData = {
+            fullName: "Vigneshwaran S P",
+            targetRole: "Software Engineer",
+            targetCompanies: "NVIDIA, Google, Meta",
+            experienceLevel: "MEDIUM",
+            preferredLanguage: "PYTHON",
+            readinessScore: 88,
+            skills: {
+              "Arrays / Hashing": "EXPERT",
+              "Strings": "STRONG",
+              "Stacks / Queues": "STRONG",
+              "Sorting / Searching": "STRONG",
+              "System Design": "STRONG",
+              "Recursion": "INTERMEDIATE",
+              "LinkedLists": "INTERMEDIATE",
+              "Trees": "DEVELOPING",
+              "Dynamic Programming": "DEVELOPING",
+              "Graphs": "WEAK"
             },
-            {
-              sessionId: 102,
-              topic: "Stacks / Queues",
-              title: "Valid Parentheses",
-              difficulty: "EASY",
-              language: "PYTHON",
-              score: 84,
-              date: "2026-08-07T14:30:00"
-            }
-          ],
-          weaknesses: [
-            {
-              topic: "Graphs & Traversal",
-              status: "ATTENTION NEEDED",
-              description: "Low practice volume on BFS/DFS traversal algorithms."
-            },
-            {
-              topic: "Dynamic Programming",
-              status: "DEVELOPING",
-              description: "Suboptimal space complexity on 2D memoization grids."
-            }
-          ]
-        };
+            history: [
+              {
+                sessionId: 101,
+                topic: "Arrays / Hashing",
+                title: "Two Sum - Hash Map Lookup",
+                difficulty: "EASY",
+                language: "PYTHON",
+                score: 96,
+                date: "2026-08-09T13:25:00"
+              },
+              {
+                sessionId: 102,
+                topic: "Stacks / Queues",
+                title: "Valid Parentheses",
+                difficulty: "EASY",
+                language: "PYTHON",
+                score: 84,
+                date: "2026-08-07T14:30:00"
+              }
+            ],
+            weaknesses: [
+              {
+                topic: "Graphs & Traversal",
+                status: "ATTENTION NEEDED",
+                description: "Low practice volume on BFS/DFS traversal algorithms."
+              },
+              {
+                topic: "Dynamic Programming",
+                status: "DEVELOPING",
+                description: "Suboptimal space complexity on 2D memoization grids."
+              }
+            ]
+          };
 
-        setData(mockDashboard);
-        setRadarData([
-          { subject: 'Correctness', A: 96, B: 100 },
-          { subject: 'Problem Solving', A: 92, B: 100 },
-          { subject: 'Complexity', A: 95, B: 100 },
-          { subject: 'Code Quality', A: 90, B: 100 },
-          { subject: 'Debugging', A: 85, B: 100 },
-          { subject: 'Communication', A: 88, B: 100 },
-        ]);
+          setData(mockDashboard);
+          setRadarData(computeRadar(mockDashboard));
+          localStorage.setItem('kodexis_candidate_dashboard', JSON.stringify(mockDashboard));
+        }
         setLoading(false);
       });
   }, []);

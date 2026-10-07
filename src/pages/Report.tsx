@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { withFastTimeout } from '../lib/api';
 import { ArrowLeft, Calendar, CheckCircle2, ShieldAlert, GitCommit, ExternalLink, Printer, FileDown, Youtube } from 'lucide-react';
 import RadarChart from '../components/RadarChart';
 import CodeQualityInspector from '../components/CodeQualityInspector';
@@ -51,11 +52,15 @@ const Report: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    // Load Session and Assessment
-    Promise.all([
-      axios.get(`/api/interviews/${id}`),
-      axios.get(`/api/interviews/${id}/assessment`)
-    ])
+    // Load Session and Assessment with fast latency guard
+    withFastTimeout(
+      Promise.all([
+        axios.get(`/api/interviews/${id}`),
+        axios.get(`/api/interviews/${id}/assessment`)
+      ]),
+      2500,
+      'Report assessment load'
+    )
       .then(([sRes, aRes]) => {
         setSession(sRes.data);
         setAssessment(aRes.data);

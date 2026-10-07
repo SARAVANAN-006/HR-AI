@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { withFastTimeout } from '../lib/api';
 import Editor from '@monaco-editor/react';
 import { Brain, Play, Send, Activity, Award, Clock, Code2, Maximize2, Minimize2, FileCode, GitCommit, ChevronLeft, ChevronRight, RotateCcw, Terminal, Lock, Unlock, Sparkles, ShieldAlert, CheckCircle2, X, Palette } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
@@ -891,12 +892,20 @@ const InterviewRoom: React.FC = () => {
     if (!logicInput.trim()) return;
     setLogicValidating(true);
     try {
-      const res = await axios.post(`/api/interviews/${id}/validate-logic`, { explanation: logicInput.trim() });
+      const res = await withFastTimeout(
+        axios.post(`/api/interviews/${id}/validate-logic`, { explanation: logicInput.trim() }),
+        2500,
+        'Logic validation'
+      );
       setLogicFeedback(res.data);
       if (res.data.approved) {
         setSession(prev => prev ? { ...prev, state: 'CODING' } : null);
         try {
-          const msgRes = await axios.get(`/api/interviews/${id}/messages`);
+          const msgRes = await withFastTimeout(
+            axios.get(`/api/interviews/${id}/messages`),
+            1500,
+            'Messages fetch'
+          );
           if (msgRes.data) setMessages(msgRes.data);
         } catch {
           setMessages(prev => [
@@ -957,8 +966,8 @@ const InterviewRoom: React.FC = () => {
   const [timeRemaining, setTimeRemaining] = useState<number>(2700); // 45m default
 
   useEffect(() => {
-    // Fetch Session and Question Details
-    axios.get(`/api/interviews/${id}`)
+    // Fetch Session and Question Details with fast timeout to prevent cold-start latency
+    withFastTimeout(axios.get(`/api/interviews/${id}`), 2500, 'Interview session loading')
       .then((res) => {
         const sData = res.data as Session;
         setSession(sData);
@@ -989,7 +998,7 @@ const InterviewRoom: React.FC = () => {
         }
 
         // Load Chat logs
-        return axios.get(`/api/interviews/${id}/messages`);
+        return withFastTimeout(axios.get(`/api/interviews/${id}/messages`), 1500, 'Chat messages loading');
       })
       .then((res) => {
         if (res && res.data && res.data.length > 0) setMessages(res.data);
@@ -1143,7 +1152,11 @@ if (input.length >= 2) {
     }));
 
     try {
-      const response = await axios.post(`/api/interviews/${id}/message`, { content: userText, code, language });
+      const response = await withFastTimeout(
+        axios.post(`/api/interviews/${id}/message`, { content: userText, code, language }),
+        2500,
+        'AI Mentor message'
+      );
       if (response && response.data && response.data.content) {
         setMessages((prev) => [...prev, response.data]);
         
@@ -1206,7 +1219,11 @@ if (input.length >= 2) {
     setExecutionSummary(null);
 
     try {
-      const response = await axios.post(`/api/interviews/${id}/run`, { code, language });
+      const response = await withFastTimeout(
+        axios.post(`/api/interviews/${id}/run`, { code, language }),
+        3500,
+        'Code run sandbox'
+      );
       const outcome = response.data;
 
       const isTle = outcome.status === 'TIMEOUT';
@@ -1330,7 +1347,11 @@ if (input.length >= 2) {
         metrics: { tabSwitches: tabSwitchCount }
       });
 
-      await axios.post(`/api/interviews/${id}/submit`, { code, language });
+      await withFastTimeout(
+        axios.post(`/api/interviews/${id}/submit`, { code, language }),
+        3000,
+        'Code submit'
+      );
       // Navigate to the report for THIS session (not hardcoded /report/1)
       navigate(`/report/${id}`);
     } catch (error: unknown) {
@@ -1374,11 +1395,15 @@ if (input.length >= 2) {
     setTestResults([]);
 
     try {
-      const response = await axios.post(`/api/interviews/${id}/run`, {
-        code,
-        language,
-        customInput: customInput.trim(),
-      });
+      const response = await withFastTimeout(
+        axios.post(`/api/interviews/${id}/run`, {
+          code,
+          language,
+          customInput: customInput.trim(),
+        }),
+        3500,
+        'Custom input run'
+      );
       const outcome = response.data;
 
       let logText = '';
