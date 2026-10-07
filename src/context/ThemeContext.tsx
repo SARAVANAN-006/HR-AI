@@ -1,70 +1,138 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-export type UiTheme = 'cyber-neon' | 'enterprise-slate' | 'nordic-light' | 'midnight-amoled';
+export type UiTheme =
+  | 'royal-junge'       // Junge (Mythic Classical Serif), 14px Arch, Amber Gold & Amethyst
+  | 'cyber-matrix'     // JetBrains Mono, 0px Sharp Brutalist, Phosphor Emerald
+  | 'synthwave-neon'    // Orbitron / Space Grotesk, 4px Tech Chamfer, Electric Magenta & Cyan
+  | 'obsidian-luxe'     // Plus Jakarta Sans, 10px Precision Bevel, Titanium & Icy Sky Blue
+  | 'nebula-violet'     // Outfit, 22px Ultra-Organic Pill, Aurora Violet & Cosmic Pink
+  | 'midnight-amoled';  // Space Grotesk, 6px True OLED Pitch Black, Pure Cyan Laser
+
 export type UiLayout = 'standard-3panel' | 'dual-split' | 'zen-focus';
 
 export interface ThemeConfig {
   id: UiTheme;
   name: string;
-  category: 'Dark' | 'Light';
+  category: string;
   accentColor: string;
   secondaryAccent: string;
   bgPreview: string;
   cardPreview: string;
-  monacoTheme: 'vs-dark' | 'vs-light' | 'hc-black';
+  monacoTheme: 'vs-dark' | 'hc-black';
   badge: string;
+  typography: string;
+  shape: string;
+  fontFamily: string;
+  borderRadius: string;
   description: string;
 }
 
 export const THEME_PRESETS: Record<UiTheme, ThemeConfig> = {
-  'cyber-neon': {
-    id: 'cyber-neon',
-    name: 'Cyber Neon',
-    category: 'Dark',
-    accentColor: '#22d3ee',
-    secondaryAccent: '#a78bfa',
-    bgPreview: '#09090b',
-    cardPreview: '#121215',
+  'royal-junge': {
+    id: 'royal-junge',
+    name: 'Royal Junge',
+    category: 'Mythic Dark',
+    accentColor: '#fbbf24',
+    secondaryAccent: '#c084fc',
+    bgPreview: '#0a080c',
+    cardPreview: '#15101a',
     monacoTheme: 'vs-dark',
-    badge: 'KODEXIS SIGNATURE',
-    description: 'Deep obsidian cockpit with electric cyan glow & synthwave violet accents'
+    badge: 'CLASSICAL JUNGE',
+    typography: 'Junge (Mythic Classical Serif)',
+    shape: '14px Soft Aristocratic Arch & Gold Borders',
+    fontFamily: "'Junge', serif",
+    borderRadius: '14px',
+    description: 'Mythic velvet obsidian with authentic Junge typography, warm amber gold accents and literary grace'
   },
-  'enterprise-slate': {
-    id: 'enterprise-slate',
-    name: 'Enterprise Slate',
-    category: 'Dark',
+  'cyber-matrix': {
+    id: 'cyber-matrix',
+    name: 'Cyber Matrix',
+    category: 'Brutalist Hacker',
+    accentColor: '#10b981',
+    secondaryAccent: '#22d3ee',
+    bgPreview: '#030704',
+    cardPreview: '#07160a',
+    monacoTheme: 'hc-black',
+    badge: 'BRUTALIST TERMINAL',
+    typography: 'JetBrains Mono (Hacker Monospace)',
+    shape: '0px Sharp Brutalist / Zero Radius Squared',
+    fontFamily: "'JetBrains Mono', monospace",
+    borderRadius: '0px',
+    description: 'Hard 0px brutalist edges, pure monospace typography, glowing phosphor green CRT scanlines'
+  },
+  'synthwave-neon': {
+    id: 'synthwave-neon',
+    name: 'Synthwave Neon',
+    category: 'Retro Cyberpunk',
+    accentColor: '#ec4899',
+    secondaryAccent: '#06b6d4',
+    bgPreview: '#09040e',
+    cardPreview: '#160a24',
+    monacoTheme: 'vs-dark',
+    badge: 'ELECTRIC 80S ARCADE',
+    typography: 'Orbitron & Space Grotesk (Sci-Fi Futuristic)',
+    shape: '4px Angular Tech Chamfer & Neon Glow',
+    fontFamily: "'Space Grotesk', 'Orbitron', sans-serif",
+    borderRadius: '4px',
+    description: 'Futuristic sci-fi display typography, 4px tech chamfer edges, and dual magenta-cyan laser glow'
+  },
+  'obsidian-luxe': {
+    id: 'obsidian-luxe',
+    name: 'Obsidian Luxe',
+    category: 'Executive Dark',
     accentColor: '#38bdf8',
     secondaryAccent: '#818cf8',
-    bgPreview: '#0b0f17',
-    cardPreview: '#111827',
+    bgPreview: '#08090b',
+    cardPreview: '#10141c',
     monacoTheme: 'vs-dark',
-    badge: 'LINEAR / VERCEL PRO',
-    description: 'Matte graphite navy with crisp steel edges and precision corporate typography'
+    badge: 'EXECUTIVE LINEAR',
+    typography: 'Plus Jakarta Sans (Modern Neo-Grotesque)',
+    shape: '10px Refined Precision Bevels & Matte Glass',
+    fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif",
+    borderRadius: '10px',
+    description: 'Polished graphite titanium with crisp Plus Jakarta Sans typography and refined 10px subtle bevels'
   },
-  'nordic-light': {
-    id: 'nordic-light',
-    name: 'Nordic Studio',
-    category: 'Light',
-    accentColor: '#0284c7',
-    secondaryAccent: '#6366f1',
-    bgPreview: '#f8fafc',
-    cardPreview: '#ffffff',
-    monacoTheme: 'vs-light',
-    badge: 'HIGH CONTRAST LIGHT',
-    description: 'Snow-white daylight canvas with razor-sharp slate borders and deep sapphire'
+  'nebula-violet': {
+    id: 'nebula-violet',
+    name: 'Nebula Violet',
+    category: 'Cosmic Glass',
+    accentColor: '#a78bfa',
+    secondaryAccent: '#f472b6',
+    bgPreview: '#070611',
+    cardPreview: '#110d29',
+    monacoTheme: 'vs-dark',
+    badge: 'ORGANIC LIQUID GLASS',
+    typography: 'Outfit (Geometric Display Neo-Modern)',
+    shape: '22px Ultra-Organic Curved & Full Pill Floating Controls',
+    fontFamily: "'Outfit', sans-serif",
+    borderRadius: '22px',
+    description: 'Ultra-organic 22px fluid curves, full pill controls, Outfit geometric display & celestial violet glow'
   },
   'midnight-amoled': {
     id: 'midnight-amoled',
     name: 'Midnight AMOLED',
-    category: 'Dark',
-    accentColor: '#34d399',
-    secondaryAccent: '#22d3ee',
+    category: 'True OLED Black',
+    accentColor: '#00f0ff',
+    secondaryAccent: '#34d399',
     bgPreview: '#000000',
     cardPreview: '#080808',
     monacoTheme: 'hc-black',
-    badge: 'TRUE BLACK OLED',
-    description: 'Pitch-black AMOLED with emerald telemetry for zero distraction and zero glare'
+    badge: 'TRUE PITCH OLED',
+    typography: 'Space Grotesk (High-Density Technical Sans)',
+    shape: '6px Hairline Razor Precision / Zero Glow Haze',
+    fontFamily: "'Space Grotesk', sans-serif",
+    borderRadius: '6px',
+    description: '100% pitch-black OLED canvas with Space Grotesk technical typography and 6px razor hairline borders'
   }
+};
+
+export const normalizeTheme = (raw: string | null): UiTheme => {
+  if (!raw) return 'royal-junge';
+  if (raw in THEME_PRESETS) return raw as UiTheme;
+  if (raw === 'cyber-neon') return 'synthwave-neon';
+  if (raw === 'enterprise-slate') return 'obsidian-luxe';
+  if (raw === 'nordic-light') return 'royal-junge';
+  return 'royal-junge';
 };
 
 export interface ThemeContextType {
@@ -85,8 +153,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<UiTheme>(() => {
     const saved = localStorage.getItem('kodexis_ui_theme');
-    if (saved && (saved in THEME_PRESETS)) return saved as UiTheme;
-    return 'cyber-neon';
+    return normalizeTheme(saved);
   });
 
   const [layout, setLayoutState] = useState<UiLayout>(() => {
@@ -119,7 +186,14 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const toggleTheme = () => {
-    const themeKeys: UiTheme[] = ['cyber-neon', 'enterprise-slate', 'nordic-light', 'midnight-amoled'];
+    const themeKeys: UiTheme[] = [
+      'royal-junge',
+      'cyber-matrix',
+      'synthwave-neon',
+      'obsidian-luxe',
+      'nebula-violet',
+      'midnight-amoled'
+    ];
     const nextIdx = (themeKeys.indexOf(theme) + 1) % themeKeys.length;
     setTheme(themeKeys[nextIdx]);
   };
@@ -128,7 +202,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  const themeConfig = THEME_PRESETS[theme];
+  const themeConfig = THEME_PRESETS[theme] || THEME_PRESETS['royal-junge'];
 
   return (
     <ThemeContext.Provider

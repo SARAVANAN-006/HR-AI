@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { withFastTimeout } from '../lib/api';
-import { ArrowLeft, Calendar, CheckCircle2, ShieldAlert, GitCommit, ExternalLink, Printer, FileDown, Youtube } from 'lucide-react';
+import { ArrowLeft, Calendar, CheckCircle2, ShieldAlert, GitCommit, ExternalLink, Printer, FileDown, Youtube, Palette } from 'lucide-react';
 import RadarChart from '../components/RadarChart';
 import CodeQualityInspector from '../components/CodeQualityInspector';
 import { getStoredAssessment, getStoredSession, calculateLegitimateAssessment, saveLegitimateAssessment } from '../lib/evaluationEngine';
+import { useTheme } from '../context/ThemeContext';
+import { UiSwitcherModal } from '../components/UiSwitcherModal';
 
 interface Question {
   title: string;
@@ -51,6 +53,7 @@ const Report: React.FC = () => {
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [telemetry, setTelemetry] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const { themeConfig, isSwitcherOpen, setIsSwitcherOpen } = useTheme();
 
   useEffect(() => {
     // 1. Instant zero-latency hydration from static localStorage storage
@@ -308,6 +311,16 @@ ${session.lastSubmittedCode || '// No code submitted'}
 
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono text-zinc-500 mr-2 hidden md:inline">INTERVIEW AUTOPSY SUMMARY</span>
+
+          <button
+            onClick={() => setIsSwitcherOpen(true)}
+            className="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-border hover:border-brand-cyan/50 text-brand-cyan text-xs font-mono font-bold transition flex items-center gap-1.5 shadow-[0_0_10px_rgba(34,211,238,0.1)]"
+            title="Switch Visual Theme, Typography & Shape"
+          >
+            <Palette size={13} className="text-brand-cyan" />
+            <span className="hidden sm:inline">Theme:</span>
+            <span>{themeConfig.name}</span>
+          </button>
 
           <button
             onClick={handleDownloadPdf}
@@ -577,6 +590,11 @@ ${session.lastSubmittedCode || '// No code submitted'}
 
       </div>
 
+      <UiSwitcherModal
+        isOpen={isSwitcherOpen}
+        onClose={() => setIsSwitcherOpen(false)}
+        showLayoutOptions={false}
+      />
     </div>
   );
 };
