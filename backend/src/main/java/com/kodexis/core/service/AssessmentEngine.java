@@ -146,7 +146,20 @@ public class AssessmentEngine {
                 + (assessment.getDebuggingScore() * 0.10)
                 + (assessment.getCommunicationScore() * 0.05);
         
-        assessment.setOverallScore((int) Math.round(rawOverall));
+        // Anti-cheat Proctoring: count tab switch infractions from telemetry log
+        int tabSwitchCount = 0;
+        if (session.getTelemetryLog() != null) {
+            String logLower = session.getTelemetryLog().toLowerCase();
+            int idx = 0;
+            while ((idx = logLower.indexOf("tab switch", idx)) != -1) {
+                tabSwitchCount++;
+                idx += 10;
+            }
+        }
+        int proctoringPenalty = Math.min(25, tabSwitchCount * 5);
+        int finalScore = Math.max(0, Math.min(100, (int) Math.round(rawOverall) - proctoringPenalty));
+        
+        assessment.setOverallScore(finalScore);
 
         // Save Assessment
         Assessment savedAssessment = assessmentRepository.save(assessment);
