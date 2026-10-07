@@ -60,12 +60,11 @@ export const KnowledgeBasePage: React.FC = () => {
   const [isIngestModalOpen, setIsIngestModalOpen] = useState(false);
   const [ingestTitle, setIngestTitle] = useState('');
   const [ingestDocName, setIngestDocName] = useState('');
-  const [ingestType, setIngestType] = useState<'VIDEO' | 'SLIDE' | 'TEXTBOOK'>('VIDEO');
+  const [ingestType, setIngestType] = useState<'SLIDE' | 'TEXTBOOK'>('SLIDE');
   const [ingestTopicName, setIngestTopicName] = useState('');
   const [ingestSubtopic, setIngestSubtopic] = useState('');
   const [ingestSnippet, setIngestSnippet] = useState('');
   const [ingestPageOrSlide, setIngestPageOrSlide] = useState('1');
-  const [ingestTimestamp, setIngestTimestamp] = useState('120');
   const [ingestHasFigure, setIngestHasFigure] = useState(false);
   const [ingestFigureDesc, setIngestFigureDesc] = useState('');
   const [ingestVisualDataUrl, setIngestVisualDataUrl] = useState('');
@@ -172,7 +171,7 @@ export const KnowledgeBasePage: React.FC = () => {
       };
       reader.readAsDataURL(file);
     } else {
-      // Fallback for PDF or video files: prompt excerpt
+      // Fallback for document or PDF files: prompt excerpt
       setIngestSnippet(`Extracted content from ${file.name}. Review and enrich key theoretical concepts.`);
       autoExtractConceptsFromText(file.name, baseName);
       setIsProcessingFile(false);
@@ -193,9 +192,9 @@ export const KnowledgeBasePage: React.FC = () => {
     e.preventDefault();
     try {
       const topicId = 'topic-' + (ingestTopicName || 'general').toLowerCase().replace(/[^a-z0-9]/g, '-');
-      const citationRef = ingestType === 'VIDEO'
-        ? `[${ingestDocName} @ ${Math.floor(parseInt(ingestTimestamp, 10) / 60)}:${String(parseInt(ingestTimestamp, 10) % 60).padStart(2, '0')}]`
-        : (ingestType === 'SLIDE' ? `[${ingestDocName} - Slide ${ingestPageOrSlide}]` : `[${ingestDocName} - Page ${ingestPageOrSlide}]`);
+      const citationRef = ingestType === 'SLIDE'
+        ? `[${ingestDocName} - Slide ${ingestPageOrSlide}]`
+        : `[${ingestDocName} - Page ${ingestPageOrSlide}]`;
 
       const newUnit: Partial<MultimodalUnit> = {
         title: ingestTitle,
@@ -211,15 +210,12 @@ export const KnowledgeBasePage: React.FC = () => {
         figureDescription: ingestHasFigure ? ingestFigureDesc : undefined,
         diagramType: ingestHasFigure ? 'ARCHITECTURE_DIAGRAM' : undefined,
         visualDataUrl: ingestVisualDataUrl || undefined,
-        videoDuration: ingestType === 'VIDEO' ? `${Math.floor(parseInt(ingestTimestamp, 10) / 60)}:${String(parseInt(ingestTimestamp, 10) % 60).padStart(2, '0')}` : undefined,
       };
 
       if (ingestType === 'TEXTBOOK') {
         newUnit.pageNumber = parseInt(ingestPageOrSlide, 10) || 1;
       } else if (ingestType === 'SLIDE') {
         newUnit.slideNumber = parseInt(ingestPageOrSlide, 10) || 1;
-      } else if (ingestType === 'VIDEO') {
-        newUnit.videoTimestampSeconds = parseInt(ingestTimestamp, 10) || 0;
       }
 
       await axios.post(`${API_BASE}/knowledge/upload`, newUnit);
@@ -259,7 +255,7 @@ export const KnowledgeBasePage: React.FC = () => {
             Curriculum Ingestion & Multimodal Reader
           </h1>
           <p className="text-xs md:text-sm text-zinc-400 mt-1 max-w-2xl">
-            Zero-preprocessing ingestion of lecture videos, textbooks, and slide decks. Every unit is strictly linked to origin timestamps, slide numbers, and textbook pages with extracted figures.
+            Zero-preprocessing ingestion of textbooks, lecture notes, and slide decks. Every unit is strictly linked to origin slide numbers and textbook pages with extracted figures.
           </p>
         </div>
 
@@ -333,7 +329,7 @@ export const KnowledgeBasePage: React.FC = () => {
 
         {/* Source Type Filter */}
         <div className="md:col-span-3 flex space-x-1.5 justify-end">
-          {(['ALL', 'VIDEO', 'SLIDE', 'TEXTBOOK'] as const).map(type => (
+          {(units.some(u => u.sourceType === 'VIDEO') ? ['ALL', 'SLIDE', 'TEXTBOOK', 'VIDEO'] : ['ALL', 'SLIDE', 'TEXTBOOK']).map(type => (
             <button
               key={type}
               onClick={() => setSelectedType(type)}
@@ -361,19 +357,11 @@ export const KnowledgeBasePage: React.FC = () => {
           <div>
             <h2 className="text-xl font-bold font-mono text-zinc-100">Knowledge Base is Clean</h2>
             <p className="text-xs text-zinc-400 max-w-md mx-auto mt-1.5 leading-relaxed">
-              All dummy data has been removed. Upload your own lecture videos, slide decks, or textbook chapters to build your personal course knowledge base.
+              All dummy data has been removed. Upload your own slide decks, lecture notes, or textbook chapters to build your personal course knowledge base.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-lg mx-auto pt-2 text-left">
-            <div
-              onClick={() => { setIngestType('VIDEO'); setIsIngestModalOpen(true); }}
-              className="p-3.5 rounded-xl border border-zinc-800 bg-zinc-900/60 hover:border-red-500/40 cursor-pointer transition"
-            >
-              <Video size={20} className="text-red-400 mb-2" />
-              <div className="text-xs font-bold text-zinc-200">Lecture Video</div>
-              <div className="text-[10px] text-zinc-500">With timestamp seeking</div>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md mx-auto pt-2 text-left">
             <div
               onClick={() => { setIngestType('SLIDE'); setIsIngestModalOpen(true); }}
               className="p-3.5 rounded-xl border border-zinc-800 bg-zinc-900/60 hover:border-amber-500/40 cursor-pointer transition"
@@ -638,34 +626,22 @@ export const KnowledgeBasePage: React.FC = () => {
                       onChange={(e) => setIngestType(e.target.value as any)}
                       className="w-full p-2.5 rounded bg-background border border-border text-zinc-200"
                     >
-                      <option value="VIDEO">Lecture Video (.mp4 / stream)</option>
                       <option value="SLIDE">Slide Deck (.pptx / .pdf)</option>
-                      <option value="TEXTBOOK">Textbook Chapter (.pdf)</option>
+                      <option value="TEXTBOOK">Textbook Chapter / Notes (.pdf / .txt)</option>
                     </select>
                   </div>
                   <div>
                     <label className="text-zinc-400 block mb-1">
-                      {ingestType === 'VIDEO' ? 'Timestamp (Seconds)' : (ingestType === 'SLIDE' ? 'Slide Number' : 'Page Number')}
+                      {ingestType === 'SLIDE' ? 'Slide Number' : 'Page Number'}
                     </label>
-                    {ingestType === 'VIDEO' ? (
-                      <input
-                        type="number"
-                        value={ingestTimestamp}
-                        onChange={(e) => setIngestTimestamp(e.target.value)}
-                        placeholder="e.g. 240 for 04:00"
-                        className="w-full p-2.5 rounded bg-background border border-border text-zinc-200"
-                        required
-                      />
-                    ) : (
-                      <input
-                        type="number"
-                        value={ingestPageOrSlide}
-                        onChange={(e) => setIngestPageOrSlide(e.target.value)}
-                        placeholder="e.g. 42"
-                        className="w-full p-2.5 rounded bg-background border border-border text-zinc-200"
-                        required
-                      />
-                    )}
+                    <input
+                      type="number"
+                      value={ingestPageOrSlide}
+                      onChange={(e) => setIngestPageOrSlide(e.target.value)}
+                      placeholder={ingestType === 'SLIDE' ? "e.g. 14" : "e.g. 42"}
+                      className="w-full p-2.5 rounded bg-background border border-border text-zinc-200"
+                      required
+                    />
                   </div>
                 </div>
 
@@ -724,7 +700,7 @@ export const KnowledgeBasePage: React.FC = () => {
                     rows={3}
                     value={ingestSnippet}
                     onChange={(e) => setIngestSnippet(e.target.value)}
-                    placeholder="Paste textbook paragraph or video transcript excerpt here..."
+                    placeholder="Paste textbook paragraph, lecture notes, or slide excerpt here..."
                     className="w-full p-2.5 rounded bg-background border border-border text-zinc-200 font-sans"
                     required
                   />

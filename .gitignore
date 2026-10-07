@@ -51,3 +51,4 @@ backend/data/
 Thumbs.db
 Desktop.ini
 .vercel
+.env*
