@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { withFastTimeout } from '../lib/api';
-import { Play, Settings, BrainCircuit, Lock, Unlock, Sparkles, Code2 } from 'lucide-react';
+import { Play, Settings, BrainCircuit, Lock, Unlock, Sparkles, Code2, Radio, ArrowUpRight } from 'lucide-react';
 
 const StartInterview: React.FC = () => {
   const navigate = useNavigate();
@@ -53,6 +53,39 @@ const StartInterview: React.FC = () => {
       <div className="border-b border-border pb-6">
         <h2 className="text-2xl font-bold tracking-tight text-zinc-100">Start Interview Session</h2>
         <p className="text-sm text-zinc-400 mt-1">Configure parameters for entering the KODEXIS Technical Interview Sandbox.</p>
+      </div>
+
+      {/* STARK FEATURE HIGHLIGHT BANNER */}
+      <div className="p-5 rounded-2xl border border-cyan-500/40 bg-gradient-to-r from-cyan-950/30 via-background to-purple-950/20 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-[0_0_20px_rgba(6,182,212,0.1)]">
+        <div className="flex items-center space-x-3.5">
+          <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/40 text-cyan-400 shrink-0">
+            <Radio size={22} className="animate-pulse" />
+          </div>
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-widest">
+                RECOMMENDED • REAL INTERVIEW SIMULATION
+              </span>
+              <span className="px-2 py-0.2 rounded-full text-[9px] font-mono font-bold bg-cyan-500/20 border border-cyan-500/30 text-cyan-300">
+                LIVE VIDEO & AUDIO TTS
+              </span>
+            </div>
+            <h3 className="text-sm font-bold font-mono text-zinc-100 mt-0.5">
+              Stark AI Tech Lead Interview (10 CS Categories)
+            </h3>
+            <p className="text-xs text-zinc-400">
+              Want a real-time conversational interview with camera on, voice recognition, and Stark TTS? Practice across DSA, OS, CN, AI, ML, and more.
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={() => navigate('/stark')}
+          className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-mono text-xs font-bold transition flex items-center justify-center gap-2 shrink-0 shadow-md"
+        >
+          <span>Launch Stark</span>
+          <ArrowUpRight size={13} />
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">

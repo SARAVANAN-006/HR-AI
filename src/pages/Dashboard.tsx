@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { withFastTimeout } from '../lib/api';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
-import { Activity, ShieldAlert, ArrowUpRight, Plus, UserCheck, Flame } from 'lucide-react';
+import { Activity, ShieldAlert, ArrowUpRight, Plus, UserCheck, Flame, Radio, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getStreakData, type StreakData, STREAK_BADGES } from '../lib/streakService';
 import { StreakModal } from '../components/StreakModal';
@@ -213,13 +213,22 @@ const Dashboard: React.FC = () => {
           <h2 className="text-xl font-bold font-mono text-zinc-100 uppercase">Technical Performance Console</h2>
           <p className="text-xs text-zinc-400">Telemetry logs for candidate <span className="text-brand-cyan font-semibold">{data.fullName}</span> (Target: {data.targetRole})</p>
         </div>
-        <button
-          onClick={() => navigate('/start-interview')}
-          className="flex items-center justify-center space-x-2 px-4 py-2 bg-brand-cyan text-background font-mono font-bold text-xs rounded hover:bg-brand-cyan/90 transition"
-        >
-          <Plus size={14} />
-          <span>New AI Interview Session</span>
-        </button>
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => navigate('/stark')}
+            className="flex items-center justify-center space-x-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-mono font-bold text-xs rounded-lg shadow-[0_0_15px_rgba(6,182,212,0.35)] transition"
+          >
+            <Radio size={14} className="animate-pulse" />
+            <span>Launch Stark Interview (Live Video & Mic)</span>
+          </button>
+          <button
+            onClick={() => navigate('/start-interview')}
+            className="flex items-center justify-center space-x-1.5 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-mono font-bold text-xs rounded-lg border border-border transition"
+          >
+            <Plus size={14} />
+            <span>Standard Lab</span>
+          </button>
+        </div>
       </div>
 
       {/* DAILY PRACTICE STREAK TELEMETRY HERO BANNER */}
@@ -282,6 +291,41 @@ const Dashboard: React.FC = () => {
             <ArrowUpRight size={13} />
           </button>
         </div>
+      </div>
+
+      {/* STARK REAL TECHNICAL INTERVIEW BANNER */}
+      <div className="glass-panel rounded-2xl p-6 border border-cyan-500/30 bg-gradient-to-r from-cyan-950/30 via-background to-purple-950/20 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden shadow-[0_0_25px_rgba(6,182,212,0.08)]">
+        <div className="flex items-center space-x-5">
+          <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/40 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(6,182,212,0.3)]">
+            <Radio size={28} className="text-cyan-400 animate-pulse" />
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center space-x-2">
+              <span className="text-xs font-mono font-bold text-cyan-400 uppercase tracking-widest flex items-center gap-1.5">
+                <Sparkles size={13} />
+                <span>REAL INTERVIEW EXPERIENCE • STARK AI</span>
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-cyan-500/20 border border-cyan-500/40 text-cyan-300">
+                CAMERA & MIC ON
+              </span>
+            </div>
+            <h3 className="text-lg font-bold font-mono text-zinc-100">
+              Stark Live Tech Lead Interview (10 CS Categories)
+            </h3>
+            <p className="text-xs text-zinc-400 max-w-xl">
+              Simulate a real-world technical interview with live video, audio VU meters, and Stark voice TTS. Stark starts with your introduction and navigates deep into DSA, OS, CN, AI, ML, DBMS, System Design, and more.
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={() => navigate('/stark')}
+          className="w-full md:w-auto px-5 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-mono text-xs font-bold shadow-[0_0_20px_rgba(6,182,212,0.4)] transition flex items-center justify-center gap-2 shrink-0"
+        >
+          <Radio size={14} className="animate-pulse" />
+          <span>Launch Stark Interview</span>
+          <ArrowUpRight size={14} />
+        </button>
       </div>
 
       {/* TOP READOUTS: READINESS SCORE & RADAR */}

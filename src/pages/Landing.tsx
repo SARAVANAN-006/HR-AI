@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Terminal, Brain, ShieldAlert, ArrowRight, Play, Sparkles } from 'lucide-react';
+import { Terminal, Brain, ShieldAlert, ArrowRight, Play, Sparkles, Radio } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { VoicePoweredOrb } from '../components/ui/voice-powered-orb';
 
@@ -181,6 +181,10 @@ const Landing: React.FC = () => {
 
           {/* Leveled Up Feature Highlights */}
           <div className="pt-3 flex flex-wrap justify-center items-center gap-2 sm:gap-4 text-xs text-zinc-400">
+            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-950/70 border border-cyan-500/50 text-cyan-300 font-medium shadow-[0_0_12px_rgba(6,182,212,0.2)]">
+              <Radio size={12} className="text-cyan-400 animate-pulse" />
+              Stark Live Video & Mic Interview
+            </span>
             <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-900/70 border border-zinc-800">
               <span className="w-1.5 h-1.5 rounded-full bg-brand-cyan"></span>
               2-Phase Gated Logic

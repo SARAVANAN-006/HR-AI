@@ -22,6 +22,7 @@ import { LearnerModelPage } from './pages/LearnerModelPage';
 import { RevisionStudioPage } from './pages/RevisionStudioPage';
 import { StudyCalendarPage } from './pages/StudyCalendarPage';
 import { SystemEvaluationPage } from './pages/SystemEvaluationPage';
+import { StarkInterviewPage } from './pages/StarkInterviewPage';
 import {
   LayoutDashboard,
   Play,
@@ -36,7 +37,8 @@ import {
   RotateCw,
   Calendar as CalendarIcon,
   Target,
-  Palette
+  Palette,
+  Radio
 } from 'lucide-react';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode; requireAdmin?: boolean }> = ({ children, requireAdmin }) => {
@@ -82,6 +84,7 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
     ? [{ name: 'Admin Console', path: '/admin', icon: ShieldAlert }]
     : [
         { name: 'Dashboard Console', path: '/dashboard', icon: LayoutDashboard },
+        { name: 'Stark AI Interview', path: '/stark', icon: Radio },
         { name: 'Multimodal Knowledge', path: '/knowledge', icon: BookOpen },
         { name: 'Socratic AI Tutor', path: '/tutor', icon: MessageSquare },
         { name: 'Adaptive Assessment', path: '/assessment', icon: GraduationCap },
@@ -331,6 +334,16 @@ const App: React.FC = () => {
             <ProtectedRoute>
               <DashboardLayout>
                 <SystemEvaluationPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/stark"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <StarkInterviewPage />
               </DashboardLayout>
             </ProtectedRoute>
           }
