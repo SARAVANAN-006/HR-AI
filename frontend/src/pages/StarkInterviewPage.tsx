@@ -11,7 +11,6 @@ import {
 } from '../lib/starkInterviewService';
 import { StarkSplineView } from '../components/stark/StarkSplineView';
 import { StarkDiagnostics } from '../components/stark/StarkDiagnostics';
-import { StarkVoicePreview } from '../components/stark/StarkVoicePreview';
 import { recordStreakActivity } from '../lib/streakService';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -98,6 +97,7 @@ export const StarkInterviewPage: React.FC = () => {
   const recognitionRef = useRef<any>(null);
   const isCandidateListeningRef = useRef<boolean>(false);
   const shouldListenRef = useRef<boolean>(false);
+  const interimTranscriptRef = useRef<string>('');
   const countdownIntervalRef = useRef<any>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const animFrameRef = useRef<number | null>(null);
@@ -467,10 +467,15 @@ export const StarkInterviewPage: React.FC = () => {
           }
         }
 
-        if (final) {
-          setSpeechTranscript((prev) => (prev ? `${prev} ${final.trim()}` : final.trim()));
+        if (final.trim()) {
+          const cleanFinal = final.trim();
+          setSpeechTranscript((prev) => (prev ? `${prev} ${cleanFinal}` : cleanFinal));
+          interimTranscriptRef.current = '';
+          setInterimTranscript('');
+        } else if (interim) {
+          interimTranscriptRef.current = interim;
+          setInterimTranscript(interim);
         }
-        setInterimTranscript(interim);
       };
 
       recognition.onerror = (event: any) => {
@@ -484,10 +489,18 @@ export const StarkInterviewPage: React.FC = () => {
 
       recognition.onend = () => {
         isCandidateListeningRef.current = false;
+        // Commit any pending interim words to final transcript so no words are dropped
+        if (interimTranscriptRef.current && interimTranscriptRef.current.trim()) {
+          const pending = interimTranscriptRef.current.trim();
+          setSpeechTranscript((prev) => (prev ? `${prev} ${pending}` : pending));
+          interimTranscriptRef.current = '';
+          setInterimTranscript('');
+        }
+
         // Auto-restart if candidate should still be listening (bypasses Chrome silence timeout)
-        if (shouldListenRef.current) {
+        if (shouldListenRef.current && stage === 'interview') {
           setTimeout(() => {
-            if (shouldListenRef.current) {
+            if (shouldListenRef.current && stage === 'interview') {
               try {
                 recognition.start();
                 isCandidateListeningRef.current = true;
@@ -496,7 +509,7 @@ export const StarkInterviewPage: React.FC = () => {
                 console.warn('STT auto-restart tick error:', err);
               }
             }
-          }, 150);
+          }, 120);
         } else {
           setIsCandidateListening(false);
         }
@@ -557,6 +570,11 @@ export const StarkInterviewPage: React.FC = () => {
     setSpeechTranscript('');
     setInterimTranscript('');
     setRemainingSeconds(totalSecs);
+
+    // Activate candidate speech-to-text immediately
+    setTimeout(() => {
+      startCandidateSpeechRecognition();
+    }, 300);
 
     // Speak Question 1 (Introduction)
     setTimeout(() => {
@@ -685,6 +703,7 @@ export const StarkInterviewPage: React.FC = () => {
 
       setTimeout(() => {
         speakStarkQuestion(nextQ.questionText);
+        startCandidateSpeechRecognition();
       }, 500);
     } else {
       // Time nearly exhausted: conclude and show autopsy report
@@ -1228,58 +1247,49 @@ export const StarkInterviewPage: React.FC = () => {
               </div>
             </div>
 
-            {/* DEDICATED LIVE VOICE PREVIEW & AUDIO SPECTRUM HUD */}
-            <StarkVoicePreview
-              audioLevel={micAudioLevel}
-              isListening={isCandidateListening}
-              isMicMuted={isMicMuted}
-              interimTranscript={interimTranscript}
-              speechTranscript={speechTranscript}
-              onToggleListening={() => {
-                if (isCandidateListening) {
-                  stopCandidateSpeechRecognition();
-                } else {
-                  startCandidateSpeechRecognition();
-                }
-              }}
-              onToggleMic={toggleMic}
-              onClearTranscript={() => {
-                setSpeechTranscript('');
-                setInterimTranscript('');
-              }}
-            />
-
             {/* Speech Recognition Box */}
             <div className="border border-border bg-zinc-950/90 rounded-2xl p-5 flex-1 flex flex-col justify-between space-y-3 shadow-xl">
               <div>
                 <div className="flex items-center justify-between border-b border-zinc-800 pb-2 mb-3">
                   <div className="flex items-center space-x-2">
-                    <Mic size={15} className={isCandidateListening ? 'text-amber-400 animate-pulse' : 'text-zinc-500'} />
-                    <h4 className="text-xs font-mono font-bold text-zinc-200 uppercase">
-                      Live Speech Input Stream
+                    <Mic size={16} className={isCandidateListening ? 'text-emerald-400 animate-pulse' : 'text-zinc-500'} />
+                    <h4 className="text-xs font-mono font-bold text-zinc-200 uppercase tracking-wider">
+                      Speech-To-Text Dictation
                     </h4>
                   </div>
 
-                  <span className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full border ${
+                  <span className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full border transition ${
                     isCandidateListening
-                      ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
+                      ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
                       : 'bg-zinc-800 border-zinc-700 text-zinc-400'
                   }`}>
-                    {isCandidateListening ? 'LISTENING (SPEAK NOW)' : 'MIC STANDBY'}
+                    {isCandidateListening ? '● CONVERTING SPEECH TO TEXT' : 'MIC PAUSED'}
                   </span>
                 </div>
 
                 <textarea
                   value={speechTranscript + (interimTranscript ? ` ${interimTranscript}` : '')}
-                  onChange={(e) => setSpeechTranscript(e.target.value)}
-                  placeholder="Your spoken words will appear here in real-time. You can also edit or append code snippets and technical notes..."
-                  rows={5}
+                  onChange={(e) => {
+                    setSpeechTranscript(e.target.value);
+                    setInterimTranscript('');
+                  }}
+                  placeholder="Speak into your microphone — your speech converts directly to text here in real-time. You can also edit, format, or type technical solutions..."
+                  rows={7}
                   className="w-full p-3.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-200 focus:outline-none focus:border-cyan-500 transition resize-none leading-relaxed"
                 />
 
-                <p className="text-[10px] font-mono text-zinc-500 mt-1">
-                  Tip: Speak naturally. Polish technical terms before submitting to Stark.
-                </p>
+                <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 mt-1.5">
+                  <span>
+                    {isCandidateListening
+                      ? 'Microphone active • Words are transcribed automatically'
+                      : 'Dictation paused • Click Start Dictation below'}
+                  </span>
+                  <span>
+                    {speechTranscript
+                      ? `${speechTranscript.split(/\s+/).filter(Boolean).length} words`
+                      : '0 words'}
+                  </span>
+                </div>
               </div>
 
               {/* Action Buttons */}
@@ -1296,12 +1306,12 @@ export const StarkInterviewPage: React.FC = () => {
                     }}
                     className={`py-2 px-3 rounded-xl border text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition ${
                       isCandidateListening
-                        ? 'bg-amber-500/20 border-amber-500 text-amber-300'
+                        ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
                         : 'bg-zinc-800 hover:bg-zinc-700 border-zinc-700 text-zinc-200'
                     }`}
                   >
                     {isCandidateListening ? <MicOff size={14} /> : <Mic size={14} />}
-                    <span>{isCandidateListening ? 'Pause Listening' : 'Start Listening'}</span>
+                    <span>{isCandidateListening ? 'Pause Dictation' : 'Start Dictation'}</span>
                   </button>
 
                   <button
