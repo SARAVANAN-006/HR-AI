@@ -11,6 +11,7 @@ import {
 } from '../lib/starkInterviewService';
 import { StarkSplineView } from '../components/stark/StarkSplineView';
 import { StarkDiagnostics } from '../components/stark/StarkDiagnostics';
+import { StarkVoicePreview } from '../components/stark/StarkVoicePreview';
 import { recordStreakActivity } from '../lib/streakService';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -95,6 +96,8 @@ export const StarkInterviewPage: React.FC = () => {
 
   // Refs
   const recognitionRef = useRef<any>(null);
+  const isCandidateListeningRef = useRef<boolean>(false);
+  const shouldListenRef = useRef<boolean>(false);
   const countdownIntervalRef = useRef<any>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const animFrameRef = useRef<number | null>(null);
@@ -210,6 +213,37 @@ export const StarkInterviewPage: React.FC = () => {
     initializeInterview();
   };
 
+  // Fallback: Ensure activeMediaStream is initialized if candidate enters interview directly
+  useEffect(() => {
+    if (stage !== 'interview') return;
+
+    if (!activeMediaStream || !activeMediaStream.active || activeMediaStream.getTracks().length === 0) {
+      navigator.mediaDevices
+        ?.getUserMedia({
+          video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        })
+        .then((stream) => {
+          setActiveMediaStream(stream);
+        })
+        .catch((err) => {
+          console.warn('Video+audio stream error, attempting audio-only fallback:', err);
+          navigator.mediaDevices
+            ?.getUserMedia({ audio: true })
+            .then((audioStream) => {
+              setActiveMediaStream(audioStream);
+            })
+            .catch((audioErr) => {
+              console.warn('Microphone stream access error:', audioErr);
+            });
+        });
+    }
+  }, [stage, activeMediaStream]);
+
   // Attach video stream to candidate video element
   useEffect(() => {
     if (stage === 'interview' && videoRef.current && activeMediaStream) {
@@ -217,29 +251,61 @@ export const StarkInterviewPage: React.FC = () => {
     }
   }, [stage, activeMediaStream, isCameraOn]);
 
-  // Audio VU Meter for candidate microphone
+  // Audio VU Meter & Real-time Spectrum Analyzer for candidate microphone
   useEffect(() => {
     if (stage !== 'interview' || !activeMediaStream || isMicMuted) return;
 
+    let localAudioCtx: AudioContext | null = null;
+    let isCancelled = false;
+
     try {
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      const audioCtx = new AudioContextClass();
-      audioContextRef.current = audioCtx;
+      localAudioCtx = new AudioContextClass();
+      audioContextRef.current = localAudioCtx;
 
-      const analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 256;
+      // Resume context if suspended (crucial for Chrome / modern browser autoplay policy)
+      if (localAudioCtx.state === 'suspended') {
+        localAudioCtx.resume().catch(() => {});
+      }
 
-      const source = audioCtx.createMediaStreamSource(activeMediaStream);
+      // Resume context on any user interaction in window
+      const handleUserGesture = () => {
+        if (localAudioCtx && localAudioCtx.state === 'suspended') {
+          localAudioCtx.resume().catch(() => {});
+        }
+      };
+      window.addEventListener('click', handleUserGesture, { once: true });
+      window.addEventListener('keydown', handleUserGesture, { once: true });
+
+      const audioTracks = activeMediaStream.getAudioTracks();
+      if (audioTracks.length === 0 || !audioTracks[0].enabled) {
+        return;
+      }
+
+      const analyser = localAudioCtx.createAnalyser();
+      analyser.fftSize = 128;
+      analyser.smoothingTimeConstant = 0.35;
+
+      const source = localAudioCtx.createMediaStreamSource(activeMediaStream);
       source.connect(analyser);
 
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
 
       const updateLevel = () => {
+        if (isCancelled) return;
         analyser.getByteFrequencyData(dataArray);
+
         let sum = 0;
-        for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+        let peak = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          sum += dataArray[i];
+          if (dataArray[i] > peak) peak = dataArray[i];
+        }
         const avg = sum / dataArray.length;
-        setMicAudioLevel(Math.min(100, Math.round((avg / 128) * 100)));
+        // Amplify sensitivity so regular speech creates responsive 0-100 VU waves
+        const normalized = Math.min(100, Math.round((avg / 64) * 100));
+        setMicAudioLevel(normalized);
+
         animFrameRef.current = requestAnimationFrame(updateLevel);
       };
 
@@ -249,9 +315,10 @@ export const StarkInterviewPage: React.FC = () => {
     }
 
     return () => {
+      isCancelled = true;
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-        audioContextRef.current.close().catch(() => {});
+      if (localAudioCtx && localAudioCtx.state !== 'closed') {
+        localAudioCtx.close().catch(() => {});
       }
     };
   }, [stage, activeMediaStream, isMicMuted]);
@@ -284,6 +351,7 @@ export const StarkInterviewPage: React.FC = () => {
 
     if (isMutedTts || !('speechSynthesis' in window)) {
       setIsStarkSpeaking(false);
+      startCandidateSpeechRecognition();
       return;
     }
 
@@ -292,6 +360,9 @@ export const StarkInterviewPage: React.FC = () => {
     // Clean text of markdown asterisks or code symbols for smooth TTS
     const clean = text.replace(/[*_#`>[\]]/g, '').trim();
     const utterance = new SpeechSynthesisUtterance(clean);
+
+    // Prevent Chromium garbage collection of active utterance
+    (window as any)._starkCurrentUtterance = utterance;
 
     utterance.rate = 1.0;
     utterance.pitch = 0.95;
@@ -309,20 +380,41 @@ export const StarkInterviewPage: React.FC = () => {
       utterance.voice = naturalVoice;
     }
 
+    let safetyTimer: any = null;
+
     utterance.onstart = () => {
       setIsStarkSpeaking(true);
     };
 
     utterance.onend = () => {
+      if (safetyTimer) clearTimeout(safetyTimer);
       setIsStarkSpeaking(false);
       startCandidateSpeechRecognition();
     };
 
-    utterance.onerror = () => {
+    utterance.onerror = (e) => {
+      console.warn('TTS utterance event:', e);
+      if (safetyTimer) clearTimeout(safetyTimer);
       setIsStarkSpeaking(false);
+      // Guarantee candidate microphone starts even on TTS failure
+      startCandidateSpeechRecognition();
     };
 
-    window.speechSynthesis.speak(utterance);
+    // Safety timeout: Ensure microphone activates even if Chrome TTS hangs
+    const words = clean.split(/\s+/).filter(Boolean);
+    const estimatedDurationMs = Math.max(3000, words.length * 360 + 1500);
+    safetyTimer = setTimeout(() => {
+      setIsStarkSpeaking(false);
+      startCandidateSpeechRecognition();
+    }, estimatedDurationMs);
+
+    try {
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      console.warn('TTS speak error:', e);
+      setIsStarkSpeaking(false);
+      startCandidateSpeechRecognition();
+    }
   };
 
   // ----------------------------------------------------
@@ -332,29 +424,46 @@ export const StarkInterviewPage: React.FC = () => {
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
-    if (!SpeechRecognition) return;
+    if (!SpeechRecognition) {
+      console.warn('SpeechRecognition API not available in this browser environment.');
+      return;
+    }
 
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch {}
+    shouldListenRef.current = true;
+
+    // If already active, avoid redundant restart
+    if (isCandidateListeningRef.current && recognitionRef.current) {
+      return;
     }
 
     try {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch {}
+      }
+
       const recognition = new SpeechRecognition();
       recognition.continuous = true;
       recognition.interimResults = true;
       recognition.lang = 'en-US';
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        isCandidateListeningRef.current = true;
+        setIsCandidateListening(true);
+      };
 
       recognition.onresult = (event: any) => {
         let interim = '';
         let final = '';
 
         for (let i = event.resultIndex; i < event.results.length; ++i) {
+          const segment = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
-            final += event.results[i][0].transcript + ' ';
+            final += segment + ' ';
           } else {
-            interim += event.results[i][0].transcript;
+            interim += segment;
           }
         }
 
@@ -365,30 +474,48 @@ export const StarkInterviewPage: React.FC = () => {
       };
 
       recognition.onerror = (event: any) => {
-        console.warn('STT recognition event error:', event.error);
-        if (event.error === 'not-allowed') {
+        console.warn('STT recognition event:', event.error);
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+          shouldListenRef.current = false;
+          isCandidateListeningRef.current = false;
           setIsCandidateListening(false);
         }
       };
 
       recognition.onend = () => {
-        if (isCandidateListening) {
-          try {
-            recognition.start();
-          } catch {}
+        isCandidateListeningRef.current = false;
+        // Auto-restart if candidate should still be listening (bypasses Chrome silence timeout)
+        if (shouldListenRef.current) {
+          setTimeout(() => {
+            if (shouldListenRef.current) {
+              try {
+                recognition.start();
+                isCandidateListeningRef.current = true;
+                setIsCandidateListening(true);
+              } catch (err) {
+                console.warn('STT auto-restart tick error:', err);
+              }
+            }
+          }, 150);
+        } else {
+          setIsCandidateListening(false);
         }
       };
 
       recognition.start();
       recognitionRef.current = recognition;
+      isCandidateListeningRef.current = true;
       setIsCandidateListening(true);
     } catch (err) {
       console.warn('SpeechRecognition start error:', err);
+      isCandidateListeningRef.current = false;
       setIsCandidateListening(false);
     }
   };
 
   const stopCandidateSpeechRecognition = () => {
+    shouldListenRef.current = false;
+    isCandidateListeningRef.current = false;
     setIsCandidateListening(false);
     if (recognitionRef.current) {
       try {
@@ -586,6 +713,8 @@ export const StarkInterviewPage: React.FC = () => {
       setIsMicMuted(!nextState);
       if (!nextState) {
         stopCandidateSpeechRecognition();
+      } else {
+        startCandidateSpeechRecognition();
       }
     }
   };
@@ -1073,14 +1202,52 @@ export const StarkInterviewPage: React.FC = () => {
                 </button>
               </div>
 
-              {/* VU Meter Bar */}
-              <div className="absolute bottom-3 left-3 w-28 h-2 rounded-full bg-black/70 backdrop-blur-sm overflow-hidden border border-white/10">
-                <div
-                  className="h-full bg-emerald-400 transition-all duration-75"
-                  style={{ width: `${micAudioLevel}%` }}
+              {/* Camera Audio VU Meter Indicator */}
+              <div className="absolute bottom-3 left-3 px-2 py-1 rounded-full bg-black/75 backdrop-blur-sm border border-white/10 flex items-center gap-1.5 font-mono text-[9px]">
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    micAudioLevel > 8 && !isMicMuted ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'
+                  }`}
                 />
+                <span className="text-zinc-400">MIC:</span>
+                <div className="w-14 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-75 ${
+                      isMicMuted
+                        ? 'bg-zinc-600'
+                        : micAudioLevel > 70
+                        ? 'bg-amber-400'
+                        : micAudioLevel > 12
+                        ? 'bg-emerald-400'
+                        : 'bg-cyan-400'
+                    }`}
+                    style={{ width: `${isMicMuted ? 0 : micAudioLevel}%` }}
+                  />
+                </div>
+                <span className="text-zinc-300 font-bold">{isMicMuted ? 'MUTE' : `${micAudioLevel}%`}</span>
               </div>
             </div>
+
+            {/* DEDICATED LIVE VOICE PREVIEW & AUDIO SPECTRUM HUD */}
+            <StarkVoicePreview
+              audioLevel={micAudioLevel}
+              isListening={isCandidateListening}
+              isMicMuted={isMicMuted}
+              interimTranscript={interimTranscript}
+              speechTranscript={speechTranscript}
+              onToggleListening={() => {
+                if (isCandidateListening) {
+                  stopCandidateSpeechRecognition();
+                } else {
+                  startCandidateSpeechRecognition();
+                }
+              }}
+              onToggleMic={toggleMic}
+              onClearTranscript={() => {
+                setSpeechTranscript('');
+                setInterimTranscript('');
+              }}
+            />
 
             {/* Speech Recognition Box */}
             <div className="border border-border bg-zinc-950/90 rounded-2xl p-5 flex-1 flex flex-col justify-between space-y-3 shadow-xl">

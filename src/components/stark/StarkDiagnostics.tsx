@@ -51,6 +51,10 @@ export const StarkDiagnostics: React.FC<StarkDiagnosticsProps> = ({ onComplete, 
         const audioCtx = new AudioContextClass();
         audioContextRef.current = audioCtx;
 
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume().catch(() => {});
+        }
+
         const analyser = audioCtx.createAnalyser();
         analyser.fftSize = 256;
         analyserRef.current = analyser;
@@ -69,11 +73,11 @@ export const StarkDiagnostics: React.FC<StarkDiagnosticsProps> = ({ onComplete, 
             sum += dataArray[i];
           }
           const avg = sum / dataArray.length;
-          const normalized = Math.min(100, Math.round((avg / 128) * 100));
+          const normalized = Math.min(100, Math.round((avg / 64) * 100));
 
           setMicLevel(normalized);
 
-          if (normalized > 12) {
+          if (normalized > 8) {
             setSoundDetected(true);
           }
 
@@ -167,8 +171,11 @@ export const StarkDiagnostics: React.FC<StarkDiagnosticsProps> = ({ onComplete, 
       setSttTranscript('Listening... Speak a phrase like "Ready for interview"');
 
       recognition.onresult = (event: any) => {
-        const text = event.results[0][0].transcript;
-        setSttTranscript(`"${text}"`);
+        let transcript = '';
+        for (let i = 0; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        setSttTranscript(`"${transcript.trim()}"`);
         setSttTested(true);
       };
 

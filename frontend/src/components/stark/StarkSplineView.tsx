@@ -191,19 +191,32 @@ export const StarkSplineView: React.FC<StarkSplineViewProps> = ({
         </div>
       )}
 
-      {/* Audio Wave Bar when Candidate is Listening */}
+      {/* Live Voice Spectrum Waveform when Candidate is Speaking / Listening */}
       {isListening && (
-        <div className="absolute bottom-16 inset-x-0 flex justify-center items-center pointer-events-none z-20">
-          <div className="flex items-center space-x-2 px-4 py-2 rounded-full bg-black/70 backdrop-blur-md border border-amber-500/40">
-            <span className="text-[10px] font-mono font-bold text-amber-400 uppercase tracking-wider">
-              VOICE FREQUENCY:
+        <div className="absolute bottom-16 inset-x-0 flex flex-col items-center justify-center pointer-events-none z-20 space-y-1">
+          <div className="flex items-center space-x-2.5 px-4 py-2 rounded-full bg-black/80 backdrop-blur-md border border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.25)]">
+            <span className={`w-2 h-2 rounded-full ${audioLevel > 8 ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`} />
+            <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider">
+              {audioLevel > 8 ? 'CANDIDATE VOICE DETECTED' : 'AWAITING CANDIDATE SPEECH'}
             </span>
-            <div className="w-24 h-2 bg-zinc-800 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-amber-400 transition-all duration-75"
-                style={{ width: `${Math.min(100, audioLevel)}%` }}
-              />
+            <div className="flex items-end space-x-1 h-5 px-1">
+              {[0.4, 0.7, 1.0, 0.8, 0.5, 0.9, 1.2, 0.6, 0.4, 0.85, 1.1, 0.7, 0.4].map((mult, idx) => {
+                const dynamicHeight = Math.max(
+                  4,
+                  Math.min(22, Math.round((audioLevel / 100) * 22 * mult + (audioLevel > 5 ? 4 : 2)))
+                );
+                return (
+                  <div
+                    key={idx}
+                    className="w-1 rounded-full transition-all duration-75 bg-gradient-to-t from-emerald-500 to-cyan-300"
+                    style={{ height: `${dynamicHeight}px` }}
+                  />
+                );
+              })}
             </div>
+            <span className="text-[10px] font-mono font-bold text-zinc-300">
+              {audioLevel}%
+            </span>
           </div>
         </div>
       )}
