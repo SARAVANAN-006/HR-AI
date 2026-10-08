@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import {
   CS_CATEGORIES,
   generateStarkInterviewPlan,
+  generateNextDynamicQuestion,
   evaluateCandidateSpeechAnswer,
   generateFinalStarkReport,
   type StarkInterviewSession,
   type StarkEvaluation
 } from '../lib/starkInterviewService';
-import { StarkCoreAvatar } from '../components/stark/StarkCoreAvatar';
+import { StarkSplineView } from '../components/stark/StarkSplineView';
 import { StarkDiagnostics } from '../components/stark/StarkDiagnostics';
 import { recordStreakActivity } from '../lib/streakService';
 import { useAuth } from '../context/AuthContext';
@@ -41,7 +42,9 @@ import {
   Radio,
   Send,
   HelpCircle,
-  BarChart3
+  BarChart3,
+  Maximize2,
+  AlertTriangle
 } from 'lucide-react';
 
 export const StarkInterviewPage: React.FC = () => {
@@ -59,13 +62,17 @@ export const StarkInterviewPage: React.FC = () => {
     'system_design'
   ]);
   const [experienceLevel, setExperienceLevel] = useState<'junior' | 'mid' | 'senior' | 'staff'>('mid');
-  const [questionCount, setQuestionCount] = useState<number>(6);
+  const [durationMinutes, setDurationMinutes] = useState<number>(15);
 
   // Active Media Stream
   const [activeMediaStream, setActiveMediaStream] = useState<MediaStream | null>(null);
   const [isCameraOn, setIsCameraOn] = useState<boolean>(true);
   const [isMicMuted, setIsMicMuted] = useState<boolean>(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Fullscreen Enforcement State
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [showFullscreenWarning, setShowFullscreenWarning] = useState<boolean>(false);
 
   // Interview Engine State
   const [session, setSession] = useState<StarkInterviewSession | null>(null);
@@ -76,15 +83,19 @@ export const StarkInterviewPage: React.FC = () => {
   const [speechTranscript, setSpeechTranscript] = useState<string>('');
   const [interimTranscript, setInterimTranscript] = useState<string>('');
   const [isMutedTts, setIsMutedTts] = useState<boolean>(false);
-  const [questionTimer, setQuestionTimer] = useState<number>(0);
+  const [remainingSeconds, setRemainingSeconds] = useState<number>(15 * 60);
   const [micAudioLevel, setMicAudioLevel] = useState<number>(0);
+
+  // Word-by-Word Teleprompter State
+  const [displayedWordsCount, setDisplayedWordsCount] = useState<number>(0);
+  const wordStreamTimerRef = useRef<any>(null);
 
   // Evaluation Report
   const [finalReport, setFinalReport] = useState<StarkEvaluation | null>(null);
 
-  // Refs for Web Speech & Web Audio
+  // Refs
   const recognitionRef = useRef<any>(null);
-  const timerIntervalRef = useRef<any>(null);
+  const countdownIntervalRef = useRef<any>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const animFrameRef = useRef<number | null>(null);
 
@@ -109,7 +120,7 @@ export const StarkInterviewPage: React.FC = () => {
   const toggleCategory = (id: string) => {
     setSelectedCategoryIds((prev) => {
       if (prev.includes(id)) {
-        if (prev.length === 1) return prev; // Keep at least one
+        if (prev.length === 1) return prev;
         return prev.filter((c) => c !== id);
       } else {
         return [...prev, id];
@@ -117,7 +128,6 @@ export const StarkInterviewPage: React.FC = () => {
     });
   };
 
-  // Select All or Core
   const selectAllCategories = () => {
     setSelectedCategoryIds(CS_CATEGORIES.map((c) => c.id));
   };
@@ -127,11 +137,76 @@ export const StarkInterviewPage: React.FC = () => {
   };
 
   // ----------------------------------------------------
-  // DIAGNOSTICS & MEDIA STREAM ATTACHMENT
+  // FULLSCREEN & KEYBOARD (ESC DISABLE) ENFORCEMENT
+  // ----------------------------------------------------
+  const enterFullscreen = () => {
+    try {
+      const elem = document.documentElement;
+      if (elem.requestFullscreen) {
+        elem.requestFullscreen().catch(() => {});
+      } else if ((elem as any).webkitRequestFullscreen) {
+        (elem as any).webkitRequestFullscreen();
+      }
+      setIsFullscreen(true);
+      setShowFullscreenWarning(false);
+    } catch (e) {
+      console.warn('Fullscreen request error:', e);
+    }
+  };
+
+  useEffect(() => {
+    if (stage !== 'interview') return;
+
+    // Trigger fullscreen automatically
+    enterFullscreen();
+
+    const handleFullscreenChange = () => {
+      const inFull = !!document.fullscreenElement || !!(document as any).webkitFullscreenElement;
+      setIsFullscreen(inFull);
+      if (!inFull && stage === 'interview') {
+        setShowFullscreenWarning(true);
+      } else {
+        setShowFullscreenWarning(false);
+      }
+    };
+
+    // Intercept Escape key & functional navigation
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.code === 'Escape' || e.keyCode === 27) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!document.fullscreenElement) {
+          enterFullscreen();
+        }
+      }
+    };
+
+    // Warn before closing tab or navigating away
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = 'Live Stark technical interview in progress. Are you sure you wish to exit?';
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    window.addEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      window.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [stage]);
+
+  // ----------------------------------------------------
+  // DIAGNOSTICS & HARDWARE COMPLETION
   // ----------------------------------------------------
   const handleDiagnosticsComplete = (stream: MediaStream | null) => {
     setActiveMediaStream(stream);
     setStage('interview');
+    enterFullscreen();
     initializeInterview();
   };
 
@@ -170,7 +245,7 @@ export const StarkInterviewPage: React.FC = () => {
 
       animFrameRef.current = requestAnimationFrame(updateLevel);
     } catch (e) {
-      console.warn('Live mic analyser failed:', e);
+      console.warn('Live mic analyser error:', e);
     }
 
     return () => {
@@ -182,9 +257,31 @@ export const StarkInterviewPage: React.FC = () => {
   }, [stage, activeMediaStream, isMicMuted]);
 
   // ----------------------------------------------------
-  // TTS (TEXT TO SPEECH) - STARK SPEAKS FIRST
+  // WORD-BY-WORD STREAMING TELEPROMPTER & TTS
   // ----------------------------------------------------
+  const streamQuestionWordByWord = (fullText: string) => {
+    if (wordStreamTimerRef.current) {
+      clearInterval(wordStreamTimerRef.current);
+    }
+
+    const words = fullText.split(/\s+/).filter(Boolean);
+    setDisplayedWordsCount(0);
+
+    let current = 0;
+    // Word-by-word streaming interval: 85ms per word
+    wordStreamTimerRef.current = setInterval(() => {
+      current++;
+      setDisplayedWordsCount(current);
+      if (current >= words.length) {
+        clearInterval(wordStreamTimerRef.current);
+      }
+    }, 85);
+  };
+
   const speakStarkQuestion = (text: string) => {
+    // Start word-by-word streaming teleprompter
+    streamQuestionWordByWord(text);
+
     if (isMutedTts || !('speechSynthesis' in window)) {
       setIsStarkSpeaking(false);
       return;
@@ -197,7 +294,7 @@ export const StarkInterviewPage: React.FC = () => {
     const utterance = new SpeechSynthesisUtterance(clean);
 
     utterance.rate = 1.0;
-    utterance.pitch = 0.95; // Authoritative Stark tone
+    utterance.pitch = 0.95;
 
     const voices = window.speechSynthesis.getVoices();
     const naturalVoice = voices.find(
@@ -218,7 +315,6 @@ export const StarkInterviewPage: React.FC = () => {
 
     utterance.onend = () => {
       setIsStarkSpeaking(false);
-      // Automatically prompt candidate to start speaking if not already listening
       startCandidateSpeechRecognition();
     };
 
@@ -230,7 +326,7 @@ export const StarkInterviewPage: React.FC = () => {
   };
 
   // ----------------------------------------------------
-  // STT (SPEECH TO TEXT) - RECOGNIZE CANDIDATE ANSWERS
+  // CONTINUOUS SPEECH RECOGNITION (STT)
   // ----------------------------------------------------
   const startCandidateSpeechRecognition = () => {
     const SpeechRecognition =
@@ -269,14 +365,13 @@ export const StarkInterviewPage: React.FC = () => {
       };
 
       recognition.onerror = (event: any) => {
-        console.warn('STT recognition error:', event.error);
+        console.warn('STT recognition event error:', event.error);
         if (event.error === 'not-allowed') {
           setIsCandidateListening(false);
         }
       };
 
       recognition.onend = () => {
-        // If user is supposed to be listening, cleanly restart
         if (isCandidateListening) {
           try {
             recognition.start();
@@ -288,7 +383,7 @@ export const StarkInterviewPage: React.FC = () => {
       recognitionRef.current = recognition;
       setIsCandidateListening(true);
     } catch (err) {
-      console.warn('SpeechRecognition start failed:', err);
+      console.warn('SpeechRecognition start error:', err);
       setIsCandidateListening(false);
     }
   };
@@ -307,11 +402,13 @@ export const StarkInterviewPage: React.FC = () => {
   // ----------------------------------------------------
   const initializeInterview = () => {
     const candidateName = user?.fullName || 'Candidate';
-    const plan = generateStarkInterviewPlan(
+    const totalSecs = durationMinutes * 60;
+
+    const initialPlan = generateStarkInterviewPlan(
       candidateName,
       selectedCategoryIds,
       experienceLevel,
-      questionCount
+      durationMinutes
     );
 
     const newSession: StarkInterviewSession = {
@@ -320,9 +417,10 @@ export const StarkInterviewPage: React.FC = () => {
       targetRole: user?.targetRole || 'Software Engineer',
       experienceLevel,
       selectedCategories: selectedCategoryIds,
-      totalQuestions: plan.length,
+      durationMinutes,
+      totalTimeSeconds: totalSecs,
       currentQuestionIndex: 0,
-      questions: plan,
+      questions: initialPlan,
       transcripts: [],
       startedAt: new Date().toISOString()
     };
@@ -331,28 +429,74 @@ export const StarkInterviewPage: React.FC = () => {
     setCurrentIndex(0);
     setSpeechTranscript('');
     setInterimTranscript('');
-    setQuestionTimer(0);
+    setRemainingSeconds(totalSecs);
 
-    // Speak Question 1 (Introduction) with TTS
+    // Speak Question 1 (Introduction)
     setTimeout(() => {
-      speakStarkQuestion(plan[0].questionText);
-    }, 600);
+      speakStarkQuestion(initialPlan[0].questionText);
+    }, 700);
   };
 
-  // Timer loop for question duration
+  // ----------------------------------------------------
+  // ACTIVE COUNTDOWN TIMER LOOP (10 mins, 15 mins, etc.)
+  // ----------------------------------------------------
   useEffect(() => {
-    if (stage === 'interview' && !isStarkThinking) {
-      timerIntervalRef.current = setInterval(() => {
-        setQuestionTimer((prev) => prev + 1);
+    if (stage === 'interview' && session) {
+      countdownIntervalRef.current = setInterval(() => {
+        setRemainingSeconds((prev) => {
+          if (prev <= 1) {
+            clearInterval(countdownIntervalRef.current);
+            handleTimeExpiredWrapup();
+            return 0;
+          }
+          return prev - 1;
+        });
       }, 1000);
     } else {
-      clearInterval(timerIntervalRef.current);
+      clearInterval(countdownIntervalRef.current);
     }
-    return () => clearInterval(timerIntervalRef.current);
-  }, [stage, isStarkThinking]);
+
+    return () => clearInterval(countdownIntervalRef.current);
+  }, [stage, session]);
+
+  // Handle Time Expired Automatic Conclusion
+  const handleTimeExpiredWrapup = () => {
+    if (!session) return;
+    stopCandidateSpeechRecognition();
+    window.speechSynthesis?.cancel();
+
+    const completedSession: StarkInterviewSession = {
+      ...session,
+      completedAt: new Date().toISOString()
+    };
+
+    const report = generateFinalStarkReport(completedSession);
+    completedSession.finalEvaluation = report;
+
+    setSession(completedSession);
+    setFinalReport(report);
+    setStage('report');
+    recordStreakActivity();
+
+    // Exit fullscreen cleanly on report
+    try {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+    } catch {}
+
+    setTimeout(() => {
+      if ('speechSynthesis' in window && !isMutedTts) {
+        const wrap = new SpeechSynthesisUtterance(
+          `Time is up for this interview session. Excellent effort! I have compiled your technical autopsy report. Your overall score is ${report.overallScore} out of 100.`
+        );
+        window.speechSynthesis.speak(wrap);
+      }
+    }, 500);
+  };
 
   // ----------------------------------------------------
-  // SUBMIT CANDIDATE ANSWER & PROCEED
+  // SUBMIT CANDIDATE ANSWER & GENERATE NEW QUESTION
   // ----------------------------------------------------
   const handleSubmitAnswer = async () => {
     if (!session) return;
@@ -376,18 +520,33 @@ export const StarkInterviewPage: React.FC = () => {
       userAnswerText: fullAnswer || '(No audible speech registered)',
       score: evalResult.score,
       feedback: evalResult.feedback,
-      durationSeconds: questionTimer,
+      durationSeconds: session.totalTimeSeconds - remainingSeconds,
       timestamp: new Date().toISOString()
     };
 
     const updatedTranscripts = [...session.transcripts, transcriptItem];
 
-    // Check if more questions remain
-    const nextIndex = currentIndex + 1;
-    if (nextIndex < session.questions.length) {
+    // Check if remaining time allows more questions
+    // If more than 60 seconds remain, dynamically generate next question!
+    if (remainingSeconds > 60) {
+      let nextQ: any = null;
+
+      if (currentIndex + 1 < session.questions.length) {
+        nextQ = session.questions[currentIndex + 1];
+      } else {
+        // Dynamically generate a brand new adaptive question on the fly!
+        nextQ = generateNextDynamicQuestion(session, fullAnswer, session.transcripts.length);
+      }
+
+      const updatedQuestions = currentIndex + 1 < session.questions.length
+        ? session.questions
+        : [...session.questions, nextQ];
+
+      const nextIndex = currentIndex + 1;
       const updatedSession: StarkInterviewSession = {
         ...session,
         currentQuestionIndex: nextIndex,
+        questions: updatedQuestions,
         transcripts: updatedTranscripts
       };
 
@@ -395,41 +554,14 @@ export const StarkInterviewPage: React.FC = () => {
       setCurrentIndex(nextIndex);
       setSpeechTranscript('');
       setInterimTranscript('');
-      setQuestionTimer(0);
       setIsStarkThinking(false);
 
-      // Stark speaks next question
       setTimeout(() => {
-        speakStarkQuestion(session.questions[nextIndex].questionText);
+        speakStarkQuestion(nextQ.questionText);
       }, 500);
     } else {
-      // Completed all questions! Build final evaluation report
-      const completedSession: StarkInterviewSession = {
-        ...session,
-        completedAt: new Date().toISOString(),
-        transcripts: updatedTranscripts
-      };
-
-      const report = generateFinalStarkReport(completedSession);
-      completedSession.finalEvaluation = report;
-
-      setSession(completedSession);
-      setFinalReport(report);
-      setIsStarkThinking(false);
-      setStage('report');
-
-      // Record streak maintenance activity!
-      recordStreakActivity();
-
-      // Play concluding Stark remark
-      setTimeout(() => {
-        if ('speechSynthesis' in window && !isMutedTts) {
-          const closing = new SpeechSynthesisUtterance(
-            `Interview concluded. Outstanding effort! Your multi-factor performance autopsy is ready. You achieved an overall evaluation score of ${report.overallScore} out of 100.`
-          );
-          window.speechSynthesis.speak(closing);
-        }
-      }, 600);
+      // Time nearly exhausted: conclude and show autopsy report
+      handleTimeExpiredWrapup();
     }
   };
 
@@ -465,10 +597,11 @@ export const StarkInterviewPage: React.FC = () => {
     return `${mins.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  // Clean up on unmount
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       window.speechSynthesis?.cancel();
+      if (wordStreamTimerRef.current) clearInterval(wordStreamTimerRef.current);
       if (recognitionRef.current) {
         try {
           recognitionRef.current.stop();
@@ -481,44 +614,47 @@ export const StarkInterviewPage: React.FC = () => {
   }, [activeMediaStream]);
 
   // ====================================================
-  // STAGE 1: TOPIC CATEGORIES & SETUP
+  // STAGE 1: SETUP SCREEN (DURATION IN MINUTES)
   // ====================================================
   if (stage === 'setup') {
     return (
-      <div className="p-6 md:p-8 max-w-6xl mx-auto space-y-8 font-sans">
+      <div className="p-6 md:p-8 max-w-6xl mx-auto space-y-8 font-sans select-none">
         {/* Hero Header */}
-        <div className="glass-panel p-6 md:p-8 rounded-2xl border border-cyan-500/25 bg-gradient-to-r from-cyan-950/20 via-background to-purple-950/20 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
+        <div className="glass-panel p-6 md:p-8 rounded-3xl border border-cyan-500/25 bg-gradient-to-r from-cyan-950/20 via-background to-purple-950/20 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
           <div className="space-y-2 z-10">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-cyan-500/40 bg-cyan-500/10 text-cyan-400 font-mono text-[11px] font-bold tracking-widest uppercase">
               <Radio size={12} className="animate-pulse" />
               <span>STARK REAL TECHNICAL INTERVIEW ENGINE</span>
             </div>
-            <h1 className="text-3xl md:text-4xl font-extrabold font-mono text-zinc-100 tracking-tight">
-              Meet Stark, Your AI Tech Lead
+            <h1 className="text-3xl md:text-5xl font-extrabold font-mono text-zinc-100 tracking-tight">
+              Stark Tech Lead Chamber
             </h1>
             <p className="text-sm text-zinc-400 max-w-2xl leading-relaxed">
-              Experience a high-stakes, true-to-life technical interview with live camera feed, natural speech synthesis, and real-time voice speech recognition. Stark first asks you to introduce yourself, follows up on your project experience, and then navigates into deep technical dilemmas across your selected CS disciplines.
+              Real-world technical interview simulation powered by Nexus 3D Spline neural visuals, live camera framing, audio VU meters, and continuous speech-to-text. Stark begins with your self-introduction and generates deep technical challenges across your chosen domains.
             </p>
           </div>
 
           <div className="shrink-0 flex items-center justify-center z-10">
-            <StarkCoreAvatar isSpeaking={false} isListening={false} isThinking={false} size="md" />
+            <div className="w-28 h-28 rounded-2xl border border-cyan-500/30 bg-black/60 p-2 flex flex-col items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.2)]">
+              <Radio size={36} className="text-cyan-400 animate-pulse mb-1" />
+              <span className="text-[9px] font-mono font-bold text-zinc-300">NEXUS 3D CORE</span>
+            </div>
           </div>
         </div>
 
         {/* Configuration Bar */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Experience Level */}
-          <div className="border border-border bg-background-panel p-4 rounded-xl space-y-2">
+          {/* Seniority Level */}
+          <div className="border border-border bg-background-panel p-4 rounded-2xl space-y-2">
             <label className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider block">
-              Interview Seniority Level
+              Candidate Seniority Target
             </label>
             <div className="grid grid-cols-4 gap-1.5 font-mono text-xs">
               {(['junior', 'mid', 'senior', 'staff'] as const).map((lvl) => (
                 <button
                   key={lvl}
                   onClick={() => setExperienceLevel(lvl)}
-                  className={`py-1.5 px-2 rounded-lg border text-center uppercase font-bold transition ${
+                  className={`py-2 px-2 rounded-xl border text-center uppercase font-bold transition ${
                     experienceLevel === lvl
                       ? 'bg-cyan-500/15 border-cyan-500 text-cyan-400'
                       : 'border-border bg-background text-zinc-400 hover:text-zinc-200'
@@ -530,23 +666,25 @@ export const StarkInterviewPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Question Depth Volume */}
-          <div className="border border-border bg-background-panel p-4 rounded-xl space-y-2">
-            <label className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider block">
-              Interview Length & Depth
+          {/* Time Duration Selection (10 Mins, 15 Mins, 20 Mins, 30 Mins) */}
+          <div className="border border-border bg-background-panel p-4 rounded-2xl space-y-2">
+            <label className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider block flex items-center gap-1.5">
+              <Clock size={12} className="text-cyan-400" />
+              <span>Interview Session Duration</span>
             </label>
-            <div className="grid grid-cols-3 gap-2 font-mono text-xs">
+            <div className="grid grid-cols-4 gap-1.5 font-mono text-xs">
               {[
-                { count: 4, label: 'Express (4 Qs)' },
-                { count: 6, label: 'Standard (6 Qs)' },
-                { count: 8, label: 'Intensive (8 Qs)' }
+                { mins: 10, label: '10m' },
+                { mins: 15, label: '15m' },
+                { mins: 20, label: '20m' },
+                { mins: 30, label: '30m' }
               ].map((opt) => (
                 <button
-                  key={opt.count}
-                  onClick={() => setQuestionCount(opt.count)}
-                  className={`py-1.5 px-2 rounded-lg border text-center font-bold transition ${
-                    questionCount === opt.count
-                      ? 'bg-purple-500/15 border-purple-500 text-purple-400'
+                  key={opt.mins}
+                  onClick={() => setDurationMinutes(opt.mins)}
+                  className={`py-2 px-2 rounded-xl border text-center font-bold transition ${
+                    durationMinutes === opt.mins
+                      ? 'bg-purple-500/15 border-purple-500 text-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.2)]'
                       : 'border-border bg-background text-zinc-400 hover:text-zinc-200'
                   }`}
                 >
@@ -556,14 +694,14 @@ export const StarkInterviewPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Quick Select Actions */}
-          <div className="border border-border bg-background-panel p-4 rounded-xl flex items-center justify-between gap-3">
+          {/* Selection Counts */}
+          <div className="border border-border bg-background-panel p-4 rounded-2xl flex items-center justify-between gap-3">
             <div className="text-left font-mono">
               <p className="text-xs font-bold text-zinc-200">
                 {selectedCategoryIds.length} of 10 Selected
               </p>
               <p className="text-[10px] text-zinc-500">
-                {selectedCategoryIds.length === 10 ? 'Full Spectrum CS' : 'Custom Specialization'}
+                {durationMinutes} Min Session • Adaptive Questions
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -588,7 +726,7 @@ export const StarkInterviewPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-mono font-bold text-zinc-200 uppercase tracking-wider flex items-center gap-2">
               <Binary size={16} className="text-cyan-400" />
-              <span>Choose Interview Topics (10 Core Computer Science Domains)</span>
+              <span>Choose Interview Topics (10 Core Computer Science Disciplines)</span>
             </h3>
             <span className="text-xs font-mono text-zinc-400">
               Select all domains you wish Stark to explore
@@ -602,7 +740,7 @@ export const StarkInterviewPage: React.FC = () => {
                 <div
                   key={cat.id}
                   onClick={() => toggleCategory(cat.id)}
-                  className={`p-4 rounded-xl border cursor-pointer transition-all duration-200 flex flex-col justify-between select-none ${
+                  className={`p-4 rounded-2xl border cursor-pointer transition-all duration-200 flex flex-col justify-between select-none ${
                     isSelected
                       ? 'bg-cyan-950/20 border-cyan-500/70 shadow-[0_0_15px_rgba(6,182,212,0.12)] scale-[1.01]'
                       : 'bg-background-panel border-border hover:border-zinc-700 opacity-75 hover:opacity-100'
@@ -611,7 +749,7 @@ export const StarkInterviewPage: React.FC = () => {
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center space-x-2.5">
-                        <div className={`p-2 rounded-lg border ${
+                        <div className={`p-2 rounded-xl border ${
                           isSelected ? 'bg-cyan-500/10 border-cyan-500/40' : 'bg-background border-border'
                         }`}>
                           {getCategoryIcon(cat.icon)}
@@ -645,11 +783,6 @@ export const StarkInterviewPage: React.FC = () => {
                         {topic}
                       </span>
                     ))}
-                    {cat.topics.length > 3 && (
-                      <span className="text-[9px] font-mono text-zinc-500">
-                        +{cat.topics.length - 3} more
-                      </span>
-                    )}
                   </div>
                 </div>
               );
@@ -657,20 +790,20 @@ export const StarkInterviewPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Launch Diagnostics CTA */}
-        <div className="glass-panel p-6 rounded-2xl border border-cyan-500/30 flex flex-col sm:flex-row items-center justify-between gap-4">
+        {/* Launch CTA */}
+        <div className="glass-panel p-6 rounded-3xl border border-cyan-500/30 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="space-y-1 text-left font-mono">
-            <h4 className="text-sm font-bold text-zinc-100">Ready to begin your session?</h4>
+            <h4 className="text-sm font-bold text-zinc-100">Ready to enter the chamber?</h4>
             <p className="text-xs text-zinc-400">
-              Next step: Verify your camera framing, sound level meter, and audio output before entering.
+              Next step: Calibrate camera framing, microphone sound levels, and audio before launching fullscreen.
             </p>
           </div>
 
           <button
             onClick={() => setStage('diagnostics')}
-            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-mono text-xs font-bold shadow-[0_0_20px_rgba(6,182,212,0.4)] transition flex items-center justify-center gap-2 group"
+            className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-mono text-xs font-bold shadow-[0_0_20px_rgba(6,182,212,0.4)] transition flex items-center justify-center gap-2 group"
           >
-            <span>Proceed to Hardware Verification</span>
+            <span>Proceed to Hardware Calibration</span>
             <ArrowRight size={15} className="group-hover:translate-x-1 transition-transform" />
           </button>
         </div>
@@ -679,7 +812,7 @@ export const StarkInterviewPage: React.FC = () => {
   }
 
   // ====================================================
-  // STAGE 2: DIAGNOSTICS & HARDWARE CHECK
+  // STAGE 2: DIAGNOSTICS & HARDWARE FLIGHT CHECK
   // ====================================================
   if (stage === 'diagnostics') {
     return (
@@ -693,155 +826,185 @@ export const StarkInterviewPage: React.FC = () => {
   }
 
   // ====================================================
-  // STAGE 3: LIVE STARK INTERVIEW CHAMBER
+  // STAGE 3: LIVE STARK INTERVIEW CHAMBER (FULLSCREEN HUD)
   // ====================================================
   if (stage === 'interview' && session) {
     const currentQ = session.questions[currentIndex];
+    const allWords = currentQ.questionText.split(/\s+/).filter(Boolean);
+    const visibleWords = allWords.slice(0, displayedWordsCount);
+    const timeProgressPercent = Math.max(0, Math.min(100, (remainingSeconds / session.totalTimeSeconds) * 100));
 
     return (
-      <div className="min-h-[calc(100vh-60px)] p-4 md:p-6 flex flex-col font-sans select-none">
-        {/* Top HUD Telemetry Bar */}
-        <header className="border border-border bg-background-panel rounded-2xl p-4 mb-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
+      <div className="fixed inset-0 z-50 bg-black text-zinc-100 flex flex-col font-sans select-none overflow-hidden">
+        
+        {/* FULLSCREEN RE-ENTRY OVERLAY WARNING IF ACCIDENTALLY EXITED */}
+        {showFullscreenWarning && (
+          <div className="absolute inset-0 z-[100] bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-amber-400">
+              <AlertTriangle size={32} />
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-xl font-bold font-mono text-zinc-100">
+                FULLSCREEN MODE REQUIRED
+              </h2>
+              <p className="text-xs text-zinc-400 max-w-md font-mono">
+                Technical interview integrity requires uninterrupted fullscreen execution. ESC key and window minimizes are disabled.
+              </p>
+            </div>
+            <button
+              onClick={enterFullscreen}
+              className="px-6 py-3 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-mono text-xs font-bold shadow-[0_0_20px_rgba(6,182,212,0.5)] transition flex items-center gap-2"
+            >
+              <Maximize2 size={15} />
+              <span>Resume Fullscreen Interview</span>
+            </button>
+          </div>
+        )}
+
+        {/* TOP STATUS BAR (NO EXIT BUTTONS, NO QUESTION COUNTERS) */}
+        <header className="px-6 py-3 bg-zinc-950/90 border-b border-cyan-500/30 flex items-center justify-between gap-4 shrink-0 shadow-lg z-20">
           <div className="flex items-center space-x-3">
             <div className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/40 text-cyan-400">
               <Radio size={16} className="animate-pulse" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <h2 className="text-sm font-mono font-bold text-zinc-100">STARK INTERVIEW CHAMBER</h2>
+                <h2 className="text-sm font-mono font-bold text-zinc-100 tracking-wider">
+                  STARK INTERVIEW CHAMBER
+                </h2>
                 <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 uppercase">
                   {currentQ.phase === 'intro'
                     ? 'PHASE 1: CANDIDATE INTRODUCTION'
                     : currentQ.phase === 'intro_followup'
                     ? 'PHASE 2: PROJECT DEBRIEF'
-                    : `PHASE 3: ${currentQ.categoryName || 'CS DEEP DIVE'}`}
+                    : `PHASE 3: ${currentQ.categoryName || 'CS CHALLENGE'}`}
+                </span>
+                <span className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold border ${
+                  isFullscreen ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' : 'bg-amber-500/15 border-amber-500/30 text-amber-400'
+                }`}>
+                  {isFullscreen ? 'FULLSCREEN LOCKED' : 'FULLSCREEN REQUIRED'}
                 </span>
               </div>
               <p className="text-[10px] font-mono text-zinc-400">
-                Candidate: <strong className="text-zinc-200">{session.candidateName}</strong> • Target: {session.targetRole} ({session.experienceLevel})
+                Candidate: <strong className="text-zinc-200">{session.candidateName}</strong> • Target: {session.targetRole}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-3 font-mono text-xs">
-            {/* Stopwatch */}
-            <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg border border-border bg-background text-zinc-300">
-              <Clock size={13} className="text-cyan-400" />
-              <span>{formatTime(questionTimer)}</span>
-            </div>
-
-            {/* Question Progress Dots */}
-            <div className="flex items-center space-x-1 px-3 py-1.5 rounded-lg border border-border bg-background">
-              <span className="text-[10px] text-zinc-400 mr-1.5">
-                Q {currentIndex + 1}/{session.totalQuestions}
-              </span>
-              {session.questions.map((_, i) => (
-                <div
-                  key={i}
-                  className={`w-2 h-2 rounded-full transition ${
-                    i === currentIndex
-                      ? 'bg-cyan-400 ring-2 ring-cyan-400/40'
-                      : i < currentIndex
-                      ? 'bg-emerald-400'
-                      : 'bg-zinc-700'
-                  }`}
+          {/* ACTIVE COUNTDOWN CLOCK & TIMER PROGRESS (NO Q 3/4) */}
+          <div className="flex items-center space-x-4 font-mono">
+            <div className="flex flex-col items-end">
+              <div className="flex items-center space-x-2 text-xs font-bold">
+                <Clock
+                  size={14}
+                  className={remainingSeconds < 180 ? 'text-amber-400 animate-pulse' : 'text-cyan-400'}
                 />
-              ))}
+                <span
+                  className={`text-sm tracking-widest ${
+                    remainingSeconds < 60
+                      ? 'text-red-400 animate-pulse'
+                      : remainingSeconds < 180
+                      ? 'text-amber-400'
+                      : 'text-cyan-300'
+                  }`}
+                >
+                  {formatTime(remainingSeconds)} REMAINING
+                </span>
+              </div>
+              {/* Visual Time Remaining Progress Bar */}
+              <div className="w-36 h-1.5 bg-zinc-800 rounded-full overflow-hidden mt-1">
+                <div
+                  className="h-full bg-cyan-400 transition-all duration-1000"
+                  style={{ width: `${timeProgressPercent}%` }}
+                />
+              </div>
             </div>
 
-            {/* TTS Mute Button */}
+            {/* Mute TTS Audio Toggle */}
             <button
               onClick={() => {
                 if (isStarkSpeaking) window.speechSynthesis.cancel();
                 setIsMutedTts(!isMutedTts);
               }}
               title={isMutedTts ? 'Unmute Stark Voice' : 'Mute Stark Voice'}
-              className={`p-2 rounded-lg border transition ${
+              className={`p-2 rounded-xl border transition ${
                 isMutedTts
                   ? 'bg-red-500/10 border-red-500/30 text-red-400'
-                  : 'bg-background border-border text-zinc-400 hover:text-zinc-200'
+                  : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              {isMutedTts ? <VolumeX size={14} /> : <Volume2 size={14} />}
+              {isMutedTts ? <VolumeX size={15} /> : <Volume2 size={15} />}
             </button>
           </div>
         </header>
 
-        {/* Main Dual Viewport Split: Stark AI (Left) & Candidate Studio (Right) */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        {/* MAIN DUAL VIEWPORT SPLIT */}
+        <main className="flex-1 p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-hidden">
           
-          {/* LEFT: STARK AI INTERVIEWER STATION (7 Cols) */}
-          <div className="lg:col-span-7 flex flex-col space-y-4">
+          {/* LEFT: STARK 3D SPLINE HUD (7 Cols) */}
+          <div className="lg:col-span-7 flex flex-col space-y-4 overflow-hidden">
             
-            {/* Holographic Arc Reactor Display */}
-            <div className="border border-cyan-500/30 bg-background-panel rounded-2xl p-6 flex flex-col items-center justify-center relative overflow-hidden min-h-[300px] shadow-[inset_0_0_30px_rgba(6,182,212,0.06)]">
-              {/* Background Ambient Mesh */}
-              <div className="absolute inset-0 bg-gradient-to-b from-cyan-950/20 via-transparent to-transparent pointer-events-none" />
-
-              <StarkCoreAvatar
+            {/* 3D Spline Interactive View from nexus-spline-view */}
+            <div className="flex-1 relative overflow-hidden rounded-3xl min-h-[320px]">
+              <StarkSplineView
                 isSpeaking={isStarkSpeaking}
                 isListening={isCandidateListening}
                 isThinking={isStarkThinking}
                 audioLevel={micAudioLevel}
-                size="lg"
+                className="w-full h-full"
               />
 
-              {/* Reactive Voice Waves when Stark Speaks */}
-              {isStarkSpeaking && (
-                <div className="mt-4 flex items-center space-x-1 h-6">
-                  {[12, 24, 18, 32, 28, 40, 30, 22, 16, 26, 36, 18, 24, 10].map((h, idx) => (
-                    <div
-                      key={idx}
-                      className="w-1 bg-cyan-400 rounded-full animate-pulse"
-                      style={{
-                        height: `${h * 0.7}px`,
-                        animationDelay: `${idx * 0.08}s`
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {/* Replay TTS Question Button */}
-              <div className="absolute top-4 right-4 flex items-center space-x-2">
-                <button
-                  onClick={() => speakStarkQuestion(currentQ.questionText)}
-                  disabled={isStarkSpeaking}
-                  className="px-2.5 py-1 rounded-lg border border-border bg-background hover:bg-zinc-800 text-zinc-300 font-mono text-[10px] flex items-center gap-1.5 transition"
-                  title="Repeat Question via TTS"
-                >
-                  <RotateCcw size={11} />
-                  <span>Repeat Question</span>
-                </button>
-              </div>
+              {/* Repeat Audio Button */}
+              <button
+                onClick={() => speakStarkQuestion(currentQ.questionText)}
+                disabled={isStarkSpeaking}
+                className="absolute top-4 right-4 z-30 px-3 py-1.5 rounded-xl border border-cyan-500/30 bg-black/70 hover:bg-black/90 text-cyan-300 font-mono text-[10px] font-bold flex items-center gap-1.5 backdrop-blur-md transition shadow-lg"
+                title="Repeat Question via TTS"
+              >
+                <RotateCcw size={12} />
+                <span>Repeat Question</span>
+              </button>
             </div>
 
-            {/* Stark's Question Prompter Box */}
-            <div className="border border-border bg-background-panel rounded-2xl p-5 flex-1 flex flex-col justify-between space-y-3">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs font-mono">
-                  <span className="text-cyan-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
-                    <Radio size={12} className="animate-pulse" />
-                    <span>STARK'S QUESTION</span>
-                  </span>
-                  <span className="text-zinc-500 text-[10px]">
-                    {currentQ.depthLevel.toUpperCase()} LEVEL
-                  </span>
-                </div>
-
-                <div className="p-4 rounded-xl border border-cyan-500/20 bg-cyan-950/15 text-sm md:text-base font-medium text-zinc-100 leading-relaxed">
-                  {currentQ.questionText}
-                </div>
+            {/* WORD-BY-WORD STREAMING TELEPROMPTER QUESTION BOX */}
+            <div className="border border-cyan-500/25 bg-zinc-950/90 rounded-2xl p-5 shrink-0 space-y-3 shadow-xl">
+              <div className="flex items-center justify-between text-xs font-mono border-b border-zinc-800 pb-2">
+                <span className="text-cyan-400 font-bold uppercase tracking-wider flex items-center gap-2">
+                  <Radio size={13} className="animate-pulse" />
+                  <span>STARK'S QUESTION</span>
+                </span>
+                <span className="text-zinc-500 text-[10px] uppercase font-bold">
+                  {currentQ.depthLevel} LEVEL
+                </span>
               </div>
 
-              {/* Guided Topics / Hints */}
+              {/* Word-by-Word Arranged Generation */}
+              <div className="p-4 rounded-xl border border-cyan-500/20 bg-cyan-950/15 text-sm md:text-base font-medium text-zinc-100 leading-relaxed min-h-[75px] font-sans">
+                {visibleWords.map((word, i) => (
+                  <span
+                    key={i}
+                    className={`inline-block mr-1.5 transition-opacity duration-150 ${
+                      i === visibleWords.length - 1 && displayedWordsCount < allWords.length
+                        ? 'text-cyan-300 font-bold drop-shadow-[0_0_8px_#22d3ee]'
+                        : 'text-zinc-100'
+                    }`}
+                  >
+                    {word}
+                  </span>
+                ))}
+                {displayedWordsCount < allWords.length && (
+                  <span className="inline-block w-2 h-4 bg-cyan-400 ml-1 animate-pulse align-middle" />
+                )}
+              </div>
+
+              {/* Key Concept Hints */}
               {currentQ.hints && currentQ.hints.length > 0 && (
-                <div className="flex items-center gap-2 pt-2 border-t border-border/50 text-[11px] font-mono text-zinc-400">
+                <div className="flex items-center gap-2 pt-1 text-[11px] font-mono text-zinc-400">
                   <HelpCircle size={13} className="text-cyan-400 shrink-0" />
-                  <span className="text-zinc-500">Key Focus Areas:</span>
+                  <span className="text-zinc-500">Core Concepts:</span>
                   <div className="flex flex-wrap gap-1.5">
                     {currentQ.hints.map((hint, idx) => (
-                      <span key={idx} className="px-2 py-0.5 rounded bg-background border border-border text-zinc-300 text-[10px]">
+                      <span key={idx} className="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-300 text-[10px]">
                         {hint}
                       </span>
                     ))}
@@ -852,10 +1015,10 @@ export const StarkInterviewPage: React.FC = () => {
           </div>
 
           {/* RIGHT: CANDIDATE STUDIO (5 Cols) */}
-          <div className="lg:col-span-5 flex flex-col space-y-4">
+          <div className="lg:col-span-5 flex flex-col space-y-4 overflow-hidden">
             
-            {/* Live Camera Preview Stream */}
-            <div className="relative aspect-video bg-zinc-950 rounded-2xl overflow-hidden border border-cyan-500/40 shadow-xl flex items-center justify-center">
+            {/* Live Camera Feed */}
+            <div className="relative aspect-video bg-zinc-950 rounded-3xl overflow-hidden border border-cyan-500/40 shadow-2xl flex items-center justify-center shrink-0">
               {isCameraOn ? (
                 <video
                   ref={videoRef}
@@ -871,19 +1034,19 @@ export const StarkInterviewPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Tech Reticles Overlay */}
+              {/* Reticles Overlay */}
               <div className="absolute top-3 left-3 w-4 h-4 border-t-2 border-l-2 border-cyan-400 pointer-events-none" />
               <div className="absolute top-3 right-3 w-4 h-4 border-t-2 border-r-2 border-cyan-400 pointer-events-none" />
               <div className="absolute bottom-3 left-3 w-4 h-4 border-b-2 border-l-2 border-cyan-400 pointer-events-none" />
               <div className="absolute bottom-3 right-3 w-4 h-4 border-b-2 border-r-2 border-cyan-400 pointer-events-none" />
 
-              {/* Top-left Candidate Status Pill */}
-              <div className="absolute top-3 left-3 px-2 py-1 rounded bg-black/60 backdrop-blur-sm border border-white/10 font-mono text-[9px] text-zinc-200 flex items-center gap-1.5">
+              {/* Status Pill */}
+              <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-sm border border-white/10 font-mono text-[9px] text-zinc-200 flex items-center gap-1.5">
                 <span className={`w-2 h-2 rounded-full ${isCameraOn ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'}`} />
                 <span>{session.candidateName.toUpperCase()} • ON AIR</span>
               </div>
 
-              {/* Bottom Camera / Mic Controls */}
+              {/* Controls */}
               <div className="absolute bottom-3 right-3 flex items-center space-x-2">
                 <button
                   onClick={toggleCamera}
@@ -910,8 +1073,8 @@ export const StarkInterviewPage: React.FC = () => {
                 </button>
               </div>
 
-              {/* Live VU Meter Bar on video */}
-              <div className="absolute bottom-3 left-3 w-32 h-2 rounded-full bg-black/60 backdrop-blur-sm overflow-hidden border border-white/10">
+              {/* VU Meter Bar */}
+              <div className="absolute bottom-3 left-3 w-28 h-2 rounded-full bg-black/70 backdrop-blur-sm overflow-hidden border border-white/10">
                 <div
                   className="h-full bg-emerald-400 transition-all duration-75"
                   style={{ width: `${micAudioLevel}%` }}
@@ -919,41 +1082,40 @@ export const StarkInterviewPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Live Speech Recognition & Transcript Box */}
-            <div className="border border-border bg-background-panel rounded-2xl p-5 flex-1 flex flex-col justify-between space-y-3">
+            {/* Speech Recognition Box */}
+            <div className="border border-border bg-zinc-950/90 rounded-2xl p-5 flex-1 flex flex-col justify-between space-y-3 shadow-xl">
               <div>
-                <div className="flex items-center justify-between border-b border-border/60 pb-2 mb-3">
+                <div className="flex items-center justify-between border-b border-zinc-800 pb-2 mb-3">
                   <div className="flex items-center space-x-2">
                     <Mic size={15} className={isCandidateListening ? 'text-amber-400 animate-pulse' : 'text-zinc-500'} />
                     <h4 className="text-xs font-mono font-bold text-zinc-200 uppercase">
-                      Live Candidate Speech Input
+                      Live Speech Input Stream
                     </h4>
                   </div>
 
-                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
+                  <span className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full border ${
                     isCandidateListening
                       ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
                       : 'bg-zinc-800 border-zinc-700 text-zinc-400'
                   }`}>
-                    {isCandidateListening ? 'LISTENING (SPEAK NOW)' : 'MIC ON STANDBY'}
+                    {isCandidateListening ? 'LISTENING (SPEAK NOW)' : 'MIC STANDBY'}
                   </span>
                 </div>
 
-                {/* Editable Transcript Field */}
                 <textarea
                   value={speechTranscript + (interimTranscript ? ` ${interimTranscript}` : '')}
                   onChange={(e) => setSpeechTranscript(e.target.value)}
-                  placeholder="Your spoken words will appear here in real-time. You may also edit or type additional technical explanations..."
-                  rows={4}
-                  className="w-full p-3 rounded-xl bg-background border border-border text-xs font-mono text-zinc-200 focus:outline-none focus:border-cyan-500 transition resize-none leading-relaxed"
+                  placeholder="Your spoken words will appear here in real-time. You can also edit or append code snippets and technical notes..."
+                  rows={5}
+                  className="w-full p-3.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-200 focus:outline-none focus:border-cyan-500 transition resize-none leading-relaxed"
                 />
 
                 <p className="text-[10px] font-mono text-zinc-500 mt-1">
-                  Tip: Speak clearly at natural pacing. You can polish your transcription text before submitting to Stark.
+                  Tip: Speak naturally. Polish technical terms before submitting to Stark.
                 </p>
               </div>
 
-              {/* Speech Controls & Submit Button */}
+              {/* Action Buttons */}
               <div className="space-y-2 pt-2">
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -981,7 +1143,7 @@ export const StarkInterviewPage: React.FC = () => {
                       setSpeechTranscript('');
                       setInterimTranscript('');
                     }}
-                    className="py-2 px-3 rounded-xl border border-border bg-background hover:bg-zinc-800 text-zinc-400 text-xs font-mono transition"
+                    className="py-2 px-3 rounded-xl border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 text-xs font-mono transition"
                   >
                     Clear Text
                   </button>
@@ -991,29 +1153,27 @@ export const StarkInterviewPage: React.FC = () => {
                 <button
                   onClick={handleSubmitAnswer}
                   disabled={isStarkThinking}
-                  className="w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-mono text-xs font-bold shadow-[0_0_15px_rgba(6,182,212,0.4)] transition flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full py-3.5 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-mono text-xs font-bold shadow-[0_0_20px_rgba(6,182,212,0.4)] transition flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <Send size={14} />
                   <span>
                     {isStarkThinking
                       ? 'Stark is Evaluating Your Answer...'
-                      : currentIndex + 1 < session.totalQuestions
-                      ? 'Submit Answer & Next Question'
-                      : 'Submit Final Answer & Finish Interview'}
+                      : remainingSeconds > 60
+                      ? 'Submit Answer & Proceed'
+                      : 'Submit Final Answer & Conclude Session'}
                   </span>
                 </button>
               </div>
-
             </div>
           </div>
-
-        </div>
+        </main>
       </div>
     );
   }
 
   // ====================================================
-  // STAGE 4: FINAL EVALUATION & PERFORMANCE AUTOPSY
+  // STAGE 4: FINAL EVALUATION DOSSIER REPORT
   // ====================================================
   if (stage === 'report' && finalReport && session) {
     const getRecBadge = (rec: string) => {
@@ -1032,17 +1192,17 @@ export const StarkInterviewPage: React.FC = () => {
     return (
       <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-8 font-sans">
         {/* Header Banner */}
-        <div className="glass-panel p-6 md:p-8 rounded-2xl border border-cyan-500/30 bg-gradient-to-r from-cyan-950/20 via-background to-purple-950/20 flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="glass-panel p-6 md:p-8 rounded-3xl border border-cyan-500/30 bg-gradient-to-r from-cyan-950/20 via-background to-purple-950/20 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="space-y-2 text-left">
             <div className="flex items-center space-x-2 text-xs font-mono text-cyan-400 uppercase tracking-widest">
               <Award size={14} />
               <span>STARK AI CANDIDATE AUTOPSY & DOSSIER</span>
             </div>
-            <h1 className="text-3xl font-extrabold font-mono text-zinc-100 tracking-tight">
-              Technical Interview Evaluation
+            <h1 className="text-3xl md:text-4xl font-extrabold font-mono text-zinc-100 tracking-tight">
+              Technical Interview Autopsy
             </h1>
             <p className="text-xs text-zinc-400 max-w-xl">
-              Candidate: <strong className="text-zinc-200">{session.candidateName}</strong> • Completed {session.transcripts.length} in-depth technical questions across selected computer science categories.
+              Candidate: <strong className="text-zinc-200">{session.candidateName}</strong> • Completed {session.transcripts.length} in-depth technical questions across selected computer science categories in a {session.durationMinutes}-minute session.
             </p>
           </div>
 
@@ -1054,13 +1214,13 @@ export const StarkInterviewPage: React.FC = () => {
               <span className="text-xs text-zinc-500 block">/ 100 SCORE</span>
             </div>
 
-            <div className={`px-4 py-2.5 rounded-xl border font-mono text-xs font-bold uppercase tracking-wider text-center ${getRecBadge(finalReport.recommendation)}`}>
+            <div className={`px-4 py-2.5 rounded-2xl border font-mono text-xs font-bold uppercase tracking-wider text-center ${getRecBadge(finalReport.recommendation)}`}>
               {finalReport.recommendation.replace('_', ' ')}
             </div>
           </div>
         </div>
 
-        {/* Multi-Factor Scores Grid */}
+        {/* Multi-Factor Scores */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             { label: 'Technical Proficiency', score: finalReport.technicalProficiencyScore, icon: Binary, color: 'text-cyan-400' },
@@ -1070,7 +1230,7 @@ export const StarkInterviewPage: React.FC = () => {
           ].map((metric, i) => {
             const Icon = metric.icon;
             return (
-              <div key={i} className="border border-border bg-background-panel rounded-xl p-4 space-y-2 font-mono">
+              <div key={i} className="border border-border bg-background-panel rounded-2xl p-4 space-y-2 font-mono">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] text-zinc-400 uppercase">{metric.label}</span>
                   <Icon size={14} className={metric.color} />
@@ -1090,11 +1250,9 @@ export const StarkInterviewPage: React.FC = () => {
           })}
         </div>
 
-        {/* Category Breakdown & Strengths */}
+        {/* Category Breakdown & Feedback */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-          
-          {/* Category Scores */}
-          <div className="md:col-span-5 border border-border bg-background-panel rounded-2xl p-6 space-y-4 font-mono">
+          <div className="md:col-span-5 border border-border bg-background-panel rounded-3xl p-6 space-y-4 font-mono">
             <h3 className="text-xs font-bold text-zinc-200 uppercase tracking-wider flex items-center gap-2">
               <BarChart3 size={15} className="text-cyan-400" />
               <span>Category Mastery Breakdown</span>
@@ -1118,8 +1276,7 @@ export const StarkInterviewPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Strengths & Improvement Insights */}
-          <div className="md:col-span-7 border border-border bg-background-panel rounded-2xl p-6 space-y-5">
+          <div className="md:col-span-7 border border-border bg-background-panel rounded-3xl p-6 space-y-5">
             <h3 className="text-xs font-mono font-bold text-zinc-200 uppercase tracking-wider">
               Stark's Strategic Feedback
             </h3>
@@ -1154,11 +1311,11 @@ export const StarkInterviewPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Detailed Question Transcripts Autopsy */}
+        {/* Question-by-Question Transcript Autopsy */}
         <div className="space-y-4">
           <h3 className="text-xs font-mono font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
             <FileText size={15} className="text-cyan-400" />
-            <span>Verbal Transcript & Evaluation Logs</span>
+            <span>Spoken Transcripts & Critique Logs</span>
           </h3>
 
           <div className="space-y-4">
@@ -1195,11 +1352,11 @@ export const StarkInterviewPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Action Controls */}
-        <div className="glass-panel p-6 rounded-2xl border border-border flex flex-col sm:flex-row items-center justify-between gap-4">
+        {/* Footer Actions */}
+        <div className="glass-panel p-6 rounded-3xl border border-border flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center space-x-2 font-mono text-xs text-amber-400">
             <Flame size={16} />
-            <span>Daily Practice Streak updated! Activity recorded to your developer profile.</span>
+            <span>Daily Practice Streak updated! Activity recorded to developer profile.</span>
           </div>
 
           <div className="flex items-center space-x-3 w-full sm:w-auto">
@@ -1209,13 +1366,13 @@ export const StarkInterviewPage: React.FC = () => {
                 setSession(null);
                 setFinalReport(null);
               }}
-              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-border bg-background hover:bg-zinc-800 text-zinc-300 font-mono text-xs transition"
+              className="flex-1 sm:flex-none px-4 py-2.5 rounded-2xl border border-border bg-background hover:bg-zinc-800 text-zinc-300 font-mono text-xs transition"
             >
               Start New Interview
             </button>
             <button
               onClick={() => navigate('/dashboard')}
-              className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-mono text-xs font-bold transition flex items-center justify-center gap-2"
+              className="flex-1 sm:flex-none px-6 py-2.5 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-mono text-xs font-bold transition flex items-center justify-center gap-2"
             >
               <span>Back to Dashboard</span>
               <ChevronRight size={14} />
