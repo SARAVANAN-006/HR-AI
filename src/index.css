@@ -81,14 +81,15 @@
 [data-theme='professional-light'] body,
 [data-theme='nordic-light'] body {
   color: #09090b !important;
+  background-color: #ffffff !important;
 }
 
-[data-theme='professional-light'] .text-zinc-100,
-[data-theme='professional-light'] .text-zinc-200,
-[data-theme='professional-light'] .text-zinc-300,
-[data-theme='nordic-light'] .text-zinc-100,
-[data-theme='nordic-light'] .text-zinc-200,
-[data-theme='nordic-light'] .text-zinc-300 {
+[data-theme='professional-light'] .text-zinc-100:not(button *):not([class*='bg-black'] *):not([class*='bg-zinc-900'] *):not(.btn-neon-cyan *),
+[data-theme='professional-light'] .text-zinc-200:not(button *):not([class*='bg-black'] *):not([class*='bg-zinc-900'] *):not(.btn-neon-cyan *),
+[data-theme='professional-light'] .text-zinc-300:not(button *):not([class*='bg-black'] *):not([class*='bg-zinc-900'] *):not(.btn-neon-cyan *),
+[data-theme='nordic-light'] .text-zinc-100:not(button *):not([class*='bg-black'] *):not([class*='bg-zinc-900'] *):not(.btn-neon-cyan *),
+[data-theme='nordic-light'] .text-zinc-200:not(button *):not([class*='bg-black'] *):not([class*='bg-zinc-900'] *):not(.btn-neon-cyan *),
+[data-theme='nordic-light'] .text-zinc-300:not(button *):not([class*='bg-black'] *):not([class*='bg-zinc-900'] *):not(.btn-neon-cyan *) {
   color: #09090b !important;
 }
 
@@ -104,6 +105,16 @@
   color: #64748b !important;
 }
 
+/* Light surface mapping for all zinc and dark background classes */
+[data-theme='professional-light'] [class*='bg-zinc-950']:not(.fixed):not(button):not([class*='fill-']),
+[data-theme='professional-light'] [class*='bg-zinc-900']:not(.fixed):not(button):not([class*='fill-']),
+[data-theme='professional-light'] [class*='bg-zinc-800']:not(.fixed):not(button):not([class*='hover:']),
+[data-theme='nordic-light'] [class*='bg-zinc-950']:not(.fixed):not(button):not([class*='fill-']),
+[data-theme='nordic-light'] [class*='bg-zinc-900']:not(.fixed):not(button):not([class*='fill-']),
+[data-theme='nordic-light'] [class*='bg-zinc-800']:not(.fixed):not(button):not([class*='hover:']) {
+  background-color: #f8fafc !important;
+}
+
 [data-theme='professional-light'] .bg-zinc-950,
 [data-theme='professional-light'] .bg-zinc-900,
 [data-theme='nordic-light'] .bg-zinc-950,
@@ -111,24 +122,52 @@
   background-color: #ffffff !important;
 }
 
-[data-theme='professional-light'] .bg-zinc-900\/50,
-[data-theme='professional-light'] .bg-zinc-900\/40,
-[data-theme='professional-light'] .bg-zinc-900\/30,
-[data-theme='professional-light'] .bg-zinc-900\/20,
-[data-theme='professional-light'] .bg-zinc-950\/20,
-[data-theme='nordic-light'] .bg-zinc-900\/50,
-[data-theme='nordic-light'] .bg-zinc-900\/40,
-[data-theme='nordic-light'] .bg-zinc-900\/30,
-[data-theme='nordic-light'] .bg-zinc-900\/20,
-[data-theme='nordic-light'] .bg-zinc-950\/20 {
-  background-color: #f8fafc !important;
+[data-theme='professional-light'] .bg-zinc-800,
+[data-theme='nordic-light'] .bg-zinc-800 {
+  background-color: #f1f5f9 !important;
 }
 
-[data-theme='professional-light'] .bg-zinc-800,
-[data-theme='professional-light'] .bg-zinc-800\/50,
-[data-theme='nordic-light'] .bg-zinc-800,
-[data-theme='nordic-light'] .bg-zinc-800\/50 {
+/* Pre, Code, and elevated panels */
+[data-theme='professional-light'] pre,
+[data-theme='professional-light'] [class*='bg-zinc-950'] pre,
+[data-theme='professional-light'] [class*='bg-zinc-900'] pre,
+[data-theme='nordic-light'] pre,
+[data-theme='nordic-light'] [class*='bg-zinc-950'] pre,
+[data-theme='nordic-light'] [class*='bg-zinc-900'] pre {
   background-color: #f1f5f9 !important;
+  color: #09090b !important;
+  border-color: #e2e8f0 !important;
+}
+
+[data-theme='professional-light'] pre code,
+[data-theme='nordic-light'] pre code {
+  background-color: transparent !important;
+  color: #09090b !important;
+}
+
+[data-theme='professional-light'] code:not(pre code),
+[data-theme='nordic-light'] code:not(pre code) {
+  background-color: #f1f5f9 !important;
+  color: #09090b !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Modal dark backdrops */
+[data-theme='professional-light'] .fixed[class*='bg-black'],
+[data-theme='professional-light'] .fixed[class*='bg-black/'],
+[data-theme='nordic-light'] .fixed[class*='bg-black'],
+[data-theme='nordic-light'] .fixed[class*='bg-black/'] {
+  background-color: rgba(0, 0, 0, 0.75) !important;
+}
+
+/* Border lines */
+[data-theme='professional-light'] [class*='border-zinc-900'],
+[data-theme='professional-light'] [class*='border-zinc-800'],
+[data-theme='professional-light'] [class*='border-zinc-700'],
+[data-theme='nordic-light'] [class*='border-zinc-900'],
+[data-theme='nordic-light'] [class*='border-zinc-800'],
+[data-theme='nordic-light'] [class*='border-zinc-700'] {
+  border-color: #e2e8f0 !important;
 }
 
 [data-theme='professional-light'] .border-zinc-800,

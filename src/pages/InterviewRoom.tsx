@@ -1914,7 +1914,7 @@ if (input.length >= 2) {
                   {leftPanelTab === 'description' ? (
                     <div className="space-y-6">
                       {/* Problem Header & Badges */}
-                      <div className="border-b border-zinc-900 pb-3">
+                      <div className="border-b border-border pb-3">
                         <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                           <h3 className="text-sm font-bold text-zinc-100 font-mono tracking-tight flex items-center gap-2">
                             <FileCode size={15} className="text-brand-cyan" />
@@ -1941,10 +1941,10 @@ if (input.length >= 2) {
                       </div>
 
                       {/* Rich React Markdown Description */}
-                      <div className="prose prose-invert max-w-none text-xs leading-relaxed text-zinc-300 font-sans">
+                      <div className="prose max-w-none text-xs leading-relaxed text-zinc-300 font-sans">
                         <ReactMarkdown
                           components={{
-                            h1: ({ node, ...props }) => <h1 className="text-sm font-bold font-mono text-zinc-100 mt-4 mb-2 pb-1 border-b border-zinc-800" {...props} />,
+                            h1: ({ node, ...props }) => <h1 className="text-sm font-bold font-mono text-zinc-100 mt-4 mb-2 pb-1 border-b border-border" {...props} />,
                             h2: ({ node, ...props }) => <h2 className="text-xs font-bold font-mono text-brand-cyan mt-3 mb-1.5 uppercase tracking-wider" {...props} />,
                             h3: ({ node, ...props }) => <h3 className="text-xs font-semibold font-mono text-brand-violet mt-3 mb-1" {...props} />,
                             p: ({ node, ...props }) => <p className="mb-3 leading-relaxed text-zinc-300 text-xs" {...props} />,
@@ -1955,11 +1955,11 @@ if (input.length >= 2) {
                             blockquote: ({ node, ...props }) => <blockquote className="border-l-2 border-brand-violet pl-3 my-2 text-zinc-400 italic bg-brand-violet/5 py-1 rounded-r" {...props} />,
                             code: ({ inline, className, children, ...props }: any) => {
                               return inline ? (
-                                <code className="px-1.5 py-0.5 rounded bg-zinc-900 border border-border/80 font-mono text-[11px] text-brand-cyan font-semibold" {...props}>
+                                <code className="px-1.5 py-0.5 rounded bg-background-elevated border border-border font-mono text-[11px] text-brand-cyan font-semibold" {...props}>
                                   {children}
                                 </code>
                               ) : (
-                                <pre className="p-3 my-2 bg-zinc-950 border border-border/60 rounded font-mono text-[11px] text-zinc-200 overflow-x-auto leading-normal">
+                                <pre className="p-3 my-2 bg-background-elevated border border-border rounded font-mono text-[11px] text-zinc-200 overflow-x-auto leading-normal">
                                   <code {...props}>{children}</code>
                                 </pre>
                               );
@@ -1972,7 +1972,7 @@ if (input.length >= 2) {
 
                       {/* Detailed Sample Test Cases in React Markdown / Cards */}
                       {session.question.testCases && session.question.testCases.filter(tc => !tc.isHidden).length > 0 && (
-                        <div className="pt-4 border-t border-zinc-900 space-y-3 font-mono">
+                        <div className="pt-4 border-t border-border space-y-3 font-mono">
                           <div className="flex items-center justify-between">
                             <h4 className="text-xs font-bold text-zinc-200 uppercase tracking-wider flex items-center gap-1.5">
                               <span className="text-brand-emerald">🧪</span>
@@ -1985,19 +1985,19 @@ if (input.length >= 2) {
 
                           <div className="space-y-3">
                             {session.question.testCases.filter(tc => !tc.isHidden).map((tc, idx) => (
-                              <div key={idx} className="p-3.5 bg-zinc-950/70 border border-border/70 rounded-lg space-y-2 text-xs shadow-sm">
-                                <div className="flex items-center justify-between text-[11px] text-brand-cyan font-bold border-b border-zinc-900/80 pb-1.5">
+                              <div key={idx} className="p-3.5 bg-background-panel border border-border rounded-lg space-y-2 text-xs shadow-sm">
+                                <div className="flex items-center justify-between text-[11px] text-brand-cyan font-bold border-b border-border pb-1.5">
                                   <span>Example #{idx + 1}</span>
                                   <span className="text-zinc-500 font-normal text-[10px]">Standard I/O Verification</span>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]">
                                   <div className="space-y-1">
                                     <span className="text-[9px] text-zinc-500 uppercase block font-semibold">Sample Input:</span>
-                                    <pre className="p-2 bg-zinc-900/90 rounded border border-border/50 text-zinc-200 overflow-x-auto whitespace-pre-wrap font-mono">{tc.input}</pre>
+                                    <pre className="p-2.5 bg-background-elevated rounded border border-border text-zinc-200 overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed">{tc.input}</pre>
                                   </div>
                                   <div className="space-y-1">
                                     <span className="text-[9px] text-zinc-500 uppercase block font-semibold">Expected Output:</span>
-                                    <pre className="p-2 bg-zinc-900/90 rounded border border-border/50 text-brand-emerald font-semibold overflow-x-auto whitespace-pre-wrap font-mono">{tc.expectedOutput}</pre>
+                                    <pre className="p-2.5 bg-background-elevated rounded border border-border text-brand-emerald font-semibold overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed">{tc.expectedOutput}</pre>
                                   </div>
                                 </div>
                               </div>
@@ -2008,7 +2008,7 @@ if (input.length >= 2) {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      <h3 className="text-xs font-bold text-zinc-200 tracking-wide mb-3 flex items-center gap-1.5 border-b border-zinc-900 pb-2 font-mono uppercase">
+                      <h3 className="text-xs font-bold text-zinc-200 tracking-wide mb-3 flex items-center gap-1.5 border-b border-border pb-2 font-mono uppercase">
                         <Activity size={13} className="text-brand-violet" />
                         <span>Visual Analysis</span>
                       </h3>
@@ -2131,7 +2131,7 @@ if (input.length >= 2) {
                       onChange={(e) => setCustomInput(e.target.value)}
                       placeholder="Enter custom stdin here (e.g. 9\n2,7,11,15)..."
                       rows={3}
-                      className="w-full bg-zinc-950 border border-border/80 rounded text-xs font-mono text-zinc-300 p-2.5 resize-y focus:outline-none focus:border-brand-cyan placeholder-zinc-700"
+                      className="w-full bg-background border border-border rounded text-xs font-mono text-foreground p-2.5 resize-y focus:outline-none focus:border-brand-cyan placeholder-zinc-500"
                     />
                     <button
                       onClick={handleRunCustomInput}
@@ -2159,10 +2159,10 @@ if (input.length >= 2) {
               </div>
 
               {/* CONSOLE / TERMINAL OUTPUT PANEL */}
-              <div className="h-56 border-t border-border bg-zinc-950 flex flex-col shrink-0">
+              <div className="h-56 border-t border-border bg-background-panel flex flex-col shrink-0">
 
                 {/* Terminal Header with Tabs */}
-                <div className="h-9 bg-zinc-900 border-b border-border/80 flex items-center justify-between px-4 font-mono text-[10px] shrink-0">
+                <div className="h-9 bg-background border-b border-border flex items-center justify-between px-4 font-mono text-[10px] shrink-0">
                   <div className="flex space-x-2">
                     <button
                       onClick={() => setConsoleTab('stdout')}

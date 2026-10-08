@@ -124,11 +124,11 @@ export const UiSwitcherModal: React.FC<UiSwitcherModalProps> = ({ isOpen, onClos
 
                       {/* Badges */}
                       <div className="space-y-2 mb-4 text-[10px] font-mono">
-                        <div className="p-2 rounded bg-zinc-950/70 border border-border/50 flex items-center gap-2 text-zinc-300">
+                        <div className="p-2 rounded bg-background-elevated border border-border flex items-center gap-2 text-zinc-300">
                           <Type size={12} className="text-brand-cyan shrink-0" />
                           <span className="truncate">{preset.typography}</span>
                         </div>
-                        <div className="p-2 rounded bg-zinc-950/70 border border-border/50 flex items-center gap-2 text-zinc-300">
+                        <div className="p-2 rounded bg-background-elevated border border-border flex items-center gap-2 text-zinc-300">
                           <Shapes size={12} className="text-brand-violet shrink-0" />
                           <span className="truncate">{preset.shape}</span>
                         </div>

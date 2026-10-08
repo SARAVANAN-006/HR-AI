@@ -204,7 +204,7 @@ export const StreakModal: React.FC<StreakModalProps> = ({ isOpen, onClose }) => 
           </div>
 
           {/* MOTIVATIONAL QUOTE */}
-          <div className="p-3.5 rounded-xl border border-zinc-800 bg-zinc-900/30 text-center">
+          <div className="p-3.5 rounded-xl border border-border bg-background-elevated text-center">
             <p className="text-xs text-zinc-400 italic">
               "{streakData.motivationalQuote}"
             </p>
