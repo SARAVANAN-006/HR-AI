@@ -84,7 +84,7 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
     ? [{ name: 'Admin Console', path: '/admin', icon: ShieldAlert }]
     : [
         { name: 'Dashboard Console', path: '/dashboard', icon: LayoutDashboard },
-        { name: 'Stark AI Interview', path: '/stark', icon: Radio },
+        { name: 'Elsa AI Interview', path: '/elsa', icon: Radio },
         { name: 'Multimodal Knowledge', path: '/knowledge', icon: BookOpen },
         { name: 'Socratic AI Tutor', path: '/tutor', icon: MessageSquare },
         { name: 'Adaptive Assessment', path: '/assessment', icon: GraduationCap },
@@ -339,7 +339,7 @@ const App: React.FC = () => {
           }
         />
         <Route
-          path="/stark"
+          path="/elsa"
           element={
             <ProtectedRoute>
               <DashboardLayout>
@@ -347,6 +347,10 @@ const App: React.FC = () => {
               </DashboardLayout>
             </ProtectedRoute>
           }
+        />
+        <Route
+          path="/stark"
+          element={<Navigate to="/elsa" replace />}
         />
         <Route
           path="/start-interview"

@@ -87,7 +87,21 @@ export interface StreakData {
   motivationalQuote: string;
 }
 
-const STORAGE_KEY = 'kodexis_user_streak';
+export const getStreakStorageKey = (customUsername?: string): string => {
+  if (customUsername && customUsername.trim()) {
+    return `kodexis_user_streak_${customUsername.trim().toLowerCase()}`;
+  }
+  try {
+    const raw = localStorage.getItem('kodexis_user');
+    if (raw) {
+      const u = JSON.parse(raw);
+      if (u.username) {
+        return `kodexis_user_streak_${u.username.trim().toLowerCase()}`;
+      }
+    }
+  } catch {}
+  return 'kodexis_user_streak_default';
+};
 
 // Helper to format date as YYYY-MM-DD in local time
 export const formatDateStr = (d: Date): string => {
@@ -162,49 +176,42 @@ const generateWeeklyProgress = (historyDatesSet: Set<string>, todayStr: string):
   return week;
 };
 
-// Initialize seed data for realistic candidate experience
+// Initialize clean, authentic streak data for new candidate
 const createDefaultStreak = (): StreakData => {
   const today = new Date();
   const todayStr = formatDateStr(today);
   
-  // Seed past 6 days of activity (today active, yesterday, etc.)
-  const pastDates: string[] = [];
-  for (let i = 0; i < 6; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    pastDates.push(formatDateStr(d));
-  }
-
-  const currentStreak = 6;
-  const longestStreak = 14;
-  const historySet = new Set(pastDates);
-  const nextMilestone = getNextMilestone(currentStreak);
+  const currentStreak = 0;
+  const longestStreak = 0;
+  const historySet = new Set<string>();
+  const nextMilestone = 3;
 
   return {
     currentStreak,
     longestStreak,
-    lastActivityDate: todayStr,
-    todayCompleted: true,
+    lastActivityDate: '',
+    todayCompleted: false,
     freezeCount: 1,
-    totalActiveDays: 24,
+    totalActiveDays: 0,
     weeklyProgress: generateWeeklyProgress(historySet, todayStr),
-    historyDates: pastDates,
-    tier: getStreakTier(currentStreak),
-    badge: getStreakBadge(currentStreak),
+    historyDates: [],
+    tier: 'Beginner',
+    badge: getStreakBadge(0),
     nextMilestone,
-    daysToNextMilestone: Math.max(0, nextMilestone - currentStreak),
+    daysToNextMilestone: 3,
     motivationalQuote: MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)]
   };
 };
 
-export const getStreakData = (): StreakData => {
+export const getStreakData = (username?: string): StreakData => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const storageKey = getStreakStorageKey(username);
+    const raw = localStorage.getItem(storageKey);
     const todayStr = formatDateStr(new Date());
 
     if (!raw) {
       const initial = createDefaultStreak();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(initial));
+      localStorage.setItem(storageKey, JSON.stringify(initial));
       return initial;
     }
 
@@ -249,7 +256,7 @@ export const getStreakData = (): StreakData => {
       motivationalQuote: data.motivationalQuote || MOTIVATIONAL_QUOTES[0]
     };
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    localStorage.setItem(storageKey, JSON.stringify(updated));
     return updated;
   } catch (err) {
     console.error('Error fetching streak data:', err);
@@ -257,9 +264,10 @@ export const getStreakData = (): StreakData => {
   }
 };
 
-export const recordStreakActivity = (activityNote?: string): StreakData => {
+export const recordStreakActivity = (activityNote?: string, username?: string): StreakData => {
   try {
-    const current = getStreakData();
+    const storageKey = getStreakStorageKey(username);
+    const current = getStreakData(username);
     const todayStr = formatDateStr(new Date());
 
     if (current.lastActivityDate === todayStr && current.todayCompleted) {
@@ -267,7 +275,7 @@ export const recordStreakActivity = (activityNote?: string): StreakData => {
       return current;
     }
 
-    const daysSince = getDaysDifference(todayStr, current.lastActivityDate);
+    const daysSince = current.lastActivityDate ? getDaysDifference(todayStr, current.lastActivityDate) : 0;
     let newStreak = current.currentStreak;
 
     if (daysSince === 1 || newStreak === 0) {
@@ -302,11 +310,11 @@ export const recordStreakActivity = (activityNote?: string): StreakData => {
       motivationalQuote: MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)]
     };
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    localStorage.setItem(storageKey, JSON.stringify(updated));
     window.dispatchEvent(new CustomEvent('kodexis_streak_updated', { detail: { streak: newStreak, note: activityNote } }));
     return updated;
   } catch (err) {
     console.error('Error recording streak activity:', err);
-    return getStreakData();
+    return getStreakData(username);
   }
 };

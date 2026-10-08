@@ -6,6 +6,7 @@ import {
   generateNextDynamicQuestion,
   evaluateCandidateSpeechAnswer,
   generateFinalStarkReport,
+  analyzeCandidateContext,
   type StarkInterviewSession,
   type StarkEvaluation
 } from '../lib/starkInterviewService';
@@ -93,10 +94,11 @@ export const StarkInterviewPage: React.FC = () => {
   // Evaluation Report
   const [finalReport, setFinalReport] = useState<StarkEvaluation | null>(null);
 
-  // Refs
-  const recognitionRef = useRef<any>(null);
+  // Refs for Speech Engine & Audio Analyzers
+  const recognitionInstanceRef = useRef<any>(null);
   const isCandidateListeningRef = useRef<boolean>(false);
   const shouldListenRef = useRef<boolean>(false);
+  const isStarkSpeakingRef = useRef<boolean>(false);
   const interimTranscriptRef = useRef<string>('');
   const countdownIntervalRef = useRef<any>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -187,7 +189,7 @@ export const StarkInterviewPage: React.FC = () => {
     // Warn before closing tab or navigating away
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
-      e.returnValue = 'Live Stark technical interview in progress. Are you sure you wish to exit?';
+      e.returnValue = 'Live Elsa technical interview in progress. Are you sure you wish to exit?';
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -302,8 +304,8 @@ export const StarkInterviewPage: React.FC = () => {
           if (dataArray[i] > peak) peak = dataArray[i];
         }
         const avg = sum / dataArray.length;
-        // Amplify sensitivity so regular speech creates responsive 0-100 VU waves
-        const normalized = Math.min(100, Math.round((avg / 64) * 100));
+        // Sensitive calibration so normal speech creates responsive 20-95% VU waves
+        const normalized = Math.min(100, Math.round(((avg * 1.6 + peak * 0.4) / 20) * 10));
         setMicAudioLevel(normalized);
 
         animFrameRef.current = requestAnimationFrame(updateLevel);
@@ -324,7 +326,7 @@ export const StarkInterviewPage: React.FC = () => {
   }, [stage, activeMediaStream, isMicMuted]);
 
   // ----------------------------------------------------
-  // WORD-BY-WORD STREAMING TELEPROMPTER & TTS
+  // WORD-BY-WORD STREAMING TELEPROMPTER & ELSA TTS
   // ----------------------------------------------------
   const streamQuestionWordByWord = (fullText: string) => {
     if (wordStreamTimerRef.current) {
@@ -335,76 +337,98 @@ export const StarkInterviewPage: React.FC = () => {
     setDisplayedWordsCount(0);
 
     let current = 0;
-    // Word-by-word streaming interval: 85ms per word
+    // Word-by-word streaming interval: 80ms per word
     wordStreamTimerRef.current = setInterval(() => {
       current++;
       setDisplayedWordsCount(current);
       if (current >= words.length) {
         clearInterval(wordStreamTimerRef.current);
       }
-    }, 85);
+    }, 80);
   };
 
-  const speakStarkQuestion = (text: string) => {
+  const speakElsaQuestion = (text: string) => {
     // Start word-by-word streaming teleprompter
     streamQuestionWordByWord(text);
 
+    // Stop candidate speech recognition while Elsa is speaking so mic does not echo
+    stopCandidateSpeechRecognition();
+
     if (isMutedTts || !('speechSynthesis' in window)) {
       setIsStarkSpeaking(false);
-      startCandidateSpeechRecognition();
+      isStarkSpeakingRef.current = false;
+      setTimeout(() => {
+        startCandidateSpeechRecognition();
+      }, 300);
       return;
     }
 
     window.speechSynthesis.cancel();
 
-    // Clean text of markdown asterisks or code symbols for smooth TTS
+    // Clean text of markdown symbols for smooth TTS pronunciation
     const clean = text.replace(/[*_#`>[\]]/g, '').trim();
     const utterance = new SpeechSynthesisUtterance(clean);
 
     // Prevent Chromium garbage collection of active utterance
-    (window as any)._starkCurrentUtterance = utterance;
+    (window as any)._elsaCurrentUtterance = utterance;
 
+    // Elsa Female Voice Attributes
     utterance.rate = 1.0;
-    utterance.pitch = 0.95;
+    utterance.pitch = 1.08;
 
     const voices = window.speechSynthesis.getVoices();
-    const naturalVoice = voices.find(
+    // Prioritize natural female English voices
+    const femaleVoice = voices.find(
       (v) =>
         v.lang.startsWith('en') &&
-        (v.name.includes('David') ||
-          v.name.includes('Male') ||
-          v.name.includes('Google UK English Male') ||
-          v.name.includes('Natural'))
-    );
-    if (naturalVoice) {
-      utterance.voice = naturalVoice;
+        (v.name.toLowerCase().includes('zira') ||
+          v.name.toLowerCase().includes('samantha') ||
+          v.name.toLowerCase().includes('victoria') ||
+          v.name.toLowerCase().includes('karen') ||
+          v.name.toLowerCase().includes('aria') ||
+          v.name.toLowerCase().includes('jenny') ||
+          v.name.toLowerCase().includes('female') ||
+          v.name.toLowerCase().includes('google us english') ||
+          v.name.toLowerCase().includes('natural') ||
+          v.name.toLowerCase().includes('eva') ||
+          v.name.toLowerCase().includes('catherine'))
+    ) || voices.find((v) => v.lang.startsWith('en'));
+
+    if (femaleVoice) {
+      utterance.voice = femaleVoice;
     }
 
     let safetyTimer: any = null;
 
     utterance.onstart = () => {
       setIsStarkSpeaking(true);
+      isStarkSpeakingRef.current = true;
     };
 
     utterance.onend = () => {
       if (safetyTimer) clearTimeout(safetyTimer);
       setIsStarkSpeaking(false);
-      startCandidateSpeechRecognition();
+      isStarkSpeakingRef.current = false;
+      // Activate candidate speech recognition cleanly when Elsa finishes speaking
+      setTimeout(() => {
+        startCandidateSpeechRecognition();
+      }, 150);
     };
 
     utterance.onerror = (e) => {
       console.warn('TTS utterance event:', e);
       if (safetyTimer) clearTimeout(safetyTimer);
       setIsStarkSpeaking(false);
-      // Guarantee candidate microphone starts even on TTS failure
+      isStarkSpeakingRef.current = false;
       startCandidateSpeechRecognition();
     };
 
     // Safety timeout: Ensure microphone activates even if Chrome TTS hangs
     const words = clean.split(/\s+/).filter(Boolean);
-    const estimatedDurationMs = Math.max(3000, words.length * 360 + 1500);
+    const estimatedDurationMs = Math.max(3500, words.length * 370 + 1500);
     safetyTimer = setTimeout(() => {
       setIsStarkSpeaking(false);
+      isStarkSpeakingRef.current = false;
       startCandidateSpeechRecognition();
     }, estimatedDurationMs);
 
@@ -413,12 +437,13 @@ export const StarkInterviewPage: React.FC = () => {
     } catch (e) {
       console.warn('TTS speak error:', e);
       setIsStarkSpeaking(false);
+      isStarkSpeakingRef.current = false;
       startCandidateSpeechRecognition();
     }
   };
 
   // ----------------------------------------------------
-  // CONTINUOUS SPEECH RECOGNITION (STT)
+  // CONTINUOUS CANDIDATE SPEECH RECOGNITION (STT)
   // ----------------------------------------------------
   const startCandidateSpeechRecognition = () => {
     const SpeechRecognition =
@@ -429,20 +454,22 @@ export const StarkInterviewPage: React.FC = () => {
       return;
     }
 
-    shouldListenRef.current = true;
-
-    // If already active, avoid redundant restart
-    if (isCandidateListeningRef.current && recognitionRef.current) {
+    // Do not listen while Elsa is narrating question
+    if (isStarkSpeakingRef.current) {
       return;
     }
 
-    try {
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.abort();
-        } catch {}
-      }
+    shouldListenRef.current = true;
 
+    // Abort previous instance to ensure fresh Web Speech lifecycle
+    if (recognitionInstanceRef.current) {
+      try {
+        recognitionInstanceRef.current.abort();
+      } catch {}
+      recognitionInstanceRef.current = null;
+    }
+
+    try {
       const recognition = new SpeechRecognition();
       recognition.continuous = true;
       recognition.interimResults = true;
@@ -456,19 +483,19 @@ export const StarkInterviewPage: React.FC = () => {
 
       recognition.onresult = (event: any) => {
         let interim = '';
-        let final = '';
+        let finalChunk = '';
 
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           const segment = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
-            final += segment + ' ';
+            finalChunk += segment + ' ';
           } else {
             interim += segment;
           }
         }
 
-        if (final.trim()) {
-          const cleanFinal = final.trim();
+        if (finalChunk.trim()) {
+          const cleanFinal = finalChunk.trim();
           setSpeechTranscript((prev) => (prev ? `${prev} ${cleanFinal}` : cleanFinal));
           interimTranscriptRef.current = '';
           setInterimTranscript('');
@@ -476,6 +503,9 @@ export const StarkInterviewPage: React.FC = () => {
           interimTranscriptRef.current = interim;
           setInterimTranscript(interim);
         }
+
+        // Live voice detection boost for visual VU meters
+        setMicAudioLevel((prev) => Math.max(prev, 35));
       };
 
       recognition.onerror = (event: any) => {
@@ -489,7 +519,7 @@ export const StarkInterviewPage: React.FC = () => {
 
       recognition.onend = () => {
         isCandidateListeningRef.current = false;
-        // Commit any pending interim words to final transcript so no words are dropped
+        // Commit any pending interim words to final transcript
         if (interimTranscriptRef.current && interimTranscriptRef.current.trim()) {
           const pending = interimTranscriptRef.current.trim();
           setSpeechTranscript((prev) => (prev ? `${prev} ${pending}` : pending));
@@ -497,26 +527,20 @@ export const StarkInterviewPage: React.FC = () => {
           setInterimTranscript('');
         }
 
-        // Auto-restart if candidate should still be listening (bypasses Chrome silence timeout)
-        if (shouldListenRef.current && stage === 'interview') {
+        // Auto-restart with a brand NEW recognition instance to bypass Chromium silence timeouts
+        if (shouldListenRef.current && stage === 'interview' && !isStarkSpeakingRef.current) {
           setTimeout(() => {
-            if (shouldListenRef.current && stage === 'interview') {
-              try {
-                recognition.start();
-                isCandidateListeningRef.current = true;
-                setIsCandidateListening(true);
-              } catch (err) {
-                console.warn('STT auto-restart tick error:', err);
-              }
+            if (shouldListenRef.current && stage === 'interview' && !isStarkSpeakingRef.current) {
+              startCandidateSpeechRecognition();
             }
-          }, 120);
+          }, 180);
         } else {
           setIsCandidateListening(false);
         }
       };
 
       recognition.start();
-      recognitionRef.current = recognition;
+      recognitionInstanceRef.current = recognition;
       isCandidateListeningRef.current = true;
       setIsCandidateListening(true);
     } catch (err) {
@@ -530,10 +554,11 @@ export const StarkInterviewPage: React.FC = () => {
     shouldListenRef.current = false;
     isCandidateListeningRef.current = false;
     setIsCandidateListening(false);
-    if (recognitionRef.current) {
+    if (recognitionInstanceRef.current) {
       try {
-        recognitionRef.current.stop();
+        recognitionInstanceRef.current.stop();
       } catch {}
+      recognitionInstanceRef.current = null;
     }
   };
 
@@ -552,7 +577,7 @@ export const StarkInterviewPage: React.FC = () => {
     );
 
     const newSession: StarkInterviewSession = {
-      sessionId: 'stark-' + Date.now(),
+      sessionId: 'elsa-' + Date.now(),
       candidateName,
       targetRole: user?.targetRole || 'Software Engineer',
       experienceLevel,
@@ -571,15 +596,10 @@ export const StarkInterviewPage: React.FC = () => {
     setInterimTranscript('');
     setRemainingSeconds(totalSecs);
 
-    // Activate candidate speech-to-text immediately
+    // Speak Question 1 (Self-Introduction) - candidate mic starts automatically when Elsa finishes
     setTimeout(() => {
-      startCandidateSpeechRecognition();
-    }, 300);
-
-    // Speak Question 1 (Introduction)
-    setTimeout(() => {
-      speakStarkQuestion(initialPlan[0].questionText);
-    }, 700);
+      speakElsaQuestion(initialPlan[0].questionText);
+    }, 600);
   };
 
   // ----------------------------------------------------
@@ -621,7 +641,59 @@ export const StarkInterviewPage: React.FC = () => {
     setSession(completedSession);
     setFinalReport(report);
     setStage('report');
-    recordStreakActivity();
+
+    // Persist session to user's isolated dashboard storage
+    const userStorageKey = `kodexis_candidate_dashboard_${user?.username ? user.username.toLowerCase() : 'default'}`;
+    const cached = localStorage.getItem(userStorageKey);
+    let userDashboard: any = null;
+    if (cached) {
+      try {
+        userDashboard = JSON.parse(cached);
+      } catch {}
+    }
+
+    if (!userDashboard) {
+      userDashboard = {
+        fullName: user?.fullName || 'Candidate',
+        targetRole: user?.targetRole || 'Software Engineer',
+        targetCompanies: user?.targetCompanies || 'Top Tech Companies',
+        experienceLevel: user?.experienceLevel || 'MEDIUM',
+        preferredLanguage: user?.preferredLanguage || 'PYTHON',
+        readinessScore: report.overallScore,
+        skills: {
+          'Arrays / Hashing': 'DEVELOPING',
+          'Strings': 'DEVELOPING',
+          'Stacks / Queues': 'DEVELOPING',
+          'Sorting / Searching': 'DEVELOPING',
+          'System Design': 'DEVELOPING',
+          'Recursion': 'DEVELOPING',
+          'LinkedLists': 'DEVELOPING',
+          'Trees': 'DEVELOPING',
+          'Dynamic Programming': 'DEVELOPING',
+          'Graphs': 'DEVELOPING'
+        },
+        history: [],
+        weaknesses: []
+      };
+    }
+
+    const newHistoryItem = {
+      sessionId: completedSession.sessionId,
+      date: new Date().toISOString(),
+      title: `Elsa AI Tech Lead Interview (${session.selectedCategories.map((c) => c.toUpperCase()).join(', ')})`,
+      topic: session.selectedCategories.length > 1 ? 'Full-Stack CS' : session.selectedCategories[0].toUpperCase(),
+      difficulty: session.experienceLevel.toUpperCase(),
+      language: 'Voice / STT',
+      score: report.overallScore,
+      feedback: report.detailedDebrief
+    };
+
+    userDashboard.history = [newHistoryItem, ...(userDashboard.history || [])];
+    userDashboard.readinessScore = Math.max(userDashboard.readinessScore || 0, report.overallScore);
+    localStorage.setItem(userStorageKey, JSON.stringify(userDashboard));
+
+    // Record streak activity uniquely for this user
+    recordStreakActivity('Elsa AI Interview Completed', user?.username);
 
     // Exit fullscreen cleanly on report
     try {
@@ -633,15 +705,29 @@ export const StarkInterviewPage: React.FC = () => {
     setTimeout(() => {
       if ('speechSynthesis' in window && !isMutedTts) {
         const wrap = new SpeechSynthesisUtterance(
-          `Time is up for this interview session. Excellent effort! I have compiled your technical autopsy report. Your overall score is ${report.overallScore} out of 100.`
+          `Time is up for this interview session. Excellent effort, ${session.candidateName}! I am Elsa, and I have compiled your technical autopsy report. Your overall score is ${report.overallScore} out of 100.`
         );
+        wrap.pitch = 1.08;
+        const voices = window.speechSynthesis.getVoices();
+        const femaleVoice = voices.find(
+          (v) =>
+            v.lang.startsWith('en') &&
+            (v.name.toLowerCase().includes('zira') ||
+              v.name.toLowerCase().includes('samantha') ||
+              v.name.toLowerCase().includes('victoria') ||
+              v.name.toLowerCase().includes('karen') ||
+              v.name.toLowerCase().includes('aria') ||
+              v.name.toLowerCase().includes('female') ||
+              v.name.toLowerCase().includes('natural'))
+        ) || voices.find((v) => v.lang.startsWith('en'));
+        if (femaleVoice) wrap.voice = femaleVoice;
         window.speechSynthesis.speak(wrap);
       }
     }, 500);
   };
 
   // ----------------------------------------------------
-  // SUBMIT CANDIDATE ANSWER & GENERATE NEW QUESTION
+  // SUBMIT CANDIDATE ANSWER & CONTEXT-AWARE NEXT QUESTION
   // ----------------------------------------------------
   const handleSubmitAnswer = async () => {
     if (!session) return;
@@ -649,12 +735,13 @@ export const StarkInterviewPage: React.FC = () => {
     stopCandidateSpeechRecognition();
     window.speechSynthesis?.cancel();
     setIsStarkSpeaking(false);
+    isStarkSpeakingRef.current = false;
     setIsStarkThinking(true);
 
     const currentQ = session.questions[currentIndex];
     const fullAnswer = (speechTranscript + ' ' + interimTranscript).trim();
 
-    // Evaluate answer
+    // Evaluate candidate speech answer
     const evalResult = evaluateCandidateSpeechAnswer(currentQ, fullAnswer);
 
     const transcriptItem = {
@@ -671,23 +758,30 @@ export const StarkInterviewPage: React.FC = () => {
 
     const updatedTranscripts = [...session.transcripts, transcriptItem];
 
-    // Check if remaining time allows more questions
-    // If more than 60 seconds remain, dynamically generate next question!
+    // If more than 60 seconds remain, adaptively generate the next question
     if (remainingSeconds > 60) {
       let nextQ: any = null;
 
-      if (currentIndex + 1 < session.questions.length) {
-        nextQ = session.questions[currentIndex + 1];
+      // Real-time Context Awareness:
+      // If candidate just introduced themselves (e.g. saying "I know oops"), Question 2 dynamically reacts!
+      if (currentQ.phase === 'intro') {
+        nextQ = generateNextDynamicQuestion(session, fullAnswer, 0);
+      } else if (currentIndex + 1 < session.questions.length) {
+        // Weave conversational bridge into planned questions
+        const baseNext = session.questions[currentIndex + 1];
+        const analysis = analyzeCandidateContext(fullAnswer);
+        nextQ = {
+          ...baseNext,
+          questionText: `${analysis.conversationalPrefix} ${baseNext.questionText}`
+        };
       } else {
-        // Dynamically generate a brand new adaptive question on the fly!
+        // Dynamically generate a brand new adaptive question on the fly
         nextQ = generateNextDynamicQuestion(session, fullAnswer, session.transcripts.length);
       }
 
-      const updatedQuestions = currentIndex + 1 < session.questions.length
-        ? session.questions
-        : [...session.questions, nextQ];
-
+      const updatedQuestions = [...session.questions.slice(0, currentIndex + 1), nextQ];
       const nextIndex = currentIndex + 1;
+
       const updatedSession: StarkInterviewSession = {
         ...session,
         currentQuestionIndex: nextIndex,
@@ -702,11 +796,10 @@ export const StarkInterviewPage: React.FC = () => {
       setIsStarkThinking(false);
 
       setTimeout(() => {
-        speakStarkQuestion(nextQ.questionText);
-        startCandidateSpeechRecognition();
+        speakElsaQuestion(nextQ.questionText);
       }, 500);
     } else {
-      // Time nearly exhausted: conclude and show autopsy report
+      // Time nearly exhausted: conclude and display dossier report
       handleTimeExpiredWrapup();
     }
   };
@@ -750,9 +843,9 @@ export const StarkInterviewPage: React.FC = () => {
     return () => {
       window.speechSynthesis?.cancel();
       if (wordStreamTimerRef.current) clearInterval(wordStreamTimerRef.current);
-      if (recognitionRef.current) {
+      if (recognitionInstanceRef.current) {
         try {
-          recognitionRef.current.stop();
+          recognitionInstanceRef.current.stop();
         } catch {}
       }
       if (activeMediaStream) {
@@ -772,13 +865,13 @@ export const StarkInterviewPage: React.FC = () => {
           <div className="space-y-2 z-10">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-cyan-500/40 bg-cyan-500/10 text-cyan-400 font-mono text-[11px] font-bold tracking-widest uppercase">
               <Radio size={12} className="animate-pulse" />
-              <span>STARK REAL TECHNICAL INTERVIEW ENGINE</span>
+              <span>ELSA REAL TECHNICAL INTERVIEW ENGINE</span>
             </div>
             <h1 className="text-3xl md:text-5xl font-extrabold font-mono text-zinc-100 tracking-tight">
-              Stark Tech Lead Chamber
+              Elsa Tech Lead Chamber
             </h1>
             <p className="text-sm text-zinc-400 max-w-2xl leading-relaxed">
-              Real-world technical interview simulation powered by Nexus 3D Spline neural visuals, live camera framing, audio VU meters, and continuous speech-to-text. Stark begins with your self-introduction and generates deep technical challenges across your chosen domains.
+              Real-world technical interview simulation powered by Nexus 3D Spline neural visuals, live camera framing, audio VU meters, and continuous speech-to-text. Elsa begins with your self-introduction and dynamically adapts deep technical challenges across your chosen domains.
             </p>
           </div>
 
@@ -877,7 +970,7 @@ export const StarkInterviewPage: React.FC = () => {
               <span>Choose Interview Topics (10 Core Computer Science Disciplines)</span>
             </h3>
             <span className="text-xs font-mono text-zinc-400">
-              Select all domains you wish Stark to explore
+              Select all domains you wish Elsa to explore
             </span>
           </div>
 
@@ -897,9 +990,11 @@ export const StarkInterviewPage: React.FC = () => {
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center space-x-2.5">
-                        <div className={`p-2 rounded-xl border ${
-                          isSelected ? 'bg-cyan-500/10 border-cyan-500/40' : 'bg-background border-border'
-                        }`}>
+                        <div
+                          className={`p-2 rounded-xl border ${
+                            isSelected ? 'bg-cyan-500/10 border-cyan-500/40' : 'bg-background border-border'
+                          }`}
+                        >
                           {getCategoryIcon(cat.icon)}
                         </div>
                         <div>
@@ -910,16 +1005,16 @@ export const StarkInterviewPage: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition ${
-                        isSelected ? 'bg-cyan-500 border-cyan-400 text-zinc-950 font-bold' : 'border-zinc-700 bg-background'
-                      }`}>
+                      <div
+                        className={`w-5 h-5 rounded-md border flex items-center justify-center transition ${
+                          isSelected ? 'bg-cyan-500 border-cyan-400 text-zinc-950 font-bold' : 'border-zinc-700 bg-background'
+                        }`}
+                      >
                         {isSelected && <CheckCircle2 size={13} className="text-zinc-950" />}
                       </div>
                     </div>
 
-                    <p className="text-[11px] text-zinc-400 leading-relaxed mt-1">
-                      {cat.tagline}
-                    </p>
+                    <p className="text-[11px] text-zinc-400 leading-relaxed mt-1">{cat.tagline}</p>
                   </div>
 
                   <div className="mt-3 pt-3 border-t border-border/50 flex flex-wrap gap-1">
@@ -974,7 +1069,7 @@ export const StarkInterviewPage: React.FC = () => {
   }
 
   // ====================================================
-  // STAGE 3: LIVE STARK INTERVIEW CHAMBER (FULLSCREEN HUD)
+  // STAGE 3: LIVE ELSA INTERVIEW CHAMBER (FULLSCREEN HUD)
   // ====================================================
   if (stage === 'interview' && session) {
     const currentQ = session.questions[currentIndex];
@@ -984,7 +1079,6 @@ export const StarkInterviewPage: React.FC = () => {
 
     return (
       <div className="fixed inset-0 z-50 bg-black text-zinc-100 flex flex-col font-sans select-none overflow-hidden">
-        
         {/* FULLSCREEN RE-ENTRY OVERLAY WARNING IF ACCIDENTALLY EXITED */}
         {showFullscreenWarning && (
           <div className="absolute inset-0 z-[100] bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center space-y-4">
@@ -992,9 +1086,7 @@ export const StarkInterviewPage: React.FC = () => {
               <AlertTriangle size={32} />
             </div>
             <div className="space-y-1">
-              <h2 className="text-xl font-bold font-mono text-zinc-100">
-                FULLSCREEN MODE REQUIRED
-              </h2>
+              <h2 className="text-xl font-bold font-mono text-zinc-100">FULLSCREEN MODE REQUIRED</h2>
               <p className="text-xs text-zinc-400 max-w-md font-mono">
                 Technical interview integrity requires uninterrupted fullscreen execution. ESC key and window minimizes are disabled.
               </p>
@@ -1018,7 +1110,7 @@ export const StarkInterviewPage: React.FC = () => {
             <div>
               <div className="flex items-center space-x-2">
                 <h2 className="text-sm font-mono font-bold text-zinc-100 tracking-wider">
-                  STARK INTERVIEW CHAMBER
+                  ELSA INTERVIEW CHAMBER
                 </h2>
                 <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 uppercase">
                   {currentQ.phase === 'intro'
@@ -1027,9 +1119,13 @@ export const StarkInterviewPage: React.FC = () => {
                     ? 'PHASE 2: PROJECT DEBRIEF'
                     : `PHASE 3: ${currentQ.categoryName || 'CS CHALLENGE'}`}
                 </span>
-                <span className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold border ${
-                  isFullscreen ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' : 'bg-amber-500/15 border-amber-500/30 text-amber-400'
-                }`}>
+                <span
+                  className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold border ${
+                    isFullscreen
+                      ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+                      : 'bg-amber-500/15 border-amber-500/30 text-amber-400'
+                  }`}
+                >
                   {isFullscreen ? 'FULLSCREEN LOCKED' : 'FULLSCREEN REQUIRED'}
                 </span>
               </div>
@@ -1039,7 +1135,7 @@ export const StarkInterviewPage: React.FC = () => {
             </div>
           </div>
 
-          {/* ACTIVE COUNTDOWN CLOCK & TIMER PROGRESS (NO Q 3/4) */}
+          {/* ACTIVE COUNTDOWN CLOCK & TIMER PROGRESS */}
           <div className="flex items-center space-x-4 font-mono">
             <div className="flex flex-col items-end">
               <div className="flex items-center space-x-2 text-xs font-bold">
@@ -1074,7 +1170,7 @@ export const StarkInterviewPage: React.FC = () => {
                 if (isStarkSpeaking) window.speechSynthesis.cancel();
                 setIsMutedTts(!isMutedTts);
               }}
-              title={isMutedTts ? 'Unmute Stark Voice' : 'Mute Stark Voice'}
+              title={isMutedTts ? 'Unmute Elsa Voice' : 'Mute Elsa Voice'}
               className={`p-2 rounded-xl border transition ${
                 isMutedTts
                   ? 'bg-red-500/10 border-red-500/30 text-red-400'
@@ -1088,10 +1184,8 @@ export const StarkInterviewPage: React.FC = () => {
 
         {/* MAIN DUAL VIEWPORT SPLIT */}
         <main className="flex-1 p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-hidden">
-          
-          {/* LEFT: STARK 3D SPLINE HUD (7 Cols) */}
+          {/* LEFT: ELSA 3D SPLINE HUD (7 Cols) */}
           <div className="lg:col-span-7 flex flex-col space-y-4 overflow-hidden">
-            
             {/* 3D Spline Interactive View from nexus-spline-view */}
             <div className="flex-1 relative overflow-hidden rounded-3xl min-h-[320px]">
               <StarkSplineView
@@ -1104,10 +1198,10 @@ export const StarkInterviewPage: React.FC = () => {
 
               {/* Repeat Audio Button */}
               <button
-                onClick={() => speakStarkQuestion(currentQ.questionText)}
+                onClick={() => speakElsaQuestion(currentQ.questionText)}
                 disabled={isStarkSpeaking}
                 className="absolute top-4 right-4 z-30 px-3 py-1.5 rounded-xl border border-cyan-500/30 bg-black/70 hover:bg-black/90 text-cyan-300 font-mono text-[10px] font-bold flex items-center gap-1.5 backdrop-blur-md transition shadow-lg"
-                title="Repeat Question via TTS"
+                title="Repeat Question via Female TTS"
               >
                 <RotateCcw size={12} />
                 <span>Repeat Question</span>
@@ -1119,7 +1213,7 @@ export const StarkInterviewPage: React.FC = () => {
               <div className="flex items-center justify-between text-xs font-mono border-b border-zinc-800 pb-2">
                 <span className="text-cyan-400 font-bold uppercase tracking-wider flex items-center gap-2">
                   <Radio size={13} className="animate-pulse" />
-                  <span>STARK'S QUESTION</span>
+                  <span>ELSA&apos;S QUESTION</span>
                 </span>
                 <span className="text-zinc-500 text-[10px] uppercase font-bold">
                   {currentQ.depthLevel} LEVEL
@@ -1164,7 +1258,6 @@ export const StarkInterviewPage: React.FC = () => {
 
           {/* RIGHT: CANDIDATE STUDIO (5 Cols) */}
           <div className="lg:col-span-5 flex flex-col space-y-4 overflow-hidden">
-            
             {/* Live Camera Feed */}
             <div className="relative aspect-video bg-zinc-950 rounded-3xl overflow-hidden border border-cyan-500/40 shadow-2xl flex items-center justify-center shrink-0">
               {isCameraOn ? (
@@ -1258,14 +1351,24 @@ export const StarkInterviewPage: React.FC = () => {
                     </h4>
                   </div>
 
-                  <span className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full border transition ${
-                    isCandidateListening
-                      ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
-                      : 'bg-zinc-800 border-zinc-700 text-zinc-400'
-                  }`}>
+                  <span
+                    className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full border transition ${
+                      isCandidateListening
+                        ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                        : 'bg-zinc-800 border-zinc-700 text-zinc-400'
+                    }`}
+                  >
                     {isCandidateListening ? '● CONVERTING SPEECH TO TEXT' : 'MIC PAUSED'}
                   </span>
                 </div>
+
+                {/* Live Speech Interim Preview Banner */}
+                {interimTranscript && (
+                  <div className="mb-2 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center gap-2 text-xs font-mono text-emerald-300 animate-pulse">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
+                    <span className="truncate">Hearing: &ldquo;{interimTranscript}&rdquo;</span>
+                  </div>
+                )}
 
                 <textarea
                   value={speechTranscript + (interimTranscript ? ` ${interimTranscript}` : '')}
@@ -1273,15 +1376,15 @@ export const StarkInterviewPage: React.FC = () => {
                     setSpeechTranscript(e.target.value);
                     setInterimTranscript('');
                   }}
-                  placeholder="Speak into your microphone — your speech converts directly to text here in real-time. You can also edit, format, or type technical solutions..."
-                  rows={7}
+                  placeholder="Speak into your microphone — your speech converts directly to text here in real-time. Elsa listens to your answers and adapts follow-ups automatically..."
+                  rows={6}
                   className="w-full p-3.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-200 focus:outline-none focus:border-cyan-500 transition resize-none leading-relaxed"
                 />
 
                 <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 mt-1.5">
                   <span>
                     {isCandidateListening
-                      ? 'Microphone active • Words are transcribed automatically'
+                      ? 'Microphone active • Speech transcribed automatically'
                       : 'Dictation paused • Click Start Dictation below'}
                   </span>
                   <span>
@@ -1306,7 +1409,7 @@ export const StarkInterviewPage: React.FC = () => {
                     }}
                     className={`py-2 px-3 rounded-xl border text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition ${
                       isCandidateListening
-                        ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
+                        ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-300 shadow-[0_0_12px_rgba(160,185,129,0.2)]'
                         : 'bg-zinc-800 hover:bg-zinc-700 border-zinc-700 text-zinc-200'
                     }`}
                   >
@@ -1326,7 +1429,7 @@ export const StarkInterviewPage: React.FC = () => {
                   </button>
                 </div>
 
-                {/* Submit to Stark Button */}
+                {/* Submit to Elsa Button */}
                 <button
                   onClick={handleSubmitAnswer}
                   disabled={isStarkThinking}
@@ -1335,7 +1438,7 @@ export const StarkInterviewPage: React.FC = () => {
                   <Send size={14} />
                   <span>
                     {isStarkThinking
-                      ? 'Stark is Evaluating Your Answer...'
+                      ? 'Elsa is Evaluating Your Answer...'
                       : remainingSeconds > 60
                       ? 'Submit Answer & Proceed'
                       : 'Submit Final Answer & Conclude Session'}
@@ -1373,7 +1476,7 @@ export const StarkInterviewPage: React.FC = () => {
           <div className="space-y-2 text-left">
             <div className="flex items-center space-x-2 text-xs font-mono text-cyan-400 uppercase tracking-widest">
               <Award size={14} />
-              <span>STARK AI CANDIDATE AUTOPSY & DOSSIER</span>
+              <span>ELSA AI CANDIDATE AUTOPSY & DOSSIER</span>
             </div>
             <h1 className="text-3xl md:text-4xl font-extrabold font-mono text-zinc-100 tracking-tight">
               Technical Interview Autopsy
@@ -1391,7 +1494,11 @@ export const StarkInterviewPage: React.FC = () => {
               <span className="text-xs text-zinc-500 block">/ 100 SCORE</span>
             </div>
 
-            <div className={`px-4 py-2.5 rounded-2xl border font-mono text-xs font-bold uppercase tracking-wider text-center ${getRecBadge(finalReport.recommendation)}`}>
+            <div
+              className={`px-4 py-2.5 rounded-2xl border font-mono text-xs font-bold uppercase tracking-wider text-center ${getRecBadge(
+                finalReport.recommendation
+              )}`}
+            >
               {finalReport.recommendation.replace('_', ' ')}
             </div>
           </div>
@@ -1455,7 +1562,7 @@ export const StarkInterviewPage: React.FC = () => {
 
           <div className="md:col-span-7 border border-border bg-background-panel rounded-3xl p-6 space-y-5">
             <h3 className="text-xs font-mono font-bold text-zinc-200 uppercase tracking-wider">
-              Stark's Strategic Feedback
+              Elsa&apos;s Strategic Feedback
             </h3>
 
             <div className="space-y-2">
@@ -1511,7 +1618,7 @@ export const StarkInterviewPage: React.FC = () => {
                 </div>
 
                 <div className="text-xs text-zinc-200 bg-background/50 p-3 rounded-xl border border-border/60">
-                  <strong className="text-zinc-400 block mb-1">STARK:</strong>
+                  <strong className="text-zinc-400 block mb-1">ELSA:</strong>
                   {item.questionText}
                 </div>
 
@@ -1521,7 +1628,7 @@ export const StarkInterviewPage: React.FC = () => {
                 </div>
 
                 <div className="text-[11px] text-zinc-400 bg-background p-2.5 rounded-lg border border-border">
-                  <strong className="text-zinc-300">Stark Feedback: </strong>
+                  <strong className="text-zinc-300">Elsa Feedback: </strong>
                   {item.feedback}
                 </div>
               </div>

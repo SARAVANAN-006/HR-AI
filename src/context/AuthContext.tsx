@@ -56,97 +56,124 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [token]);
 
+  const getUsersDb = (): Record<string, User> => {
+    try {
+      const raw = localStorage.getItem('kodexis_users_db');
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  };
+
+  const saveUserToDb = (u: User) => {
+    try {
+      const db = getUsersDb();
+      db[u.username.toLowerCase()] = u;
+      localStorage.setItem('kodexis_users_db', JSON.stringify(db));
+    } catch (e) {
+      console.warn('Failed to save user to local DB:', e);
+    }
+  };
+
   const refreshUser = async () => {
     try {
       const response = await withFastTimeout(axios.get('/api/auth/me'), 2000, 'User profile fetch');
       setUser(response.data);
       localStorage.setItem('kodexis_user', JSON.stringify(response.data));
+      saveUserToDb(response.data);
     } catch (error) {
       console.warn('Backend server offline or sleeping. Retaining active session:', error);
       if (!user) {
-        const fallbackUser: User = {
-          username: 'vicky',
-          role: 'ROLE_CANDIDATE',
-          fullName: 'Vigneshwaran S P',
-          targetRole: 'Software Engineer',
-          targetCompanies: 'NVIDIA, Google, Meta',
-          experienceLevel: 'MEDIUM',
-          preferredLanguage: 'PYTHON',
-          readinessScore: 88,
-          isOnboarded: true
-        };
-        setUser(fallbackUser);
-        localStorage.setItem('kodexis_user', JSON.stringify(fallbackUser));
+        const cached = localStorage.getItem('kodexis_user');
+        if (cached) {
+          try {
+            setUser(JSON.parse(cached));
+          } catch {}
+        }
       }
     }
   };
 
   const login = async (username: string, password: string): Promise<boolean> => {
+    const cleanUsername = username.trim();
     try {
       const response = await withFastTimeout(
-        axios.post('/api/auth/login', { username, password }),
+        axios.post('/api/auth/login', { username: cleanUsername, password }),
         2500,
         'User authentication'
       );
       const { token: receivedToken, ...userData } = response.data;
       localStorage.setItem('kodexis_token', receivedToken);
       localStorage.setItem('kodexis_user', JSON.stringify(userData));
+      saveUserToDb(userData as User);
       setToken(receivedToken);
       axios.defaults.headers.common['Authorization'] = `Bearer ${receivedToken}`;
       setUser(userData as User);
       return true;
     } catch (error) {
-      console.warn('Backend server offline or high latency. Logging in with Demo Session Mode...');
-      const mockUser: User = {
-        username: username || 'vicky',
-        role: (username && username.toLowerCase().includes('admin')) ? 'ROLE_ADMIN' : 'ROLE_CANDIDATE',
-        fullName: 'Vigneshwaran S P',
+      console.warn('Backend server offline or high latency. Logging in with client session mode...');
+      const db = getUsersDb();
+      const existing = db[cleanUsername.toLowerCase()];
+
+      const userProfile: User = existing || {
+        username: cleanUsername,
+        role: cleanUsername.toLowerCase().includes('admin') ? 'ROLE_ADMIN' : 'ROLE_CANDIDATE',
+        fullName: cleanUsername.charAt(0).toUpperCase() + cleanUsername.slice(1),
         targetRole: 'Software Engineer',
-        targetCompanies: 'NVIDIA, Google, Meta',
+        targetCompanies: 'Top Tech Companies',
         experienceLevel: 'MEDIUM',
         preferredLanguage: 'PYTHON',
-        readinessScore: 88,
-        isOnboarded: true
+        readinessScore: 0,
+        isOnboarded: false
       };
-      localStorage.setItem('kodexis_token', 'demo_mock_jwt_token_123');
-      localStorage.setItem('kodexis_user', JSON.stringify(mockUser));
-      setToken('demo_mock_jwt_token_123');
-      setUser(mockUser);
+
+      const sessionToken = `mock_token_${cleanUsername}_${Date.now()}`;
+      localStorage.setItem('kodexis_token', sessionToken);
+      localStorage.setItem('kodexis_user', JSON.stringify(userProfile));
+      saveUserToDb(userProfile);
+      setToken(sessionToken);
+      setUser(userProfile);
       return true;
     }
   };
 
   const register = async (username: string, password: string, fullName: string): Promise<boolean> => {
+    const cleanUsername = username.trim();
+    const cleanFullName = (fullName && fullName.trim()) ? fullName.trim() : (cleanUsername.charAt(0).toUpperCase() + cleanUsername.slice(1));
     try {
       const response = await withFastTimeout(
-        axios.post('/api/auth/register', { username, password, fullName }),
+        axios.post('/api/auth/register', { username: cleanUsername, password, fullName: cleanFullName }),
         2500,
         'User registration'
       );
       const { token: receivedToken, ...userData } = response.data;
       localStorage.setItem('kodexis_token', receivedToken);
       localStorage.setItem('kodexis_user', JSON.stringify(userData));
+      saveUserToDb(userData as User);
       setToken(receivedToken);
       axios.defaults.headers.common['Authorization'] = `Bearer ${receivedToken}`;
       setUser(userData as User);
       return true;
     } catch (error) {
-      console.warn('Backend server offline or high latency. Registering with Demo Session Mode...');
-      const mockUser: User = {
-        username: username || 'vicky',
-        role: 'ROLE_CANDIDATE',
-        fullName: fullName || 'Vigneshwaran S P',
+      console.warn('Backend server offline or high latency. Registering with client session mode...');
+      const newUser: User = {
+        username: cleanUsername,
+        role: cleanUsername.toLowerCase().includes('admin') ? 'ROLE_ADMIN' : 'ROLE_CANDIDATE',
+        fullName: cleanFullName,
         targetRole: 'Software Engineer',
-        targetCompanies: 'NVIDIA, Google, Meta',
+        targetCompanies: 'Top Tech Companies',
         experienceLevel: 'MEDIUM',
         preferredLanguage: 'PYTHON',
-        readinessScore: 85,
-        isOnboarded: true
+        readinessScore: 0,
+        isOnboarded: false
       };
-      localStorage.setItem('kodexis_token', 'demo_mock_jwt_token_123');
-      localStorage.setItem('kodexis_user', JSON.stringify(mockUser));
-      setToken('demo_mock_jwt_token_123');
-      setUser(mockUser);
+
+      const sessionToken = `mock_token_${cleanUsername}_${Date.now()}`;
+      localStorage.setItem('kodexis_token', sessionToken);
+      localStorage.setItem('kodexis_user', JSON.stringify(newUser));
+      saveUserToDb(newUser);
+      setToken(sessionToken);
+      setUser(newUser);
       return true;
     }
   };
@@ -166,6 +193,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         setUser(updated);
         localStorage.setItem('kodexis_user', JSON.stringify(updated));
+        saveUserToDb(updated);
       }
       return true;
     }

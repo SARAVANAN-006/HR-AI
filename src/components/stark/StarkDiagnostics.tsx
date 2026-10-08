@@ -124,16 +124,28 @@ export const StarkDiagnostics: React.FC<StarkDiagnosticsProps> = ({ onComplete, 
 
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(
-      "Diagnostic check confirmed. Sound output calibrated. I am Stark, and I am ready to conduct your interview."
+      "Diagnostic check confirmed. Sound output calibrated. I am Elsa, and I am ready to conduct your interview."
     );
     utterance.rate = 1.0;
-    utterance.pitch = 0.95;
+    utterance.pitch = 1.08;
 
-    // Pick a natural English voice if available
+    // Pick a natural English female voice
     const voices = window.speechSynthesis.getVoices();
-    const englishVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('David') || v.name.includes('Male') || v.name.includes('Google') || v.name.includes('Natural')));
-    if (englishVoice) {
-      utterance.voice = englishVoice;
+    const femaleVoice = voices.find(v =>
+      v.lang.startsWith('en') && (
+        v.name.toLowerCase().includes('zira') ||
+        v.name.toLowerCase().includes('samantha') ||
+        v.name.toLowerCase().includes('victoria') ||
+        v.name.toLowerCase().includes('karen') ||
+        v.name.toLowerCase().includes('aria') ||
+        v.name.toLowerCase().includes('jenny') ||
+        v.name.toLowerCase().includes('female') ||
+        (v.name.toLowerCase().includes('google') && v.name.toLowerCase().includes('en') && !v.name.toLowerCase().includes('male'))
+      )
+    ) || voices.find(v => v.lang.startsWith('en')) || voices[0];
+
+    if (femaleVoice) {
+      utterance.voice = femaleVoice;
     }
 
     utterance.onstart = () => setIsSpeakingTest(true);
@@ -210,13 +222,13 @@ export const StarkDiagnostics: React.FC<StarkDiagnosticsProps> = ({ onComplete, 
         <div>
           <div className="flex items-center space-x-2 text-xs font-mono text-cyan-400 uppercase tracking-widest mb-1">
             <Radio size={14} className="animate-pulse" />
-            <span>STARK SYSTEM CALIBRATION • PRE-FLIGHT CHECK</span>
+            <span>ELSA SYSTEM CALIBRATION • PRE-FLIGHT CHECK</span>
           </div>
           <h2 className="text-2xl font-bold font-mono text-zinc-100 tracking-tight">
             Hardware & Environment Verification
           </h2>
           <p className="text-xs text-zinc-400 mt-1 max-w-xl">
-            Stark conducts realistic interviews with live camera and continuous voice recognition. Please verify your camera framing, microphone sound levels, and speaker output.
+            Elsa conducts realistic technical interviews with live camera and continuous voice recognition. Please verify your camera framing, microphone sound levels, and speaker output.
           </p>
         </div>
 
@@ -416,7 +428,7 @@ export const StarkDiagnostics: React.FC<StarkDiagnosticsProps> = ({ onComplete, 
           <div className={`w-3 h-3 rounded-full ${allPassed ? 'bg-emerald-400 shadow-[0_0_8px_#10b981]' : 'bg-amber-400 animate-pulse'}`} />
           <span className="text-zinc-300">
             {allPassed
-              ? 'All requirements satisfied. Stark is primed for your interview.'
+              ? 'All requirements satisfied. Elsa is primed for your interview.'
               : 'Diagnostics in progress. You can proceed directly or finish tests.'}
           </span>
         </div>
@@ -432,7 +444,7 @@ export const StarkDiagnostics: React.FC<StarkDiagnosticsProps> = ({ onComplete, 
             onClick={handleLaunch}
             className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-mono text-xs font-bold shadow-[0_0_15px_rgba(6,182,212,0.4)] transition flex items-center justify-center gap-2"
           >
-            <span>Enter Stark Interview Chamber</span>
+            <span>Enter Elsa Interview Chamber</span>
             <CheckCircle2 size={14} />
           </button>
         </div>

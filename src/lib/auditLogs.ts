@@ -43,10 +43,10 @@ export interface CandidateUsageLog {
 
 export const SEED_USERS_LOGS: CandidateUsageLog[] = [
   {
-    id: 'user-vicky',
+    id: 'user-alex',
     userId: '1',
-    username: 'vicky',
-    fullName: 'Vigneshwaran S P',
+    username: 'alex',
+    fullName: 'Alex Chen',
     targetRole: 'Senior Software Engineer (NVIDIA / Google)',
     level: {
       number: 4,

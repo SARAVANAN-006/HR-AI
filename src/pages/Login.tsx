@@ -85,7 +85,7 @@ const Login: React.FC = () => {
                 <User className="absolute left-3 top-3 text-zinc-500" size={16} />
                 <input
                   type="text"
-                  placeholder="Vigneshwaran S P"
+                  placeholder="e.g. Alex Morgan"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   className="w-full bg-background border border-border rounded pl-10 pr-4 py-2.5 text-sm font-mono text-zinc-200 focus:outline-none focus:border-brand-cyan transition"
@@ -100,7 +100,7 @@ const Login: React.FC = () => {
               <User className="absolute left-3 top-3 text-zinc-500" size={16} />
               <input
                 type="text"
-                placeholder="vicky"
+                placeholder="e.g. alex"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full bg-background border border-border rounded pl-10 pr-4 py-2.5 text-sm font-mono text-zinc-200 focus:outline-none focus:border-brand-cyan transition"

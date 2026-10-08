@@ -355,8 +355,188 @@ const ADAPTIVE_CATEGORY_POOLS: Record<string, Array<{ text: string; hints: strin
   ]
 };
 
+export interface CandidateContextAnalysis {
+  recognizedTopicId?: string;
+  acknowledgedTopicName?: string;
+  conversationalPrefix: string;
+}
+
+export function analyzeCandidateContext(answerText: string): CandidateContextAnalysis {
+  const lower = (answerText || '').toLowerCase().trim();
+
+  // 1. Check for OOP / Oops
+  if (
+    lower.includes('oops') ||
+    lower.includes('oop') ||
+    lower.includes('object oriented') ||
+    lower.includes('polymorphism') ||
+    lower.includes('inheritance') ||
+    lower.includes('encapsulation')
+  ) {
+    return {
+      recognizedTopicId: 'oop',
+      acknowledgedTopicName: 'Object-Oriented Programming',
+      conversationalPrefix: "That's good! Since you know Object-Oriented Programming, let's explore how you apply its core principles in production software design."
+    };
+  }
+
+  // 2. Check for DSA
+  if (
+    lower.includes('dsa') ||
+    lower.includes('data structures') ||
+    lower.includes('algorithms') ||
+    lower.includes('binary search') ||
+    lower.includes('dynamic programming') ||
+    lower.includes('trees') ||
+    lower.includes('graphs')
+  ) {
+    return {
+      recognizedTopicId: 'dsa',
+      acknowledgedTopicName: 'Data Structures & Algorithms',
+      conversationalPrefix: "That's good! Having a firm grasp of Data Structures and Algorithms is essential for scalable engineering."
+    };
+  }
+
+  // 3. Check for OS
+  if (
+    lower.includes('os') ||
+    lower.includes('operating system') ||
+    lower.includes('concurrency') ||
+    lower.includes('threads') ||
+    lower.includes('multithreading') ||
+    lower.includes('deadlock') ||
+    lower.includes('virtual memory')
+  ) {
+    return {
+      recognizedTopicId: 'os',
+      acknowledgedTopicName: 'Operating Systems',
+      conversationalPrefix: "That's good! Deep knowledge of Operating Systems and concurrency models is vital for systems architecture."
+    };
+  }
+
+  // 4. Check for Computer Networks
+  if (
+    lower.includes('cn') ||
+    lower.includes('computer networks') ||
+    lower.includes('networking') ||
+    lower.includes('tcp') ||
+    lower.includes('http') ||
+    lower.includes('dns') ||
+    lower.includes('socket')
+  ) {
+    return {
+      recognizedTopicId: 'cn',
+      acknowledgedTopicName: 'Computer Networks',
+      conversationalPrefix: "That's good! Network fundamentals and protocol dynamics are crucial for modern distributed services."
+    };
+  }
+
+  // 5. Check for DBMS / SQL
+  if (
+    lower.includes('dbms') ||
+    lower.includes('database') ||
+    lower.includes('sql') ||
+    lower.includes('postgres') ||
+    lower.includes('mysql') ||
+    lower.includes('indexing') ||
+    lower.includes('acid')
+  ) {
+    return {
+      recognizedTopicId: 'dbms',
+      acknowledgedTopicName: 'Database Management Systems',
+      conversationalPrefix: "That's good! Knowing database architecture and query optimization is key for reliable backends."
+    };
+  }
+
+  // 6. Check for System Design
+  if (
+    lower.includes('system design') ||
+    lower.includes('distributed system') ||
+    lower.includes('microservices') ||
+    lower.includes('scalability') ||
+    lower.includes('load balancer') ||
+    lower.includes('caching') ||
+    lower.includes('kafka')
+  ) {
+    return {
+      recognizedTopicId: 'system_design',
+      acknowledgedTopicName: 'System Design & Architecture',
+      conversationalPrefix: "That's good! Distributed systems and scalability trade-offs are central to high-impact engineering."
+    };
+  }
+
+  // 7. Check for AI & Machine Learning
+  if (
+    lower.includes('ai') ||
+    lower.includes('artificial intelligence') ||
+    lower.includes('machine learning') ||
+    lower.includes('ml') ||
+    lower.includes('deep learning') ||
+    lower.includes('neural') ||
+    lower.includes('transformer')
+  ) {
+    return {
+      recognizedTopicId: 'ai',
+      acknowledgedTopicName: 'Artificial Intelligence & Machine Learning',
+      conversationalPrefix: "That's good! Navigating AI architectures and probabilistic reasoning is very valuable in modern software."
+    };
+  }
+
+  // 8. Check for Cloud / DevOps
+  if (
+    lower.includes('cloud') ||
+    lower.includes('aws') ||
+    lower.includes('docker') ||
+    lower.includes('kubernetes') ||
+    lower.includes('devops') ||
+    lower.includes('ci/cd')
+  ) {
+    return {
+      recognizedTopicId: 'cloud_web',
+      acknowledgedTopicName: 'Cloud & Infrastructure',
+      conversationalPrefix: "That's good! Practical cloud containerization and infrastructure resilience are key to keeping modern services online."
+    };
+  }
+
+  // 9. Check for Cybersecurity
+  if (
+    lower.includes('security') ||
+    lower.includes('cyber') ||
+    lower.includes('cryptography') ||
+    lower.includes('oauth') ||
+    lower.includes('authentication')
+  ) {
+    return {
+      recognizedTopicId: 'cybersecurity',
+      acknowledgedTopicName: 'Cybersecurity',
+      conversationalPrefix: "That's good! Defensive architectural patterns and secure token authorization protect systems against serious threats."
+    };
+  }
+
+  // 10. Check if candidate mentioned languages or frameworks
+  const techTerms = ['python', 'java', 'c++', 'javascript', 'typescript', 'react', 'node', 'spring', 'go', 'golang', 'rust'];
+  for (const t of techTerms) {
+    if (lower.includes(t)) {
+      return {
+        acknowledgedTopicName: t.toUpperCase(),
+        conversationalPrefix: `That's good! Having hands-on fluency with ${t.charAt(0).toUpperCase() + t.slice(1)} provides valuable engineering leverage.`
+      };
+    }
+  }
+
+  if (lower.length > 25) {
+    return {
+      conversationalPrefix: "That's good! Thank you for that clear explanation."
+    };
+  }
+
+  return {
+    conversationalPrefix: "Understood."
+  };
+}
+
 /**
- * Initialize Stark Interview Plan
+ * Initialize Elsa Interview Plan
  */
 export function generateStarkInterviewPlan(
   candidateName: string,
@@ -368,19 +548,19 @@ export function generateStarkInterviewPlan(
 
   // Phase 1: Icebreaker / Self-Introduction (Always First!)
   plan.push({
-    id: 'stark-intro-1',
+    id: 'elsa-intro-1',
     phase: 'intro',
-    questionText: `Greetings, ${candidateName}! I am Stark, your lead technical interviewer today. Before we dive into deep engineering challenges, I'd like to get to know you. Please introduce yourself, summarize your technical background, and highlight a complex engineering project or technical hurdle you've tackled recently.`,
-    hints: ['Mention your core tech stack', 'Describe your project architecture', 'Highlight key engineering decisions'],
+    questionText: `Greetings, ${candidateName}! I am Elsa, your lead technical interviewer today. Before we dive into deep engineering challenges, I'd like to get to know you. Please introduce yourself, share the technical topics you are most confident in, and highlight a complex engineering project or technical hurdle you've tackled recently.`,
+    hints: ['Mention your core tech stack & strengths', 'Describe your project architecture', 'Highlight key engineering decisions'],
     expectedKeywords: ['experience', 'project', 'developed', 'built', 'architecture', 'stack', 'technologies', 'challenges', 'service'],
     depthLevel: 'icebreaker'
   });
 
   // Phase 2: Follow-up Question based on technical background
   plan.push({
-    id: 'stark-intro-followup',
+    id: 'elsa-intro-followup',
     phase: 'intro_followup',
-    questionText: `Thank you for detailing that background. In that project or in your wider software engineering practice, what was the most difficult architectural trade-off or performance bottleneck you encountered, and how did you systematically diagnose, profile, and resolve it?`,
+    questionText: `Thank you for sharing that background. In that project or in your wider software engineering practice, what was the most difficult architectural trade-off or performance bottleneck you encountered, and how did you systematically diagnose, profile, and resolve it?`,
     hints: ['Focus on profiling metrics', 'Discuss trade-offs considered', 'Show systematic root-cause analysis'],
     expectedKeywords: ['trade-off', 'performance', 'latency', 'debugging', 'database', 'optimization', 'resolution', 'scale', 'profile'],
     depthLevel: 'foundational'
@@ -393,7 +573,7 @@ export function generateStarkInterviewPlan(
   const diffKey = experienceLevel === 'junior' ? 'junior' : (experienceLevel === 'staff' || experienceLevel === 'senior' ? 'senior' : 'mid');
 
   plan.push({
-    id: `stark-${firstCat.id}-0`,
+    id: `elsa-${firstCat.id}-0`,
     phase: 'category_deep',
     categoryId: firstCat.id,
     categoryName: firstCat.name,
@@ -407,54 +587,58 @@ export function generateStarkInterviewPlan(
 }
 
 /**
- * Dynamically Generate the Next Adaptive Technical Question on the Fly
+ * Dynamically Generate the Next Adaptive Technical Question on the Fly (Context-Aware)
  */
 export function generateNextDynamicQuestion(
   session: StarkInterviewSession,
   previousAnswerText: string,
   categoryIndex: number
 ): StarkQuestion {
-  const activeCategories = CS_CATEGORIES.filter(c => session.selectedCategories.includes(c.id));
-  const pool = activeCategories.length > 0 ? activeCategories : CS_CATEGORIES.slice(0, 3);
-  const targetCategory = pool[categoryIndex % pool.length];
+  const analysis = analyzeCandidateContext(previousAnswerText);
 
-  // Extract relevant technical keyword from user's previous answer for smooth conversational bridge
-  const lowerAns = (previousAnswerText || '').toLowerCase();
-  let bridgeTerm = '';
-  const candidateKeywords = ['concurrency', 'latency', 'cache', 'database', 'thread', 'memory', 'query', 'scale', 'network', 'distributed', 'lock', 'async', 'docker', 'queue', 'hash'];
-  for (const k of candidateKeywords) {
-    if (lowerAns.includes(k)) {
-      bridgeTerm = k;
-      break;
-    }
-  }
+  // If candidate mentioned a specific topic they know (e.g. OOP, OS, DSA), prioritize that!
+  let categoryName = 'Computer Science & Software Design';
+  let categoryId = 'dsa';
+  let questionBody = '';
+  let hints: string[] = ['Core Principles', 'Clean Architecture', 'Engineering Trade-offs'];
+  let expectedKeywords: string[] = ['architecture', 'design', 'patterns', 'scalability'];
 
-  // Pick question from adaptive pool
-  const adaptivePool = ADAPTIVE_CATEGORY_POOLS[targetCategory.id] || [];
-  const pickIndex = (session.currentQuestionIndex) % (adaptivePool.length || 1);
-  const picked = adaptivePool[pickIndex];
-
-  let questionText = '';
-  const diffKey = session.experienceLevel === 'junior' ? 'junior' : (session.experienceLevel === 'staff' || session.experienceLevel === 'senior' ? 'senior' : 'mid');
-
-  if (picked) {
-    if (bridgeTerm) {
-      questionText = `Building on your point regarding ${bridgeTerm}, let's examine ${targetCategory.name}. ${picked.text}`;
-    } else {
-      questionText = `Now examining ${targetCategory.name}: ${picked.text}`;
-    }
+  if (analysis.recognizedTopicId && ADAPTIVE_CATEGORY_POOLS[analysis.recognizedTopicId]) {
+    categoryId = analysis.recognizedTopicId;
+    categoryName = analysis.acknowledgedTopicName || 'Software Design & OOP';
+    const pool = ADAPTIVE_CATEGORY_POOLS[analysis.recognizedTopicId];
+    const pickIndex = session.currentQuestionIndex % pool.length;
+    const picked = pool[pickIndex];
+    questionBody = picked.text;
+    hints = picked.hints;
+    expectedKeywords = picked.keywords;
   } else {
-    questionText = `Focusing now on ${targetCategory.name}: ${targetCategory.sampleQuestions[diffKey]}`;
+    const activeCategories = CS_CATEGORIES.filter(c => session.selectedCategories.includes(c.id));
+    const pool = activeCategories.length > 0 ? activeCategories : CS_CATEGORIES.slice(0, 3);
+    const targetCategory = pool[categoryIndex % pool.length];
+    categoryId = targetCategory.id;
+    categoryName = targetCategory.name;
+
+    const adaptivePool = ADAPTIVE_CATEGORY_POOLS[targetCategory.id] || [];
+    const pickIndex = session.currentQuestionIndex % (adaptivePool.length || 1);
+    const picked = adaptivePool[pickIndex];
+    const diffKey = session.experienceLevel === 'junior' ? 'junior' : (session.experienceLevel === 'staff' || session.experienceLevel === 'senior' ? 'senior' : 'mid');
+    questionBody = picked ? picked.text : targetCategory.sampleQuestions[diffKey];
+    hints = picked ? picked.hints : targetCategory.topics.slice(0, 3);
+    expectedKeywords = picked ? picked.keywords : targetCategory.topics.flatMap(t => t.toLowerCase().split(/[\s,&()]+/)).filter(k => k.length > 3);
   }
+
+  // Weave Elsa's conversational acknowledgment seamlessly into the question!
+  const questionText = `${analysis.conversationalPrefix} Now let's explore ${categoryName}: ${questionBody}`;
 
   return {
-    id: `stark-${targetCategory.id}-${Date.now()}`,
+    id: `elsa-${categoryId}-${Date.now()}`,
     phase: 'category_deep',
-    categoryId: targetCategory.id,
-    categoryName: targetCategory.name,
+    categoryId,
+    categoryName,
     questionText,
-    hints: picked ? picked.hints : targetCategory.topics.slice(0, 3),
-    expectedKeywords: picked ? picked.keywords : targetCategory.topics.flatMap(t => t.toLowerCase().split(/[\s,&()]+/)).filter(k => k.length > 3),
+    hints,
+    expectedKeywords,
     depthLevel: session.experienceLevel === 'senior' || session.experienceLevel === 'staff' ? 'architectural' : 'deep'
   };
 }
@@ -472,7 +656,7 @@ export function evaluateCandidateSpeechAnswer(
   if (wordCount < 10) {
     return {
       score: 42,
-      feedback: 'The answer was too brief. Stark expects a structured explanation detailing mechanisms, reasoning, and technical depth.'
+      feedback: 'The answer was too brief. Elsa expects a structured explanation detailing mechanisms, reasoning, and technical depth.'
     };
   }
 
@@ -509,7 +693,7 @@ export function evaluateCandidateSpeechAnswer(
   } else if (rawScore >= 75) {
     feedback = `Solid technical foundation. Covered key concepts cleanly; could delve further into failure recovery and edge-case behaviors.`;
   } else if (rawScore >= 60) {
-    feedback = `Good conceptual awareness. Stark recommends adding concrete architecture examples and discussing algorithmic trade-offs.`;
+    feedback = `Good conceptual awareness. Elsa recommends adding concrete architecture examples and discussing algorithmic trade-offs.`;
   } else {
     feedback = `Answer touched on basics but lacked granular architectural depth. Review foundational mechanisms and implementation details.`;
   }
@@ -586,6 +770,6 @@ export function generateFinalStarkReport(session: StarkInterviewSession): StarkE
     categoryScores,
     keyStrengths: strengths,
     areasForImprovement: improvements,
-    detailedDebrief: `Stark AI Interview Autopsy: Candidate demonstrated solid grasp of core computer science topics across ${session.selectedCategories.length} selected areas during the ${session.durationMinutes}-minute timed technical session. Maintained steady composure on camera and articulated key principles with commendable clarity.`
+    detailedDebrief: `Elsa AI Interview Autopsy: Candidate demonstrated solid grasp of core computer science topics across ${session.selectedCategories.length} selected areas during the ${session.durationMinutes}-minute timed technical session. Maintained steady composure on camera and articulated key principles with commendable clarity.`
   };
 }

@@ -23,12 +23,12 @@ export const StarkSplineView: React.FC<StarkSplineViewProps> = ({
 
   // Status Badge Metadata
   const statusLabel = isSpeaking
-    ? 'STARK TRANSMITTING AUDIO (TTS)'
+    ? 'ELSA TRANSMITTING AUDIO (TTS)'
     : isListening
     ? 'LISTENING TO CANDIDATE SPEECH'
     : isThinking
     ? 'EVALUATING ARCHITECTURAL REASONING'
-    : 'STARK ONLINE • AWAITING RESPONSE';
+    : 'ELSA ONLINE • AWAITING RESPONSE';
 
   const statusColor = isSpeaking
     ? 'border-cyan-500/50 bg-cyan-500/10 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.3)]'
@@ -157,7 +157,7 @@ export const StarkSplineView: React.FC<StarkSplineViewProps> = ({
               <div className="w-8 h-8 rounded-full border-2 border-purple-500/30 border-b-purple-400 animate-[spin_1.5s_linear_infinite_reverse]" />
             </div>
             <p className="text-xs font-mono font-bold text-cyan-400 tracking-widest uppercase animate-pulse">
-              SYNCHRONIZING STARK 3D NEURAL CORE...
+              SYNCHRONIZING ELSA 3D NEURAL CORE...
             </p>
           </div>
         )}
@@ -168,7 +168,7 @@ export const StarkSplineView: React.FC<StarkSplineViewProps> = ({
             <div className="relative w-36 h-36 rounded-full border-2 border-cyan-500/50 bg-cyan-950/20 flex items-center justify-center shadow-[0_0_30px_rgba(6,182,212,0.4)]">
               <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-cyan-400 to-sky-200 animate-pulse shadow-[0_0_20px_#22d3ee]" />
             </div>
-            <p className="text-xs font-mono text-cyan-400">STARK NEURAL CORE ONLINE</p>
+            <p className="text-xs font-mono text-cyan-400">ELSA NEURAL CORE ONLINE</p>
           </div>
         )}
       </div>
@@ -195,15 +195,15 @@ export const StarkSplineView: React.FC<StarkSplineViewProps> = ({
       {isListening && (
         <div className="absolute bottom-16 inset-x-0 flex flex-col items-center justify-center pointer-events-none z-20 space-y-1">
           <div className="flex items-center space-x-2.5 px-4 py-2 rounded-full bg-black/80 backdrop-blur-md border border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.25)]">
-            <span className={`w-2 h-2 rounded-full ${audioLevel > 8 ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`} />
+            <span className={`w-2 h-2 rounded-full ${audioLevel > 5 ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`} />
             <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider">
-              {audioLevel > 8 ? 'CANDIDATE VOICE DETECTED' : 'AWAITING CANDIDATE SPEECH'}
+              {audioLevel > 5 ? 'CANDIDATE VOICE DETECTED' : 'AWAITING CANDIDATE SPEECH'}
             </span>
             <div className="flex items-end space-x-1 h-5 px-1">
               {[0.4, 0.7, 1.0, 0.8, 0.5, 0.9, 1.2, 0.6, 0.4, 0.85, 1.1, 0.7, 0.4].map((mult, idx) => {
                 const dynamicHeight = Math.max(
                   4,
-                  Math.min(22, Math.round((audioLevel / 100) * 22 * mult + (audioLevel > 5 ? 4 : 2)))
+                  Math.min(22, Math.round((audioLevel / 100) * 22 * mult + (audioLevel > 3 ? 4 : 2)))
                 );
                 return (
                   <div
@@ -225,7 +225,7 @@ export const StarkSplineView: React.FC<StarkSplineViewProps> = ({
       <div className="absolute top-4 left-4 z-20 flex items-center space-x-2">
         <div className="px-3 py-1 rounded-full bg-black/80 backdrop-blur-md border border-white/10 text-[10px] font-mono text-zinc-300 flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-          <span className="font-bold tracking-wider">STARK TECH LEAD</span>
+          <span className="font-bold tracking-wider">ELSA TECH LEAD</span>
           <span className="text-zinc-500">|</span>
           <span className="text-cyan-400 font-mono">NEXUS SPLINE CORE</span>
         </div>

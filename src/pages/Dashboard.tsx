@@ -83,8 +83,9 @@ const Dashboard: React.FC = () => {
       return;
     }
 
-    // Instant local cache hydration for zero latency
-    const cached = localStorage.getItem('kodexis_candidate_dashboard');
+    // Instant local cache hydration scoped to active user
+    const userStorageKey = `kodexis_candidate_dashboard_${user?.username ? user.username.toLowerCase() : 'default'}`;
+    const cached = localStorage.getItem(userStorageKey);
     if (cached) {
       try {
         const parsed: DashboardData = JSON.parse(cached);
@@ -99,69 +100,39 @@ const Dashboard: React.FC = () => {
     withFastTimeout(axios.get('/api/progress/dashboard'), 2500, 'Dashboard metrics fetch')
       .then((res) => {
         setData(res.data);
-        localStorage.setItem('kodexis_candidate_dashboard', JSON.stringify(res.data));
+        localStorage.setItem(userStorageKey, JSON.stringify(res.data));
         setRadarData(computeRadar(res.data));
         setLoading(false);
       })
       .catch(() => {
         console.warn('Backend offline or high latency. Loading candidate dashboard telemetry...');
         if (!cached) {
-          const mockDashboard: DashboardData = {
-            fullName: "Vigneshwaran S P",
-            targetRole: "Software Engineer",
-            targetCompanies: "NVIDIA, Google, Meta",
-            experienceLevel: "MEDIUM",
-            preferredLanguage: "PYTHON",
-            readinessScore: 88,
+          const freshDashboard: DashboardData = {
+            fullName: user?.fullName || "Candidate",
+            targetRole: user?.targetRole || "Software Engineer",
+            targetCompanies: user?.targetCompanies || "Top Tech Companies",
+            experienceLevel: user?.experienceLevel || "MEDIUM",
+            preferredLanguage: user?.preferredLanguage || "PYTHON",
+            readinessScore: user?.readinessScore || 0,
             skills: {
-              "Arrays / Hashing": "EXPERT",
-              "Strings": "STRONG",
-              "Stacks / Queues": "STRONG",
-              "Sorting / Searching": "STRONG",
-              "System Design": "STRONG",
-              "Recursion": "INTERMEDIATE",
-              "LinkedLists": "INTERMEDIATE",
+              "Arrays / Hashing": "DEVELOPING",
+              "Strings": "DEVELOPING",
+              "Stacks / Queues": "DEVELOPING",
+              "Sorting / Searching": "DEVELOPING",
+              "System Design": "DEVELOPING",
+              "Recursion": "DEVELOPING",
+              "LinkedLists": "DEVELOPING",
               "Trees": "DEVELOPING",
               "Dynamic Programming": "DEVELOPING",
-              "Graphs": "WEAK"
+              "Graphs": "DEVELOPING"
             },
-            history: [
-              {
-                sessionId: 101,
-                topic: "Arrays / Hashing",
-                title: "Two Sum - Hash Map Lookup",
-                difficulty: "EASY",
-                language: "PYTHON",
-                score: 96,
-                date: "2026-08-09T13:25:00"
-              },
-              {
-                sessionId: 102,
-                topic: "Stacks / Queues",
-                title: "Valid Parentheses",
-                difficulty: "EASY",
-                language: "PYTHON",
-                score: 84,
-                date: "2026-08-07T14:30:00"
-              }
-            ],
-            weaknesses: [
-              {
-                topic: "Graphs & Traversal",
-                status: "ATTENTION NEEDED",
-                description: "Low practice volume on BFS/DFS traversal algorithms."
-              },
-              {
-                topic: "Dynamic Programming",
-                status: "DEVELOPING",
-                description: "Suboptimal space complexity on 2D memoization grids."
-              }
-            ]
+            history: [],
+            weaknesses: []
           };
 
-          setData(mockDashboard);
-          setRadarData(computeRadar(mockDashboard));
-          localStorage.setItem('kodexis_candidate_dashboard', JSON.stringify(mockDashboard));
+          setData(freshDashboard);
+          setRadarData(computeRadar(freshDashboard));
+          localStorage.setItem(userStorageKey, JSON.stringify(freshDashboard));
         }
         setLoading(false);
       });
@@ -215,11 +186,11 @@ const Dashboard: React.FC = () => {
         </div>
         <div className="flex items-center gap-2.5">
           <button
-            onClick={() => navigate('/stark')}
+            onClick={() => navigate('/elsa')}
             className="flex items-center justify-center space-x-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-mono font-bold text-xs rounded-lg shadow-[0_0_15px_rgba(6,182,212,0.35)] transition"
           >
             <Radio size={14} className="animate-pulse" />
-            <span>Launch Stark Interview (Live Video & Mic)</span>
+            <span>Launch Elsa AI Interview (Live Video & Mic)</span>
           </button>
           <button
             onClick={() => navigate('/start-interview')}
@@ -293,7 +264,7 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* STARK REAL TECHNICAL INTERVIEW BANNER */}
+      {/* ELSA REAL TECHNICAL INTERVIEW BANNER */}
       <div className="glass-panel rounded-2xl p-6 border border-cyan-500/30 bg-gradient-to-r from-cyan-950/30 via-background to-purple-950/20 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden shadow-[0_0_25px_rgba(6,182,212,0.08)]">
         <div className="flex items-center space-x-5">
           <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/40 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(6,182,212,0.3)]">
@@ -303,27 +274,27 @@ const Dashboard: React.FC = () => {
             <div className="flex items-center space-x-2">
               <span className="text-xs font-mono font-bold text-cyan-400 uppercase tracking-widest flex items-center gap-1.5">
                 <Sparkles size={13} />
-                <span>REAL INTERVIEW EXPERIENCE • STARK AI</span>
+                <span>REAL INTERVIEW EXPERIENCE • ELSA AI</span>
               </span>
               <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-cyan-500/20 border border-cyan-500/40 text-cyan-300">
                 CAMERA & MIC ON
               </span>
             </div>
             <h3 className="text-lg font-bold font-mono text-zinc-100">
-              Stark Live Tech Lead Interview (10 CS Categories)
+              Elsa Live Tech Lead Interview (10 CS Categories)
             </h3>
             <p className="text-xs text-zinc-400 max-w-xl">
-              Simulate a real-world technical interview with live video, audio VU meters, and Stark voice TTS. Stark starts with your introduction and navigates deep into DSA, OS, CN, AI, ML, DBMS, System Design, and more.
+              Simulate a real-world technical interview with live video, audio VU meters, and Elsa natural female voice. Elsa starts with your introduction and navigates deep into DSA, OS, CN, AI, ML, DBMS, System Design, and more.
             </p>
           </div>
         </div>
 
         <button
-          onClick={() => navigate('/stark')}
+          onClick={() => navigate('/elsa')}
           className="w-full md:w-auto px-5 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-mono text-xs font-bold shadow-[0_0_20px_rgba(6,182,212,0.4)] transition flex items-center justify-center gap-2 shrink-0"
         >
           <Radio size={14} className="animate-pulse" />
-          <span>Launch Stark Interview</span>
+          <span>Launch Elsa Interview</span>
           <ArrowUpRight size={14} />
         </button>
       </div>

@@ -71,19 +71,19 @@ const StartInterview: React.FC = () => {
               </span>
             </div>
             <h3 className="text-sm font-bold font-mono text-zinc-100 mt-0.5">
-              Stark AI Tech Lead Interview (10 CS Categories)
+              Elsa AI Tech Lead Interview (10 CS Categories)
             </h3>
             <p className="text-xs text-zinc-400">
-              Want a real-time conversational interview with camera on, voice recognition, and Stark TTS? Practice across DSA, OS, CN, AI, ML, and more.
+              Want a real-time conversational interview with camera on, voice recognition, and Elsa female TTS? Practice across DSA, OS, CN, AI, ML, and more.
             </p>
           </div>
         </div>
 
         <button
-          onClick={() => navigate('/stark')}
+          onClick={() => navigate('/elsa')}
           className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-mono text-xs font-bold transition flex items-center justify-center gap-2 shrink-0 shadow-md"
         >
-          <span>Launch Stark</span>
+          <span>Launch Elsa Interview</span>
           <ArrowUpRight size={13} />
         </button>
       </div>

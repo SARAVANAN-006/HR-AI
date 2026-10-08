@@ -11,6 +11,7 @@ import CodeQualityInspector from '../components/CodeQualityInspector';
 import AiFeedbackCard from '../components/AiFeedbackCard';
 import LiveCodeEvaluator from '../components/LiveCodeEvaluator';
 import SessionHistory from '../components/SessionHistory';
+import { useAuth } from '../context/AuthContext';
 
 const sampleCodeJava = `public class TwoSum {
     public int[] solveTwoSum(int[] nums, int target) {
@@ -91,6 +92,7 @@ const mockInterviewHistory = [
 ];
 
 export default function AssessmentDashboardPage() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'evaluator' | 'analytics' | 'history'>('evaluator');
   const [currentAssessment, setCurrentAssessment] = useState<any>(mockAssessmentData);
   const [currentCode, setCurrentCode] = useState<string>(sampleCodeJava);
@@ -125,12 +127,12 @@ export default function AssessmentDashboardPage() {
         <div className="border border-border bg-background-panel px-4 py-2 rounded-full flex items-center space-x-4">
           <div>
             <span className="text-[9px] font-mono text-zinc-500 uppercase block">Candidate</span>
-            <span className="text-xs font-bold text-zinc-200">Vigneshwaran S P</span>
+            <span className="text-xs font-bold text-zinc-200">{user?.fullName || 'Candidate'}</span>
           </div>
           <div className="h-6 w-[1px] bg-zinc-800" />
           <div>
             <span className="text-[9px] font-mono text-zinc-500 uppercase block">Readiness</span>
-            <span className="text-sm font-extrabold text-brand-cyan">96%</span>
+            <span className="text-sm font-extrabold text-brand-cyan">{user?.readinessScore ?? 96}%</span>
           </div>
         </div>
       </div>
