@@ -84,46 +84,60 @@
   background-color: #ffffff !important;
 }
 
-[data-theme='professional-light'] .text-zinc-100:not(button *):not([class*='bg-black'] *):not([class*='bg-zinc-900'] *):not(.btn-neon-cyan *),
-[data-theme='professional-light'] .text-zinc-200:not(button *):not([class*='bg-black'] *):not([class*='bg-zinc-900'] *):not(.btn-neon-cyan *),
-[data-theme='professional-light'] .text-zinc-300:not(button *):not([class*='bg-black'] *):not([class*='bg-zinc-900'] *):not(.btn-neon-cyan *),
-[data-theme='nordic-light'] .text-zinc-100:not(button *):not([class*='bg-black'] *):not([class*='bg-zinc-900'] *):not(.btn-neon-cyan *),
-[data-theme='nordic-light'] .text-zinc-200:not(button *):not([class*='bg-black'] *):not([class*='bg-zinc-900'] *):not(.btn-neon-cyan *),
-[data-theme='nordic-light'] .text-zinc-300:not(button *):not([class*='bg-black'] *):not([class*='bg-zinc-900'] *):not(.btn-neon-cyan *) {
+/* Text colors in light mode (applied ONLY to elements outside buttons) */
+[data-theme='professional-light'] :not(button):not(button *) > .text-zinc-100,
+[data-theme='professional-light'] :not(button):not(button *) > .text-zinc-200,
+[data-theme='professional-light'] :not(button):not(button *) > .text-zinc-300,
+[data-theme='professional-light'] p.text-zinc-100,
+[data-theme='professional-light'] p.text-zinc-200,
+[data-theme='professional-light'] p.text-zinc-300,
+[data-theme='professional-light'] h1.text-zinc-100,
+[data-theme='professional-light'] h2.text-zinc-100,
+[data-theme='professional-light'] h3.text-zinc-100,
+[data-theme='professional-light'] h4.text-zinc-100,
+[data-theme='professional-light'] h5.text-zinc-100,
+[data-theme='professional-light'] h6.text-zinc-100,
+[data-theme='nordic-light'] :not(button):not(button *) > .text-zinc-100,
+[data-theme='nordic-light'] :not(button):not(button *) > .text-zinc-200,
+[data-theme='nordic-light'] :not(button):not(button *) > .text-zinc-300 {
   color: #09090b !important;
 }
 
-[data-theme='professional-light'] .text-zinc-400,
-[data-theme='professional-light'] .text-zinc-500,
-[data-theme='nordic-light'] .text-zinc-400,
-[data-theme='nordic-light'] .text-zinc-500 {
+[data-theme='professional-light'] :not(button):not(button *) > .text-zinc-400,
+[data-theme='professional-light'] :not(button):not(button *) > .text-zinc-500,
+[data-theme='nordic-light'] :not(button):not(button *) > .text-zinc-400,
+[data-theme='nordic-light'] :not(button):not(button *) > .text-zinc-500 {
   color: #475569 !important;
 }
 
-[data-theme='professional-light'] .text-zinc-600,
-[data-theme='nordic-light'] .text-zinc-600 {
+[data-theme='professional-light'] :not(button):not(button *) > .text-zinc-600,
+[data-theme='nordic-light'] :not(button):not(button *) > .text-zinc-600 {
   color: #64748b !important;
 }
 
-/* Light surface mapping for all zinc and dark background classes */
-[data-theme='professional-light'] [class*='bg-zinc-950']:not(.fixed):not(button):not([class*='fill-']),
-[data-theme='professional-light'] [class*='bg-zinc-900']:not(.fixed):not(button):not([class*='fill-']),
-[data-theme='professional-light'] [class*='bg-zinc-800']:not(.fixed):not(button):not([class*='hover:']),
-[data-theme='nordic-light'] [class*='bg-zinc-950']:not(.fixed):not(button):not([class*='fill-']),
-[data-theme='nordic-light'] [class*='bg-zinc-900']:not(.fixed):not(button):not([class*='fill-']),
-[data-theme='nordic-light'] [class*='bg-zinc-800']:not(.fixed):not(button):not([class*='hover:']) {
+/* Light surface mapping for all zinc and dark background panels/cards (EXCLUDING buttons) */
+[data-theme='professional-light'] div[class*='bg-zinc-950']:not(.fixed),
+[data-theme='professional-light'] div[class*='bg-zinc-900']:not(.fixed),
+[data-theme='professional-light'] div[class*='bg-zinc-800']:not(.fixed),
+[data-theme='professional-light'] section[class*='bg-zinc-950'],
+[data-theme='professional-light'] section[class*='bg-zinc-900'],
+[data-theme='professional-light'] p[class*='bg-zinc-950'],
+[data-theme='professional-light'] span[class*='bg-zinc-950']:not(button *),
+[data-theme='nordic-light'] div[class*='bg-zinc-950']:not(.fixed),
+[data-theme='nordic-light'] div[class*='bg-zinc-900']:not(.fixed),
+[data-theme='nordic-light'] div[class*='bg-zinc-800']:not(.fixed) {
   background-color: #f8fafc !important;
 }
 
-[data-theme='professional-light'] .bg-zinc-950,
-[data-theme='professional-light'] .bg-zinc-900,
-[data-theme='nordic-light'] .bg-zinc-950,
-[data-theme='nordic-light'] .bg-zinc-900 {
+[data-theme='professional-light'] div.bg-zinc-950,
+[data-theme='professional-light'] div.bg-zinc-900,
+[data-theme='nordic-light'] div.bg-zinc-950,
+[data-theme='nordic-light'] div.bg-zinc-900 {
   background-color: #ffffff !important;
 }
 
-[data-theme='professional-light'] .bg-zinc-800,
-[data-theme='nordic-light'] .bg-zinc-800 {
+[data-theme='professional-light'] div.bg-zinc-800,
+[data-theme='nordic-light'] div.bg-zinc-800 {
   background-color: #f1f5f9 !important;
 }
 
@@ -160,44 +174,178 @@
   background-color: rgba(0, 0, 0, 0.75) !important;
 }
 
-/* Border lines */
-[data-theme='professional-light'] [class*='border-zinc-900'],
-[data-theme='professional-light'] [class*='border-zinc-800'],
-[data-theme='professional-light'] [class*='border-zinc-700'],
-[data-theme='nordic-light'] [class*='border-zinc-900'],
-[data-theme='nordic-light'] [class*='border-zinc-800'],
-[data-theme='nordic-light'] [class*='border-zinc-700'] {
+/* Border lines on non-buttons */
+[data-theme='professional-light'] div[class*='border-zinc-900'],
+[data-theme='professional-light'] div[class*='border-zinc-800'],
+[data-theme='professional-light'] div[class*='border-zinc-700'],
+[data-theme='nordic-light'] div[class*='border-zinc-900'],
+[data-theme='nordic-light'] div[class*='border-zinc-800'],
+[data-theme='nordic-light'] div[class*='border-zinc-700'] {
   border-color: #e2e8f0 !important;
 }
 
-[data-theme='professional-light'] .border-zinc-800,
-[data-theme='professional-light'] .border-zinc-900,
-[data-theme='professional-light'] .border-zinc-700,
-[data-theme='nordic-light'] .border-zinc-800,
-[data-theme='nordic-light'] .border-zinc-900,
-[data-theme='nordic-light'] .border-zinc-700 {
+/* ==========================================================================
+   EXECUTIVE BUTTON CONTRAST ARCHITECTURE (FIX ALL BUTTON OVERRIDING)
+   ========================================================================== */
+
+/* 1. PRIMARY ACTION BUTTONS (Solid Executive Black with Crisp White Text in Light Mode) */
+[data-theme='professional-light'] button.bg-brand-cyan,
+[data-theme='professional-light'] button[class*='bg-brand-cyan'],
+[data-theme='professional-light'] button.bg-zinc-950,
+[data-theme='professional-light'] button[class*='bg-zinc-950'],
+[data-theme='professional-light'] button.bg-zinc-900,
+[data-theme='professional-light'] button[class*='bg-zinc-900'],
+[data-theme='professional-light'] button.btn-neon-cyan,
+[data-theme='nordic-light'] button.bg-brand-cyan,
+[data-theme='nordic-light'] button[class*='bg-brand-cyan'],
+[data-theme='nordic-light'] button.bg-zinc-900,
+[data-theme='nordic-light'] button[class*='bg-zinc-900'],
+[data-theme='nordic-light'] button.btn-neon-cyan {
+  background-color: #09090b !important;
+  color: #ffffff !important;
+  border-color: #09090b !important;
+}
+
+[data-theme='professional-light'] button.bg-brand-cyan *,
+[data-theme='professional-light'] button[class*='bg-brand-cyan'] *,
+[data-theme='professional-light'] button.bg-zinc-950 *,
+[data-theme='professional-light'] button[class*='bg-zinc-950'] *,
+[data-theme='professional-light'] button.bg-zinc-900 *,
+[data-theme='professional-light'] button[class*='bg-zinc-900'] *,
+[data-theme='professional-light'] button.btn-neon-cyan *,
+[data-theme='nordic-light'] button.bg-brand-cyan *,
+[data-theme='nordic-light'] button[class*='bg-brand-cyan'] *,
+[data-theme='nordic-light'] button.bg-zinc-900 *,
+[data-theme='nordic-light'] button[class*='bg-zinc-900'] *,
+[data-theme='nordic-light'] button.btn-neon-cyan * {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+[data-theme='professional-light'] button.bg-brand-cyan:hover,
+[data-theme='professional-light'] button[class*='bg-brand-cyan']:hover,
+[data-theme='professional-light'] button.bg-zinc-950:hover,
+[data-theme='professional-light'] button[class*='bg-zinc-950']:hover,
+[data-theme='professional-light'] button.bg-zinc-900:hover,
+[data-theme='professional-light'] button[class*='bg-zinc-900']:hover,
+[data-theme='professional-light'] button.btn-neon-cyan:hover,
+[data-theme='nordic-light'] button.btn-neon-cyan:hover {
+  background-color: #27272a !important;
+  border-color: #27272a !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* 2. BRAND VIOLET / INDIGO ACTION BUTTONS (Solid Blue/Violet with White Text in Light Mode) */
+[data-theme='professional-light'] button.bg-brand-violet,
+[data-theme='professional-light'] button[class*='bg-brand-violet']:not([class*='bg-brand-violet/10']):not([class*='bg-brand-violet/20']),
+[data-theme='nordic-light'] button.bg-brand-violet,
+[data-theme='nordic-light'] button[class*='bg-brand-violet']:not([class*='bg-brand-violet/10']):not([class*='bg-brand-violet/20']) {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+  border-color: #2563eb !important;
+}
+
+[data-theme='professional-light'] button.bg-brand-violet *,
+[data-theme='professional-light'] button[class*='bg-brand-violet']:not([class*='bg-brand-violet/10']):not([class*='bg-brand-violet/20']) *,
+[data-theme='nordic-light'] button.bg-brand-violet *,
+[data-theme='nordic-light'] button[class*='bg-brand-violet']:not([class*='bg-brand-violet/10']):not([class*='bg-brand-violet/20']) * {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+[data-theme='professional-light'] button.bg-brand-violet:hover,
+[data-theme='professional-light'] button[class*='bg-brand-violet']:not([class*='bg-brand-violet/10']):not([class*='bg-brand-violet/20']):hover {
+  background-color: #1d4ed8 !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+}
+
+/* 3. SECONDARY & SLATE UTILITY BUTTONS (Crisp Light Slate with Bold Dark Text) */
+[data-theme='professional-light'] button.bg-zinc-800,
+[data-theme='professional-light'] button[class*='bg-zinc-800'],
+[data-theme='professional-light'] button.bg-background-elevated,
+[data-theme='professional-light'] button[class*='bg-background-elevated'],
+[data-theme='nordic-light'] button.bg-zinc-800,
+[data-theme='nordic-light'] button[class*='bg-zinc-800'] {
+  background-color: #f1f5f9 !important;
+  color: #09090b !important;
   border-color: #e2e8f0 !important;
 }
 
-[data-theme='professional-light'] .btn-neon-cyan,
-[data-theme='nordic-light'] .btn-neon-cyan {
-  border-color: #09090b;
-  background-color: #09090b;
+[data-theme='professional-light'] button.bg-zinc-800 *,
+[data-theme='professional-light'] button[class*='bg-zinc-800'] *,
+[data-theme='professional-light'] button.bg-background-elevated *,
+[data-theme='professional-light'] button[class*='bg-background-elevated'] *,
+[data-theme='nordic-light'] button.bg-zinc-800 *,
+[data-theme='nordic-light'] button[class*='bg-zinc-800'] * {
+  color: #09090b !important;
+  stroke: #09090b !important;
+}
+
+[data-theme='professional-light'] button.bg-zinc-800:hover,
+[data-theme='professional-light'] button[class*='bg-zinc-800']:hover {
+  background-color: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
+  color: #000000 !important;
+}
+
+/* 4. GHOST & OUTLINE BUTTONS */
+[data-theme='professional-light'] button.border-border:not([class*='bg-brand-']):not([class*='bg-zinc-9']):not([class*='bg-black']):not([class*='bg-amber-']) {
+  color: #09090b !important;
+  border-color: #e2e8f0 !important;
+}
+
+[data-theme='professional-light'] button.border-border:not([class*='bg-brand-']):not([class*='bg-zinc-9']):not([class*='bg-black']):not([class*='bg-amber-']) * {
+  color: #09090b !important;
+}
+
+/* 5. AMBER STREAK CHECK-IN & FLAME BUTTONS */
+[data-theme='professional-light'] button[class*='bg-amber-500']:not([class*='text-zinc-950']) {
+  color: #b45309 !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+}
+
+[data-theme='professional-light'] button[class*='bg-amber-500']:not([class*='text-zinc-950']) * {
+  color: #b45309 !important;
+}
+
+[data-theme='professional-light'] button[class*='bg-gradient-to-r from-amber-500'] {
+  color: #09090b !important;
+}
+
+[data-theme='professional-light'] button[class*='bg-gradient-to-r from-amber-500'] * {
+  color: #09090b !important;
+}
+
+/* 6. OBSIDIAN LUXE EXECUTIVE DARK BUTTON RULES */
+[data-theme='obsidian-luxe'] button.bg-brand-cyan,
+[data-theme='obsidian-luxe'] button[class*='bg-brand-cyan']:not([class*='bg-brand-cyan/']) {
+  background-color: #38bdf8 !important;
+  color: #08090b !important;
+  border-color: #38bdf8 !important;
+}
+
+[data-theme='obsidian-luxe'] button.bg-brand-cyan *,
+[data-theme='obsidian-luxe'] button[class*='bg-brand-cyan']:not([class*='bg-brand-cyan/']) * {
+  color: #08090b !important;
+  stroke: #08090b !important;
+}
+
+[data-theme='obsidian-luxe'] button.bg-brand-violet,
+[data-theme='obsidian-luxe'] button[class*='bg-brand-violet']:not([class*='bg-brand-violet/10']):not([class*='bg-brand-violet/20']) {
+  background-color: #818cf8 !important;
   color: #ffffff !important;
 }
 
-[data-theme='professional-light'] .btn-neon-cyan:hover,
-[data-theme='nordic-light'] .btn-neon-cyan:hover {
-  background-color: #27272a;
-  border-color: #27272a;
+[data-theme='obsidian-luxe'] button.bg-brand-violet *,
+[data-theme='obsidian-luxe'] button[class*='bg-brand-violet']:not([class*='bg-brand-violet/10']):not([class*='bg-brand-violet/20']) * {
   color: #ffffff !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  stroke: #ffffff !important;
 }
 
-[data-theme='professional-light'] .neon-text-cyan,
-[data-theme='nordic-light'] .neon-text-cyan {
-  color: #09090b;
-  text-shadow: none;
+.neon-text-cyan {
+  color: var(--color-brand-cyan);
 }
 
 [data-theme='professional-light'] ::-webkit-scrollbar-track,

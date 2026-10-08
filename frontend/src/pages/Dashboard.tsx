@@ -5,8 +5,9 @@ import { withFastTimeout } from '../lib/api';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 import { Activity, ShieldAlert, ArrowUpRight, Plus, UserCheck, Flame } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { getStreakData, type StreakData } from '../lib/streakService';
+import { getStreakData, type StreakData, STREAK_BADGES } from '../lib/streakService';
 import { StreakModal } from '../components/StreakModal';
+import { StreakAvatarBadge } from '../components/StreakAvatarBadge';
 
 interface SessionHistory {
   sessionId: number;
@@ -224,8 +225,11 @@ const Dashboard: React.FC = () => {
       {/* DAILY PRACTICE STREAK TELEMETRY HERO BANNER */}
       <div className="glass-panel glass-panel-hover rounded-xl p-5 border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-transparent flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden">
         <div className="flex items-center space-x-4">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-zinc-950 flex items-center justify-center shrink-0 shadow-[0_0_20px_rgba(245,158,11,0.35)]">
-            <Flame size={26} className="fill-zinc-950/20 animate-pulse" />
+          <div className="relative">
+            <StreakAvatarBadge tier={streakData.tier} size="lg" isActive={streakData.todayCompleted} />
+            <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-zinc-950 flex items-center justify-center shadow-md border border-background">
+              <Flame size={12} className="fill-zinc-950/20 animate-pulse" />
+            </div>
           </div>
           <div>
             <div className="flex items-center space-x-2">
@@ -233,7 +237,7 @@ const Dashboard: React.FC = () => {
                 {streakData.currentStreak} DAY STREAK
               </span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-mono font-bold border border-amber-500/30 uppercase">
-                {streakData.tier}
+                {streakData.tier} Rank
               </span>
               {streakData.todayCompleted && (
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-mono font-bold border border-emerald-500/30">
@@ -242,9 +246,9 @@ const Dashboard: React.FC = () => {
               )}
             </div>
             <p className="text-xs text-zinc-400 mt-0.5 font-mono">
-              {streakData.todayCompleted
-                ? `You've practiced today! ${streakData.daysToNextMilestone} days until the ${streakData.nextMilestone}-day milestone.`
-                : 'Practice pending today! Complete an AI interview or quiz to keep your flame alive.'}
+              <strong className="text-zinc-200">{STREAK_BADGES[streakData.tier]?.role}</strong> • {streakData.todayCompleted
+                ? `Streak safe! ${streakData.daysToNextMilestone} days until the ${streakData.nextMilestone}-day club.`
+                : 'Practice pending today! Complete an AI interview or test run to maintain rank.'}
             </p>
           </div>
         </div>

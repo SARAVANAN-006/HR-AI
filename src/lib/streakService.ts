@@ -8,6 +8,69 @@ export interface DayProgress {
   isFuture: boolean;
 }
 
+export type StreakBadgeTier = 'Beginner' | 'Intermediate' | 'Advanced';
+
+export interface StreakBadgeInfo {
+  tier: StreakBadgeTier;
+  title: string;
+  role: string;
+  minStreak: number;
+  maxStreak?: number;
+  description: string;
+  avatarType: 'beginner' | 'intermediate' | 'advanced';
+  avatarEmoji: string;
+  accentColor: string;
+  gradient: string;
+  perks: string[];
+}
+
+export const STREAK_BADGES: Record<StreakBadgeTier, StreakBadgeInfo> = {
+  Beginner: {
+    tier: 'Beginner',
+    title: 'Beginner',
+    role: 'Algorithmic Cadet',
+    minStreak: 1,
+    maxStreak: 6,
+    description: 'Building foundational algorithmic momentum with initial daily streak practice.',
+    avatarType: 'beginner',
+    avatarEmoji: '🌱',
+    accentColor: '#10b981',
+    gradient: 'from-emerald-500 to-teal-600',
+    perks: ['Habit Formation Tracker', 'Basic Autopsy Telemetry', '1x Monthly Streak Freeze']
+  },
+  Intermediate: {
+    tier: 'Intermediate',
+    title: 'Intermediate',
+    role: 'Consistency Knight',
+    minStreak: 7,
+    maxStreak: 13,
+    description: 'Sustaining a dedicated daily rhythm with defensive problem-solving consistency.',
+    avatarType: 'intermediate',
+    avatarEmoji: '⚡',
+    accentColor: '#38bdf8',
+    gradient: 'from-sky-500 to-indigo-600',
+    perks: ['2x Monthly Streak Freeze', 'Speed & Memory Benchmark Access', 'Priority Logic Feedback']
+  },
+  Advanced: {
+    tier: 'Advanced',
+    title: 'Advanced',
+    role: 'Apex Grandmaster',
+    minStreak: 14,
+    description: 'Elite 14+ day algorithmic mastery reflecting top-tier dedication and interview poise.',
+    avatarType: 'advanced',
+    avatarEmoji: '👑',
+    accentColor: '#f59e0b',
+    gradient: 'from-amber-400 via-orange-500 to-amber-600',
+    perks: ['Executive Offer Readiness Seal', 'Top 1% Candidate Profile Tag', 'Permanent Hall of Fame Badge']
+  }
+};
+
+export const getStreakBadge = (streak: number): StreakBadgeInfo => {
+  if (streak >= 14) return STREAK_BADGES.Advanced;
+  if (streak >= 7) return STREAK_BADGES.Intermediate;
+  return STREAK_BADGES.Beginner;
+};
+
 export interface StreakData {
   currentStreak: number;
   longestStreak: number;
@@ -17,7 +80,8 @@ export interface StreakData {
   totalActiveDays: number;
   weeklyProgress: DayProgress[];
   historyDates: string[]; // List of YYYY-MM-DD
-  tier: 'Apprentice' | 'Dedicated' | 'Relentless' | 'Grandmaster' | 'Legend';
+  tier: StreakBadgeTier;
+  badge: StreakBadgeInfo;
   nextMilestone: number;
   daysToNextMilestone: number;
   motivationalQuote: string;
@@ -43,12 +107,10 @@ const getDaysDifference = (d1Str: string, d2Str: string): number => {
   return Math.round(diffTime / (1000 * 60 * 60 * 24));
 };
 
-const getStreakTier = (streak: number): StreakData['tier'] => {
-  if (streak >= 30) return 'Legend';
-  if (streak >= 14) return 'Grandmaster';
-  if (streak >= 7) return 'Relentless';
-  if (streak >= 3) return 'Dedicated';
-  return 'Apprentice';
+export const getStreakTier = (streak: number): StreakBadgeTier => {
+  if (streak >= 14) return 'Advanced';
+  if (streak >= 7) return 'Intermediate';
+  return 'Beginner';
 };
 
 const getNextMilestone = (streak: number): number => {
@@ -128,6 +190,7 @@ const createDefaultStreak = (): StreakData => {
     weeklyProgress: generateWeeklyProgress(historySet, todayStr),
     historyDates: pastDates,
     tier: getStreakTier(currentStreak),
+    badge: getStreakBadge(currentStreak),
     nextMilestone,
     daysToNextMilestone: Math.max(0, nextMilestone - currentStreak),
     motivationalQuote: MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)]
@@ -180,6 +243,7 @@ export const getStreakData = (): StreakData => {
       freezeCount,
       weeklyProgress: generateWeeklyProgress(historySet, todayStr),
       tier: getStreakTier(currentStreak),
+      badge: getStreakBadge(currentStreak),
       nextMilestone,
       daysToNextMilestone: Math.max(0, nextMilestone - currentStreak),
       motivationalQuote: data.motivationalQuote || MOTIVATIONAL_QUOTES[0]
@@ -232,6 +296,7 @@ export const recordStreakActivity = (activityNote?: string): StreakData => {
       weeklyProgress: generateWeeklyProgress(historySet, todayStr),
       historyDates,
       tier: getStreakTier(newStreak),
+      badge: getStreakBadge(newStreak),
       nextMilestone,
       daysToNextMilestone: Math.max(0, nextMilestone - newStreak),
       motivationalQuote: MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)]

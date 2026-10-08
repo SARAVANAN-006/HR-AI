@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Flame, Shield, Award, Clock, Sparkles, Calendar } from 'lucide-react';
-import { getStreakData, recordStreakActivity, type StreakData } from '../lib/streakService';
+import { X, Flame, Shield, Award, Clock, Sparkles, Calendar, CheckCircle2, Lock } from 'lucide-react';
+import { getStreakData, recordStreakActivity, type StreakData, type StreakBadgeTier, STREAK_BADGES } from '../lib/streakService';
+import { StreakAvatarBadge } from './StreakAvatarBadge';
 
 interface StreakModalProps {
   isOpen: boolean;
@@ -32,27 +33,27 @@ export const StreakModal: React.FC<StreakModalProps> = ({ isOpen, onClose }) => 
     Math.round((streakData.currentStreak / (streakData.nextMilestone || 7)) * 100)
   );
 
+  const badgeTiers: StreakBadgeTier[] = ['Beginner', 'Intermediate', 'Advanced'];
+
   return (
     <div className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in font-sans">
       <div 
-        className="w-full max-w-xl bg-background-panel border border-border shadow-[0_0_60px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col max-h-[92vh] rounded-2xl"
+        className="w-full max-w-2xl bg-background-panel border border-border shadow-[0_0_60px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col max-h-[92vh] rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* MODAL HEADER */}
         <div className="p-5 border-b border-border flex items-center justify-between bg-background shrink-0">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-zinc-950 shadow-[0_0_20px_rgba(245,158,11,0.35)]">
-              <Flame size={22} className="fill-zinc-950/20 animate-pulse" />
-            </div>
+            <StreakAvatarBadge tier={streakData.tier} size="md" isActive={true} />
             <div>
               <h2 className="text-sm font-bold text-zinc-100 flex items-center gap-2 font-mono">
-                PRACTICE STREAK & CONSISTENCY HUB
+                PRACTICE STREAK & AVATAR BADGES
                 <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 uppercase tracking-wider font-semibold">
                   {streakData.tier} Tier
                 </span>
               </h2>
               <p className="text-[11px] text-zinc-400">
-                Daily algorithmic momentum tracked for premier engineering interviews.
+                Maintain daily algorithmic momentum to rank up your engineering avatar badge.
               </p>
             </div>
           </div>
@@ -68,46 +69,149 @@ export const StreakModal: React.FC<StreakModalProps> = ({ isOpen, onClose }) => 
         {/* MODAL CONTENT */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           
-          {/* HERO FLAME DISPLAY */}
-          <div className="p-6 rounded-xl border border-amber-500/30 bg-gradient-to-b from-amber-500/10 via-orange-500/5 to-transparent text-center relative overflow-hidden">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 text-zinc-950 shadow-[0_0_40px_rgba(245,158,11,0.4)] mb-3">
-              <Flame size={44} className="fill-zinc-950/20" />
-            </div>
-
-            <div className="space-y-1">
-              <div className="flex items-baseline justify-center space-x-2">
-                <span className="text-5xl font-black font-mono text-zinc-100 tracking-tight">
-                  {streakData.currentStreak}
-                </span>
-                <span className="text-lg font-mono font-bold text-amber-400">
-                  DAYS IN A ROW
-                </span>
+          {/* HERO ACTIVE STREAK & AVATAR DISPLAY */}
+          <div className="p-6 rounded-xl border border-amber-500/30 bg-gradient-to-b from-amber-500/10 via-orange-500/5 to-transparent flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
+            {/* Left: Avatar & Flame Hero */}
+            <div className="flex items-center space-x-5">
+              <div className="relative">
+                <StreakAvatarBadge tier={streakData.tier} size="xl" isActive={streakData.todayCompleted} />
+                <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-gradient-to-tr from-amber-500 to-orange-500 text-zinc-950 flex items-center justify-center shadow-lg border-2 border-background">
+                  <Flame size={16} className="fill-zinc-950/30 animate-pulse" />
+                </div>
               </div>
-              <p className="text-xs font-mono text-zinc-400 max-w-sm mx-auto">
-                {streakData.todayCompleted
-                  ? '🔥 You have already logged practice today! Streak safe.'
-                  : '⚠️ Practice pending for today. Solve a problem or check in to keep it blazing!'}
-              </p>
+
+              <div className="space-y-1 text-left">
+                <div className="flex items-baseline space-x-2">
+                  <span className="text-5xl font-black font-mono text-zinc-100 tracking-tight">
+                    {streakData.currentStreak}
+                  </span>
+                  <span className="text-base font-mono font-bold text-amber-400 uppercase">
+                    Days in a Row
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono font-bold text-zinc-200">
+                    {STREAK_BADGES[streakData.tier].role}
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 font-mono">
+                    Rank: {streakData.tier}
+                  </span>
+                </div>
+                <p className="text-[11px] font-mono text-zinc-400 max-w-xs">
+                  {streakData.todayCompleted
+                    ? '🔥 Practice logged today! Your avatar rank is secured.'
+                    : '⚠️ Practice pending today. Check in to maintain your streak & avatar level!'}
+                </p>
+              </div>
             </div>
 
-            {/* Check in button */}
-            {!streakData.todayCompleted && (
-              <div className="mt-4">
+            {/* Right: Check in Action */}
+            <div className="flex flex-col items-center md:items-end w-full md:w-auto">
+              {!streakData.todayCompleted ? (
                 <button
                   onClick={handleCheckIn}
-                  className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-zinc-950 font-mono font-bold text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(245,158,11,0.35)] transition transform hover:scale-[1.02] active:scale-[0.98]"
+                  className="w-full md:w-auto px-5 py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-zinc-950 font-mono font-bold text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(245,158,11,0.35)] transition transform hover:scale-[1.02] active:scale-[0.98]"
                 >
-                  ⚡ Check-In & Extend Streak Today
+                  ⚡ Check-In Today
                 </button>
-              </div>
-            )}
+              ) : (
+                <div className="px-4 py-2 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-mono text-xs font-bold flex items-center gap-1.5">
+                  <CheckCircle2 size={15} />
+                  <span>Streak Maintained Today</span>
+                </div>
+              )}
 
-            {justCheckedIn && (
-              <div className="mt-3 text-xs font-mono text-emerald-400 flex items-center justify-center gap-1.5 animate-bounce">
-                <Sparkles size={14} />
-                <span>Streak successfully preserved for today!</span>
-              </div>
-            )}
+              {justCheckedIn && (
+                <div className="mt-2 text-[11px] font-mono text-emerald-400 flex items-center gap-1 animate-bounce">
+                  <Sparkles size={13} />
+                  <span>Streak & Avatar badge preserved!</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* SECTION 1: BADGES FOR STREAK MAINTENANCE WITH AVATAR */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold text-zinc-200 uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                <Award size={14} className="text-brand-cyan" />
+                <span>Streak Maintenance Badges & Avatars</span>
+              </h3>
+              <span className="text-[10px] text-zinc-400 font-mono">
+                Current Level: <strong className="text-brand-cyan">{streakData.tier}</strong>
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {badgeTiers.map((tierKey) => {
+                const badgeInfo = STREAK_BADGES[tierKey];
+                const isCurrentTier = streakData.tier === tierKey;
+                const isUnlocked = streakData.currentStreak >= badgeInfo.minStreak;
+                const daysNeeded = Math.max(0, badgeInfo.minStreak - streakData.currentStreak);
+
+                return (
+                  <div
+                    key={tierKey}
+                    className={`p-4 rounded-xl border flex flex-col justify-between transition-all relative overflow-hidden ${
+                      isCurrentTier
+                        ? 'border-brand-cyan bg-brand-cyan/10 ring-2 ring-brand-cyan/50 shadow-[0_0_20px_rgba(56,189,248,0.15)]'
+                        : isUnlocked
+                        ? 'border-emerald-500/40 bg-emerald-500/5'
+                        : 'border-border bg-background opacity-75'
+                    }`}
+                  >
+                    {/* Header: Avatar + Tier Pill */}
+                    <div>
+                      <div className="flex items-start justify-between mb-3">
+                        <StreakAvatarBadge tier={tierKey} size="md" isActive={isCurrentTier} />
+                        
+                        {isCurrentTier ? (
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase bg-brand-cyan text-zinc-950 shadow-sm flex items-center gap-1">
+                            <Sparkles size={10} /> Active
+                          </span>
+                        ) : isUnlocked ? (
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                            <CheckCircle2 size={10} /> Unlocked
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-semibold uppercase bg-zinc-800 text-zinc-400 border border-zinc-700 flex items-center gap-1">
+                            <Lock size={10} /> {daysNeeded}d to unlock
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Tier Name & Subtitle */}
+                      <div className="mb-2">
+                        <h4 className="text-xs font-bold font-mono text-zinc-100 flex items-center gap-1.5">
+                          <span>{badgeInfo.title}</span>
+                          <span className="text-[10px] text-zinc-400 font-normal">
+                            ({badgeInfo.minStreak}{badgeInfo.maxStreak ? `-${badgeInfo.maxStreak}` : '+'} Days)
+                          </span>
+                        </h4>
+                        <span className="text-[10px] text-brand-cyan font-mono block">
+                          {badgeInfo.role}
+                        </span>
+                      </div>
+
+                      <p className="text-[11px] text-zinc-400 leading-relaxed mb-3">
+                        {badgeInfo.description}
+                      </p>
+                    </div>
+
+                    {/* Perks List */}
+                    <div className="pt-2.5 border-t border-border/60 space-y-1">
+                      <span className="text-[9px] font-mono text-zinc-500 uppercase block">Rank Privileges:</span>
+                      {badgeInfo.perks.map((perk, pIdx) => (
+                        <div key={pIdx} className="flex items-center gap-1.5 text-[10px] font-mono text-zinc-300">
+                          <span className="w-1 h-1 rounded-full bg-brand-cyan shrink-0" />
+                          <span className="truncate">{perk}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           {/* 7-DAY WEEKLY TRACKER */}
@@ -175,7 +279,7 @@ export const StreakModal: React.FC<StreakModalProps> = ({ isOpen, onClose }) => 
               />
             </div>
             <p className="text-[10px] font-mono text-zinc-500">
-              Unlocks executive readiness badge on your candidate autopsy telemetry.
+              Rank up your consistency to unlock higher-tier engineering avatar badges.
             </p>
           </div>
 
