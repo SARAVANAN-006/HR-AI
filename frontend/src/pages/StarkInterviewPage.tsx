@@ -6,10 +6,15 @@ import {
   generateNextDynamicQuestion,
   evaluateCandidateSpeechAnswer,
   generateFinalStarkReport,
-  analyzeCandidateContext,
   type StarkInterviewSession,
   type StarkEvaluation
 } from '../lib/starkInterviewService';
+import {
+  generateElsaAiIntro,
+  generateElsaAiNextQuestion,
+  evaluateElsaAiAnswer,
+  generateElsaAiFinalReport
+} from '../lib/elsaAiEngine';
 import { StarkSplineView } from '../components/stark/StarkSplineView';
 import { StarkDiagnostics } from '../components/stark/StarkDiagnostics';
 import { recordStreakActivity } from '../lib/streakService';
@@ -563,9 +568,9 @@ export const StarkInterviewPage: React.FC = () => {
   };
 
   // ----------------------------------------------------
-  // INITIALIZE INTERVIEW FLOW
+  // INITIALIZE INTERVIEW FLOW (POWERED BY REAL AI)
   // ----------------------------------------------------
-  const initializeInterview = () => {
+  const initializeInterview = async () => {
     const candidateName = user?.fullName || 'Candidate';
     const totalSecs = durationMinutes * 60;
 
@@ -596,10 +601,28 @@ export const StarkInterviewPage: React.FC = () => {
     setInterimTranscript('');
     setRemainingSeconds(totalSecs);
 
-    // Speak Question 1 (Self-Introduction) - candidate mic starts automatically when Elsa finishes
+    // Prompt real AI LLM to generate Elsa's warm, human-like opening greeting
+    try {
+      setIsStarkThinking(true);
+      const aiGreeting = await generateElsaAiIntro(
+        candidateName,
+        selectedCategoryIds,
+        experienceLevel
+      );
+      if (aiGreeting && aiGreeting.length > 20) {
+        initialPlan[0].questionText = aiGreeting;
+        setSession((prev) => (prev ? { ...prev, questions: initialPlan } : prev));
+      }
+    } catch (err) {
+      console.warn('AI intro generation fallback:', err);
+    } finally {
+      setIsStarkThinking(false);
+    }
+
+    // Speak Question 1 (AI Greeting) - candidate mic starts automatically when Elsa finishes
     setTimeout(() => {
       speakElsaQuestion(initialPlan[0].questionText);
-    }, 600);
+    }, 400);
   };
 
   // ----------------------------------------------------
@@ -624,22 +647,32 @@ export const StarkInterviewPage: React.FC = () => {
     return () => clearInterval(countdownIntervalRef.current);
   }, [stage, session]);
 
-  // Handle Time Expired Automatic Conclusion
-  const handleTimeExpiredWrapup = () => {
+  // Handle Time Expired Automatic Conclusion (POWERED BY REAL AI EVALUATION)
+  const handleTimeExpiredWrapup = async () => {
     if (!session) return;
     stopCandidateSpeechRecognition();
     window.speechSynthesis?.cancel();
+    setIsStarkSpeaking(false);
+    isStarkSpeakingRef.current = false;
+    setIsStarkThinking(true);
 
     const completedSession: StarkInterviewSession = {
       ...session,
       completedAt: new Date().toISOString()
     };
 
-    const report = generateFinalStarkReport(completedSession);
+    let report: StarkEvaluation;
+    try {
+      report = await generateElsaAiFinalReport(completedSession);
+    } catch {
+      report = generateFinalStarkReport(completedSession);
+    }
+
     completedSession.finalEvaluation = report;
 
     setSession(completedSession);
     setFinalReport(report);
+    setIsStarkThinking(false);
     setStage('report');
 
     // Persist session to user's isolated dashboard storage
@@ -727,7 +760,7 @@ export const StarkInterviewPage: React.FC = () => {
   };
 
   // ----------------------------------------------------
-  // SUBMIT CANDIDATE ANSWER & CONTEXT-AWARE NEXT QUESTION
+  // SUBMIT CANDIDATE ANSWER & THINK IN REAL TIME (POWERED BY REAL AI)
   // ----------------------------------------------------
   const handleSubmitAnswer = async () => {
     if (!session) return;
@@ -736,13 +769,18 @@ export const StarkInterviewPage: React.FC = () => {
     window.speechSynthesis?.cancel();
     setIsStarkSpeaking(false);
     isStarkSpeakingRef.current = false;
-    setIsStarkThinking(true);
+    setIsStarkThinking(true); // Triggers real-time thinking state on 3D Spline HUD
 
     const currentQ = session.questions[currentIndex];
     const fullAnswer = (speechTranscript + ' ' + interimTranscript).trim();
 
-    // Evaluate candidate speech answer
-    const evalResult = evaluateCandidateSpeechAnswer(currentQ, fullAnswer);
+    // 1. Evaluate candidate speech answer with real AI reasoning
+    let evalResult = { score: 75, feedback: 'Good conceptual overview.' };
+    try {
+      evalResult = await evaluateElsaAiAnswer(currentQ, fullAnswer, session.experienceLevel);
+    } catch {
+      evalResult = evaluateCandidateSpeechAnswer(currentQ, fullAnswer);
+    }
 
     const transcriptItem = {
       questionId: currentQ.id,
@@ -758,25 +796,23 @@ export const StarkInterviewPage: React.FC = () => {
 
     const updatedTranscripts = [...session.transcripts, transcriptItem];
 
-    // If more than 60 seconds remain, adaptively generate the next question
+    // If more than 60 seconds remain, Elsa truly thinks and dynamically generates the next human-like question
     if (remainingSeconds > 60) {
       let nextQ: any = null;
-
-      // Real-time Context Awareness:
-      // If candidate just introduced themselves (e.g. saying "I know oops"), Question 2 dynamically reacts!
-      if (currentQ.phase === 'intro') {
-        nextQ = generateNextDynamicQuestion(session, fullAnswer, 0);
-      } else if (currentIndex + 1 < session.questions.length) {
-        // Weave conversational bridge into planned questions
-        const baseNext = session.questions[currentIndex + 1];
-        const analysis = analyzeCandidateContext(fullAnswer);
-        nextQ = {
-          ...baseNext,
-          questionText: `${analysis.conversationalPrefix} ${baseNext.questionText}`
+      try {
+        const sessionWithTranscripts = {
+          ...session,
+          transcripts: updatedTranscripts
         };
-      } else {
-        // Dynamically generate a brand new adaptive question on the fly
-        nextQ = generateNextDynamicQuestion(session, fullAnswer, session.transcripts.length);
+        // The LLM considers what the candidate actually said (e.g. "I know oops", tools, architecture) and entire history!
+        nextQ = await generateElsaAiNextQuestion(
+          sessionWithTranscripts,
+          fullAnswer,
+          currentIndex
+        );
+      } catch (err) {
+        console.warn('AI next question fallback:', err);
+        nextQ = generateNextDynamicQuestion(session, fullAnswer, currentIndex);
       }
 
       const updatedQuestions = [...session.questions.slice(0, currentIndex + 1), nextQ];
@@ -1429,6 +1465,14 @@ export const StarkInterviewPage: React.FC = () => {
                   </button>
                 </div>
 
+                {/* AI Thinking Feedback Banner */}
+                {isStarkThinking && (
+                  <div className="p-2.5 rounded-xl bg-purple-500/15 border border-purple-500/40 flex items-center justify-center gap-2 text-xs font-mono text-purple-300 animate-pulse shadow-[0_0_15px_rgba(168,85,247,0.2)]">
+                    <Sparkles size={14} className="text-purple-400 animate-spin" />
+                    <span>Elsa is analyzing your engineering reasoning &amp; formulating next probe...</span>
+                  </div>
+                )}
+
                 {/* Submit to Elsa Button */}
                 <button
                   onClick={handleSubmitAnswer}
@@ -1438,7 +1482,7 @@ export const StarkInterviewPage: React.FC = () => {
                   <Send size={14} />
                   <span>
                     {isStarkThinking
-                      ? 'Elsa is Evaluating Your Answer...'
+                      ? 'Elsa is Thinking & Synthesizing...'
                       : remainingSeconds > 60
                       ? 'Submit Answer & Proceed'
                       : 'Submit Final Answer & Conclude Session'}
