@@ -1,12 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 export type UiTheme =
-  | 'royal-junge'       // Junge (Mythic Classical Serif), 14px Arch, Amber Gold & Amethyst
-  | 'cyber-matrix'     // JetBrains Mono, 0px Sharp Brutalist, Phosphor Emerald
-  | 'synthwave-neon'    // Orbitron / Space Grotesk, 4px Tech Chamfer, Electric Magenta & Cyan
-  | 'obsidian-luxe'     // Plus Jakarta Sans, 10px Precision Bevel, Titanium & Icy Sky Blue
-  | 'nebula-violet'     // Outfit, 22px Ultra-Organic Pill, Aurora Violet & Cosmic Pink
-  | 'midnight-amoled';  // Space Grotesk, 6px True OLED Pitch Black, Pure Cyan Laser
+  | 'obsidian-luxe'        // Executive Dark Titanium, 10px Bevel, Icy Sky Blue & Deep Indigo
+  | 'professional-light';  // Professional White & Black, 8px Precision, High-Contrast Crisp Monochrome
 
 export type UiLayout = 'standard-3panel' | 'dual-split' | 'zen-focus';
 
@@ -18,7 +14,7 @@ export interface ThemeConfig {
   secondaryAccent: string;
   bgPreview: string;
   cardPreview: string;
-  monacoTheme: 'vs-dark' | 'hc-black';
+  monacoTheme: 'vs-dark' | 'vs';
   badge: string;
   typography: string;
   shape: string;
@@ -37,101 +33,33 @@ export const THEME_PRESETS: Record<UiTheme, ThemeConfig> = {
     bgPreview: '#08090b',
     cardPreview: '#10141c',
     monacoTheme: 'vs-dark',
-    badge: 'DEFAULT • EXECUTIVE LINEAR',
+    badge: 'DEFAULT • EXECUTIVE DARK',
     typography: 'Plus Jakarta Sans (Modern Neo-Grotesque)',
-    shape: '10px Refined Precision Bevels & Matte Glass',
+    shape: '10px Refined Precision Bevels & Matte Titanium',
     fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif",
     borderRadius: '10px',
     description: 'Polished graphite titanium with crisp Plus Jakarta Sans typography and refined 10px subtle bevels'
   },
-  'royal-junge': {
-    id: 'royal-junge',
-    name: 'Royal Junge',
-    category: 'Mythic Dark',
-    accentColor: '#fbbf24',
-    secondaryAccent: '#c084fc',
-    bgPreview: '#0a080c',
-    cardPreview: '#15101a',
-    monacoTheme: 'vs-dark',
-    badge: 'CLASSICAL JUNGE',
-    typography: 'Junge (Mythic Classical Serif)',
-    shape: '14px Soft Aristocratic Arch & Gold Borders',
-    fontFamily: "'Junge', serif",
-    borderRadius: '14px',
-    description: 'Mythic velvet obsidian with authentic Junge typography, warm amber gold accents and literary grace'
-  },
-  'cyber-matrix': {
-    id: 'cyber-matrix',
-    name: 'Cyber Matrix',
-    category: 'Brutalist Hacker',
-    accentColor: '#10b981',
-    secondaryAccent: '#22d3ee',
-    bgPreview: '#030704',
-    cardPreview: '#07160a',
-    monacoTheme: 'hc-black',
-    badge: 'BRUTALIST TERMINAL',
-    typography: 'JetBrains Mono (Hacker Monospace)',
-    shape: '0px Sharp Brutalist / Zero Radius Squared',
-    fontFamily: "'JetBrains Mono', monospace",
-    borderRadius: '0px',
-    description: 'Hard 0px brutalist edges, pure monospace typography, glowing phosphor green CRT scanlines'
-  },
-  'synthwave-neon': {
-    id: 'synthwave-neon',
-    name: 'Synthwave Neon',
-    category: 'Retro Cyberpunk',
-    accentColor: '#ec4899',
-    secondaryAccent: '#06b6d4',
-    bgPreview: '#09040e',
-    cardPreview: '#160a24',
-    monacoTheme: 'vs-dark',
-    badge: 'ELECTRIC 80S ARCADE',
-    typography: 'Orbitron & Space Grotesk (Sci-Fi Futuristic)',
-    shape: '4px Angular Tech Chamfer & Neon Glow',
-    fontFamily: "'Space Grotesk', 'Orbitron', sans-serif",
-    borderRadius: '4px',
-    description: 'Futuristic sci-fi display typography, 4px tech chamfer edges, and dual magenta-cyan laser glow'
-  },
-  'nebula-violet': {
-    id: 'nebula-violet',
-    name: 'Nebula Violet',
-    category: 'Cosmic Glass',
-    accentColor: '#a78bfa',
-    secondaryAccent: '#f472b6',
-    bgPreview: '#070611',
-    cardPreview: '#110d29',
-    monacoTheme: 'vs-dark',
-    badge: 'ORGANIC LIQUID GLASS',
-    typography: 'Outfit (Geometric Display Neo-Modern)',
-    shape: '22px Ultra-Organic Curved & Full Pill Floating Controls',
-    fontFamily: "'Outfit', sans-serif",
-    borderRadius: '22px',
-    description: 'Ultra-organic 22px fluid curves, full pill controls, Outfit geometric display & celestial violet glow'
-  },
-  'midnight-amoled': {
-    id: 'midnight-amoled',
-    name: 'Midnight AMOLED',
-    category: 'True OLED Black',
-    accentColor: '#00f0ff',
-    secondaryAccent: '#34d399',
-    bgPreview: '#000000',
-    cardPreview: '#080808',
-    monacoTheme: 'hc-black',
-    badge: 'TRUE PITCH OLED',
-    typography: 'Space Grotesk (High-Density Technical Sans)',
-    shape: '6px Hairline Razor Precision / Zero Glow Haze',
-    fontFamily: "'Space Grotesk', sans-serif",
-    borderRadius: '6px',
-    description: '100% pitch-black OLED canvas with Space Grotesk technical typography and 6px razor hairline borders'
+  'professional-light': {
+    id: 'professional-light',
+    name: 'Professional White & Black',
+    category: 'Executive Light',
+    accentColor: '#09090b',
+    secondaryAccent: '#2563eb',
+    bgPreview: '#ffffff',
+    cardPreview: '#f8fafc',
+    monacoTheme: 'vs',
+    badge: 'EXECUTIVE MONOCHROME',
+    typography: 'Inter & Plus Jakarta Sans (High-Contrast White & Black)',
+    shape: '8px Crisp Modern Hairline Borders',
+    fontFamily: "'Inter', 'Plus Jakarta Sans', sans-serif",
+    borderRadius: '8px',
+    description: 'Pristine high-contrast white canvas with sharp black typography, sleek borders, and corporate elegance'
   }
 };
 
 export const normalizeTheme = (raw: string | null): UiTheme => {
-  if (!raw) return 'obsidian-luxe';
-  if (raw in THEME_PRESETS) return raw as UiTheme;
-  if (raw === 'cyber-neon') return 'synthwave-neon';
-  if (raw === 'enterprise-slate') return 'obsidian-luxe';
-  if (raw === 'nordic-light') return 'obsidian-luxe';
+  if (raw === 'professional-light' || raw === 'nordic-light') return 'professional-light';
   return 'obsidian-luxe';
 };
 
@@ -186,16 +114,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const toggleTheme = () => {
-    const themeKeys: UiTheme[] = [
-      'obsidian-luxe',
-      'royal-junge',
-      'cyber-matrix',
-      'synthwave-neon',
-      'nebula-violet',
-      'midnight-amoled'
-    ];
-    const nextIdx = (themeKeys.indexOf(theme) + 1) % themeKeys.length;
-    setTheme(themeKeys[nextIdx]);
+    const newTheme: UiTheme = theme === 'obsidian-luxe' ? 'professional-light' : 'obsidian-luxe';
+    setTheme(newTheme);
   };
 
   useEffect(() => {

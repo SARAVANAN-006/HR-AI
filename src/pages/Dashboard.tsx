@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { withFastTimeout } from '../lib/api';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
-import { Activity, ShieldAlert, ArrowUpRight, Plus, UserCheck } from 'lucide-react';
+import { Activity, ShieldAlert, ArrowUpRight, Plus, UserCheck, Flame } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { getStreakData, type StreakData } from '../lib/streakService';
+import { StreakModal } from '../components/StreakModal';
 
 interface SessionHistory {
   sessionId: number;
@@ -40,6 +42,8 @@ const Dashboard: React.FC = () => {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [radarData, setRadarData] = useState<any[]>([]);
+  const [streakData, setStreakData] = useState<StreakData>(getStreakData);
+  const [isStreakModalOpen, setIsStreakModalOpen] = useState<boolean>(false);
 
   const computeRadar = (d: DashboardData) => {
     const history = d.history;
@@ -160,6 +164,17 @@ const Dashboard: React.FC = () => {
         }
         setLoading(false);
       });
+
+    const handleStreakUpdate = () => {
+      setStreakData(getStreakData());
+    };
+    window.addEventListener('kodexis_streak_updated', handleStreakUpdate);
+    window.addEventListener('storage', handleStreakUpdate);
+
+    return () => {
+      window.removeEventListener('kodexis_streak_updated', handleStreakUpdate);
+      window.removeEventListener('storage', handleStreakUpdate);
+    };
   }, []);
 
   const getSkillColor = (level: string) => {
@@ -204,6 +219,65 @@ const Dashboard: React.FC = () => {
           <Plus size={14} />
           <span>New AI Interview Session</span>
         </button>
+      </div>
+
+      {/* DAILY PRACTICE STREAK TELEMETRY HERO BANNER */}
+      <div className="glass-panel glass-panel-hover rounded-xl p-5 border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-transparent flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden">
+        <div className="flex items-center space-x-4">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-zinc-950 flex items-center justify-center shrink-0 shadow-[0_0_20px_rgba(245,158,11,0.35)]">
+            <Flame size={26} className="fill-zinc-950/20 animate-pulse" />
+          </div>
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="text-xl font-bold font-mono text-zinc-100">
+                {streakData.currentStreak} DAY STREAK
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-mono font-bold border border-amber-500/30 uppercase">
+                {streakData.tier}
+              </span>
+              {streakData.todayCompleted && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-mono font-bold border border-emerald-500/30">
+                  Active Today
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-zinc-400 mt-0.5 font-mono">
+              {streakData.todayCompleted
+                ? `You've practiced today! ${streakData.daysToNextMilestone} days until the ${streakData.nextMilestone}-day milestone.`
+                : 'Practice pending today! Complete an AI interview or quiz to keep your flame alive.'}
+            </p>
+          </div>
+        </div>
+
+        {/* Weekly flame dots & button */}
+        <div className="flex items-center space-x-3 w-full md:w-auto justify-between md:justify-end">
+          <div className="flex items-center space-x-1.5 font-mono">
+            {streakData.weeklyProgress.map((day) => (
+              <div
+                key={day.dateStr}
+                title={`${day.dayName}: ${day.active ? 'Active' : 'Not logged'}`}
+                className={`w-7 h-8 rounded-lg flex flex-col items-center justify-center border text-[9px] ${
+                  day.active
+                    ? 'bg-amber-500/20 border-amber-500/50 text-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.15)]'
+                    : day.isToday
+                    ? 'border-brand-cyan/60 bg-zinc-800/60 text-brand-cyan'
+                    : 'bg-background border-border text-zinc-600'
+                }`}
+              >
+                <span className="font-bold">{day.dayName.slice(0, 1)}</span>
+                <Flame size={11} className={day.active ? 'fill-amber-400' : 'opacity-25'} />
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={() => setIsStreakModalOpen(true)}
+            className="px-3.5 py-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-mono text-xs font-bold transition flex items-center gap-1.5 shrink-0"
+          >
+            <span>Streak Hub</span>
+            <ArrowUpRight size={13} />
+          </button>
+        </div>
       </div>
 
       {/* TOP READOUTS: READINESS SCORE & RADAR */}
@@ -383,6 +457,7 @@ const Dashboard: React.FC = () => {
         )}
       </div>
 
+      <StreakModal isOpen={isStreakModalOpen} onClose={() => setIsStreakModalOpen(false)} />
     </div>
   );
 };

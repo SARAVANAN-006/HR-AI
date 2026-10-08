@@ -8,6 +8,8 @@ import CodeQualityInspector from '../components/CodeQualityInspector';
 import { getStoredAssessment, getStoredSession, calculateLegitimateAssessment, saveLegitimateAssessment } from '../lib/evaluationEngine';
 import { useTheme } from '../context/ThemeContext';
 import { UiSwitcherModal } from '../components/UiSwitcherModal';
+import { StreakBadge } from '../components/StreakBadge';
+import { StreakModal } from '../components/StreakModal';
 
 interface Question {
   title: string;
@@ -54,6 +56,7 @@ const Report: React.FC = () => {
   const [telemetry, setTelemetry] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const { themeConfig, isSwitcherOpen, setIsSwitcherOpen } = useTheme();
+  const [isStreakModalOpen, setIsStreakModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     // 1. Instant zero-latency hydration from static localStorage storage
@@ -311,6 +314,8 @@ ${session.lastSubmittedCode || '// No code submitted'}
 
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono text-zinc-500 mr-2 hidden md:inline">INTERVIEW AUTOPSY SUMMARY</span>
+
+          <StreakBadge compact onClick={() => setIsStreakModalOpen(true)} />
 
           <button
             onClick={() => setIsSwitcherOpen(true)}
@@ -594,6 +599,11 @@ ${session.lastSubmittedCode || '// No code submitted'}
         isOpen={isSwitcherOpen}
         onClose={() => setIsSwitcherOpen(false)}
         showLayoutOptions={false}
+      />
+
+      <StreakModal
+        isOpen={isStreakModalOpen}
+        onClose={() => setIsStreakModalOpen(false)}
       />
     </div>
   );

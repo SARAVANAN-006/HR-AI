@@ -10,6 +10,7 @@ import ReactMarkdown from 'react-markdown';
 import { isFeatureEnabled } from '../lib/featureFlags';
 import { logUserActivity } from '../lib/auditLogs';
 import { calculateLegitimateAssessment, saveLegitimateAssessment, verifyCodeCorrectness } from '../lib/evaluationEngine';
+import { recordStreakActivity } from '../lib/streakService';
 
 interface TestCase {
   id: number;
@@ -1411,6 +1412,9 @@ if (input.length >= 2) {
           testCasesPassed: `${computedAssessment.metrics.testCasesPassed}/${computedAssessment.metrics.totalTestCases}`
         }
       });
+
+      // 4b. Record Streak Progress
+      recordStreakActivity(`Completed session for ${session?.question?.title || 'Technical Interview'}`);
 
       // 5. Submit to backend if available
       await withFastTimeout(

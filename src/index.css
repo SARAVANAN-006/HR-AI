@@ -6,14 +6,11 @@
 
 /* ==========================================================================
    GLOBAL THEME DESIGN TOKENS (DYNAMIC CSS VARIABLES)
-   All themes are dark, distinct, and uniquely alter:
-   1. Typography (Junge, JetBrains Mono, Orbitron, Space Grotesk, Plus Jakarta Sans, Outfit)
-   2. Shape (0px Brutalist, 4px Tech Chamfer, 10px Precision, 14px Arch, 22px Pill, 6px OLED)
-   3. Components (Buttons, Glass Panels, Badges, Borders, Box-Shadow Glows)
-   4. Colors (Rich dark backgrounds, zero white/light canvases)
+   1. OBSIDIAN LUXE: Polished graphite titanium executive dark
+   2. PROFESSIONAL WHITE & BLACK: High-contrast executive studio monochrome
    ========================================================================== */
 
-/* 1. OBSIDIAN LUXE (DEFAULT & EXECUTIVE LINEAR) */
+/* 1. OBSIDIAN LUXE (DEFAULT & EXECUTIVE DARK) */
 :root,
 [data-theme='obsidian-luxe'],
 [data-theme='enterprise-slate'] {
@@ -47,165 +44,136 @@
   color-scheme: dark;
 }
 
-/* 2. ROYAL JUNGE (SIGNATURE CLASSICAL SERIF) */
-[data-theme='royal-junge'] {
-  --theme-font: 'Junge', serif;
+/* 2. PROFESSIONAL WHITE AND BLACK (EXECUTIVE MONOCHROME) */
+[data-theme='professional-light'],
+[data-theme='nordic-light'] {
+  --theme-font: 'Inter', 'Plus Jakarta Sans', sans-serif;
   --theme-font-mono: 'JetBrains Mono', monospace;
-  --theme-font-display: 'Junge', serif;
-  --theme-letter-spacing: 0.02em;
-  --theme-radius: 14px;
-  --theme-radius-sm: 8px;
-  --theme-radius-lg: 18px;
-  --theme-radius-pill: 20px;
-  --theme-panel-shadow: 0 10px 30px -5px rgba(251, 191, 36, 0.08), 0 0 1px rgba(251, 191, 36, 0.2);
-
-  --color-bg-default: #0a080c;
-  --color-bg-panel: #130f18;
-  --color-bg-card: #1b1624;
-  --color-bg-elevated: #261f32;
-  --color-border: #382e47;
-  --color-border-active: #fbbf24;
-  --color-brand-cyan: #fbbf24;
-  --color-brand-cyan-hover: #f59e0b;
-  --color-brand-cyan-dim: rgba(251, 191, 36, 0.16);
-  --color-brand-violet: #c084fc;
-  --color-brand-violet-hover: #a855f7;
-  --color-brand-violet-dim: rgba(192, 132, 252, 0.16);
-  --color-brand-emerald: #34d399;
-  --color-brand-emerald-hover: #10b981;
-  --color-brand-emerald-dim: rgba(52, 211, 153, 0.16);
-  --glass-bg: rgba(19, 15, 24, 0.88);
-  --glass-border: rgba(251, 191, 36, 0.15);
-  color-scheme: dark;
-}
-
-/* 3. CYBER MATRIX (SHARP 0PX BRUTALIST & MONOSPACE TERMINAL) */
-[data-theme='cyber-matrix'] {
-  --theme-font: 'JetBrains Mono', monospace;
-  --theme-font-mono: 'JetBrains Mono', monospace;
-  --theme-font-display: 'JetBrains Mono', monospace;
-  --theme-letter-spacing: -0.02em;
-  --theme-radius: 0px;
-  --theme-radius-sm: 0px;
-  --theme-radius-lg: 0px;
-  --theme-radius-pill: 0px;
-  --theme-panel-shadow: 0 0 18px rgba(16, 185, 129, 0.14), inset 0 0 8px rgba(16, 185, 129, 0.05);
-
-  --color-bg-default: #030704;
-  --color-bg-panel: #071409;
-  --color-bg-card: #0c2010;
-  --color-bg-elevated: #112d16;
-  --color-border: #184221;
-  --color-border-active: #10b981;
-  --color-brand-cyan: #10b981;
-  --color-brand-cyan-hover: #059669;
-  --color-brand-cyan-dim: rgba(16, 185, 129, 0.18);
-  --color-brand-violet: #22d3ee;
-  --color-brand-violet-hover: #0891b2;
-  --color-brand-violet-dim: rgba(34, 211, 238, 0.18);
-  --color-brand-emerald: #4ade80;
-  --color-brand-emerald-hover: #22c55e;
-  --color-brand-emerald-dim: rgba(74, 222, 128, 0.18);
-  --glass-bg: rgba(7, 20, 9, 0.92);
-  --glass-border: rgba(16, 185, 129, 0.25);
-  color-scheme: dark;
-}
-
-/* 4. SYNTHWAVE NEON (4PX TECH CHAMFER, ORBITRON & MAGENTA-CYAN GLOW) */
-[data-theme='synthwave-neon'],
-[data-theme='cyber-neon'] {
-  --theme-font: 'Space Grotesk', 'Orbitron', sans-serif;
-  --theme-font-mono: 'Space Grotesk', monospace;
-  --theme-font-display: 'Orbitron', sans-serif;
-  --theme-letter-spacing: 0.035em;
-  --theme-radius: 4px;
-  --theme-radius-sm: 2px;
-  --theme-radius-lg: 6px;
-  --theme-radius-pill: 6px;
-  --theme-panel-shadow: 0 0 25px rgba(236, 72, 153, 0.2), 0 0 10px rgba(6, 182, 212, 0.15);
-
-  --color-bg-default: #09040e;
-  --color-bg-panel: #13091e;
-  --color-bg-card: #1c0e2c;
-  --color-bg-elevated: #28143d;
-  --color-border: #3d1b5c;
-  --color-border-active: #ec4899;
-  --color-brand-cyan: #ec4899;
-  --color-brand-cyan-hover: #db2777;
-  --color-brand-cyan-dim: rgba(236, 72, 153, 0.2);
-  --color-brand-violet: #06b6d4;
-  --color-brand-violet-hover: #0891b2;
-  --color-brand-violet-dim: rgba(6, 182, 212, 0.2);
-  --color-brand-emerald: #f43f5e;
-  --color-brand-emerald-hover: #e11d48;
-  --color-brand-emerald-dim: rgba(244, 63, 94, 0.2);
-  --glass-bg: rgba(19, 9, 30, 0.88);
-  --glass-border: rgba(236, 72, 153, 0.25);
-  color-scheme: dark;
-}
-
-/* 5. NEBULA VIOLET (22PX ULTRA-ORGANIC PILL & OUTFIT GEOMETRIC) */
-[data-theme='nebula-violet'] {
-  --theme-font: 'Outfit', sans-serif;
-  --theme-font-mono: 'JetBrains Mono', monospace;
-  --theme-font-display: 'Outfit', sans-serif;
-  --theme-letter-spacing: 0.01em;
-  --theme-radius: 22px;
-  --theme-radius-sm: 12px;
-  --theme-radius-lg: 28px;
+  --theme-font-display: 'Plus Jakarta Sans', sans-serif;
+  --theme-letter-spacing: -0.015em;
+  --theme-radius: 8px;
+  --theme-radius-sm: 5px;
+  --theme-radius-lg: 12px;
   --theme-radius-pill: 9999px;
-  --theme-panel-shadow: 0 20px 45px rgba(167, 139, 250, 0.12), 0 0 2px rgba(167, 139, 250, 0.25);
+  --theme-panel-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.06), 0 0 1px rgba(0, 0, 0, 0.12);
 
-  --color-bg-default: #070611;
-  --color-bg-panel: #0e0c1f;
-  --color-bg-card: #16132f;
-  --color-bg-elevated: #211c44;
-  --color-border: #2f285c;
-  --color-border-active: #a78bfa;
-  --color-brand-cyan: #a78bfa;
-  --color-brand-cyan-hover: #8b5cf6;
-  --color-brand-cyan-dim: rgba(167, 139, 250, 0.18);
-  --color-brand-violet: #f472b6;
-  --color-brand-violet-hover: #ec4899;
-  --color-brand-violet-dim: rgba(244, 114, 182, 0.18);
-  --color-brand-emerald: #38bdf8;
-  --color-brand-emerald-hover: #0284c7;
-  --color-brand-emerald-dim: rgba(56, 189, 248, 0.18);
-  --glass-bg: rgba(14, 12, 31, 0.85);
-  --glass-border: rgba(167, 139, 250, 0.2);
-  color-scheme: dark;
+  --color-bg-default: #ffffff;
+  --color-bg-panel: #f8fafc;
+  --color-bg-card: #ffffff;
+  --color-bg-elevated: #f1f5f9;
+  --color-border: #e2e8f0;
+  --color-border-active: #09090b;
+  --color-brand-cyan: #09090b;
+  --color-brand-cyan-hover: #27272a;
+  --color-brand-cyan-dim: rgba(9, 9, 11, 0.08);
+  --color-brand-violet: #2563eb;
+  --color-brand-violet-hover: #1d4ed8;
+  --color-brand-violet-dim: rgba(37, 99, 235, 0.1);
+  --color-brand-emerald: #059669;
+  --color-brand-emerald-hover: #047857;
+  --color-brand-emerald-dim: rgba(5, 150, 105, 0.1);
+  --glass-bg: rgba(255, 255, 255, 0.96);
+  --glass-border: rgba(226, 232, 240, 0.9);
+  color-scheme: light;
 }
 
-/* 6. MIDNIGHT AMOLED (6PX HAIRLINE OLED & SPACE GROTESK LASER) */
-[data-theme='midnight-amoled'] {
-  --theme-font: 'Space Grotesk', sans-serif;
-  --theme-font-mono: 'JetBrains Mono', monospace;
-  --theme-font-display: 'Space Grotesk', sans-serif;
-  --theme-letter-spacing: 0em;
-  --theme-radius: 6px;
-  --theme-radius-sm: 3px;
-  --theme-radius-lg: 8px;
-  --theme-radius-pill: 8px;
-  --theme-panel-shadow: none;
+/* Professional White & Black text & component contrast rules */
+[data-theme='professional-light'] body,
+[data-theme='nordic-light'] body {
+  color: #09090b !important;
+}
 
-  --color-bg-default: #000000;
-  --color-bg-panel: #060606;
-  --color-bg-card: #0c0c0c;
-  --color-bg-elevated: #141414;
-  --color-border: #1a1a1a;
-  --color-border-active: #00f0ff;
-  --color-brand-cyan: #00f0ff;
-  --color-brand-cyan-hover: #06b6d4;
-  --color-brand-cyan-dim: rgba(0, 240, 255, 0.15);
-  --color-brand-violet: #34d399;
-  --color-brand-violet-hover: #10b981;
-  --color-brand-violet-dim: rgba(52, 211, 153, 0.15);
-  --color-brand-emerald: #22c55e;
-  --color-brand-emerald-hover: #16a34a;
-  --color-brand-emerald-dim: rgba(34, 197, 94, 0.15);
-  --glass-bg: rgba(6, 6, 6, 0.95);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  color-scheme: dark;
+[data-theme='professional-light'] .text-zinc-100,
+[data-theme='professional-light'] .text-zinc-200,
+[data-theme='professional-light'] .text-zinc-300,
+[data-theme='nordic-light'] .text-zinc-100,
+[data-theme='nordic-light'] .text-zinc-200,
+[data-theme='nordic-light'] .text-zinc-300 {
+  color: #09090b !important;
+}
+
+[data-theme='professional-light'] .text-zinc-400,
+[data-theme='professional-light'] .text-zinc-500,
+[data-theme='nordic-light'] .text-zinc-400,
+[data-theme='nordic-light'] .text-zinc-500 {
+  color: #475569 !important;
+}
+
+[data-theme='professional-light'] .text-zinc-600,
+[data-theme='nordic-light'] .text-zinc-600 {
+  color: #64748b !important;
+}
+
+[data-theme='professional-light'] .bg-zinc-950,
+[data-theme='professional-light'] .bg-zinc-900,
+[data-theme='nordic-light'] .bg-zinc-950,
+[data-theme='nordic-light'] .bg-zinc-900 {
+  background-color: #ffffff !important;
+}
+
+[data-theme='professional-light'] .bg-zinc-900\/50,
+[data-theme='professional-light'] .bg-zinc-900\/40,
+[data-theme='professional-light'] .bg-zinc-900\/30,
+[data-theme='professional-light'] .bg-zinc-900\/20,
+[data-theme='professional-light'] .bg-zinc-950\/20,
+[data-theme='nordic-light'] .bg-zinc-900\/50,
+[data-theme='nordic-light'] .bg-zinc-900\/40,
+[data-theme='nordic-light'] .bg-zinc-900\/30,
+[data-theme='nordic-light'] .bg-zinc-900\/20,
+[data-theme='nordic-light'] .bg-zinc-950\/20 {
+  background-color: #f8fafc !important;
+}
+
+[data-theme='professional-light'] .bg-zinc-800,
+[data-theme='professional-light'] .bg-zinc-800\/50,
+[data-theme='nordic-light'] .bg-zinc-800,
+[data-theme='nordic-light'] .bg-zinc-800\/50 {
+  background-color: #f1f5f9 !important;
+}
+
+[data-theme='professional-light'] .border-zinc-800,
+[data-theme='professional-light'] .border-zinc-900,
+[data-theme='professional-light'] .border-zinc-700,
+[data-theme='nordic-light'] .border-zinc-800,
+[data-theme='nordic-light'] .border-zinc-900,
+[data-theme='nordic-light'] .border-zinc-700 {
+  border-color: #e2e8f0 !important;
+}
+
+[data-theme='professional-light'] .btn-neon-cyan,
+[data-theme='nordic-light'] .btn-neon-cyan {
+  border-color: #09090b;
+  background-color: #09090b;
+  color: #ffffff !important;
+}
+
+[data-theme='professional-light'] .btn-neon-cyan:hover,
+[data-theme='nordic-light'] .btn-neon-cyan:hover {
+  background-color: #27272a;
+  border-color: #27272a;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme='professional-light'] .neon-text-cyan,
+[data-theme='nordic-light'] .neon-text-cyan {
+  color: #09090b;
+  text-shadow: none;
+}
+
+[data-theme='professional-light'] ::-webkit-scrollbar-track,
+[data-theme='nordic-light'] ::-webkit-scrollbar-track {
+  background: #f8fafc;
+}
+
+[data-theme='professional-light'] ::-webkit-scrollbar-thumb,
+[data-theme='nordic-light'] ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+
+[data-theme='professional-light'] ::-webkit-scrollbar-thumb:hover,
+[data-theme='nordic-light'] ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 /* ==========================================================================

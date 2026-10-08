@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Link, Navigate, useNavigate, us
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { UiSwitcherModal } from './components/UiSwitcherModal';
+import { StreakBadge } from './components/StreakBadge';
+import { StreakModal } from './components/StreakModal';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Onboarding from './pages/Onboarding';
@@ -67,6 +69,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; requireAdmin?: boole
 const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, logout } = useAuth();
   const { themeConfig, isSwitcherOpen, setIsSwitcherOpen } = useTheme();
+  const [isStreakModalOpen, setIsStreakModalOpen] = React.useState<boolean>(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -141,8 +144,13 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
         </div>
 
         <div>
-          {/* UI Theme Switcher Quick Bar */}
+          {/* Daily Practice Streak Badge */}
           <div className="p-4 border-t border-border">
+            <StreakBadge onClick={() => setIsStreakModalOpen(true)} />
+          </div>
+
+          {/* UI Theme Switcher Quick Bar */}
+          <div className="px-4 pb-4">
             <button
               onClick={() => setIsSwitcherOpen(true)}
               className="w-full p-2.5 rounded-lg border border-border bg-background hover:border-brand-cyan/50 hover:bg-background-elevated transition flex items-center justify-between text-left group"
@@ -157,7 +165,7 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
                     {themeConfig.name}
                   </p>
                   <p className="text-[8px] font-mono text-zinc-500 uppercase tracking-wider">
-                    {themeConfig.category} Mode · Click to switch
+                    {themeConfig.category} Mode · Switch
                   </p>
                 </div>
               </div>
@@ -214,6 +222,7 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
       </main>
 
       <UiSwitcherModal isOpen={isSwitcherOpen} onClose={() => setIsSwitcherOpen(false)} showLayoutOptions={false} />
+      <StreakModal isOpen={isStreakModalOpen} onClose={() => setIsStreakModalOpen(false)} />
     </div>
   );
 };

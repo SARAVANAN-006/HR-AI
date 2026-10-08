@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTheme, THEME_PRESETS, type UiTheme, type ThemeConfig } from '../context/ThemeContext';
-import { Palette, Layout, Type, Check, X, Sparkles, Monitor, Shapes } from 'lucide-react';
+import { Palette, Layout, Type, Check, X, Sparkles, Monitor, Shapes, Moon, Sun } from 'lucide-react';
 
 interface UiSwitcherModalProps {
   isOpen: boolean;
@@ -18,8 +18,8 @@ export const UiSwitcherModal: React.FC<UiSwitcherModalProps> = ({ isOpen, onClos
   return (
     <div className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in font-sans">
       <div 
-        className="w-full max-w-3xl bg-background-panel border border-border shadow-[0_0_60px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col max-h-[92vh]"
-        style={{ borderRadius: 'var(--theme-radius, 16px)' }}
+        className="w-full max-w-2xl bg-background-panel border border-border shadow-[0_0_60px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col max-h-[92vh]"
+        style={{ borderRadius: 'var(--theme-radius, 14px)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* MODAL HEADER */}
@@ -30,13 +30,13 @@ export const UiSwitcherModal: React.FC<UiSwitcherModalProps> = ({ isOpen, onClos
             </div>
             <div>
               <h2 className="text-sm font-bold text-zinc-100 flex items-center gap-2">
-                WORKSPACE APPEARANCE & THEME STUDIO
+                EXECUTIVE THEME & WORKSPACE STUDIO
                 <span className="text-[9px] px-2 py-0.5 rounded bg-brand-cyan/15 border border-brand-cyan/30 text-brand-cyan uppercase tracking-wider font-semibold">
-                  6 Unique Aesthetics
+                  Professional Dual Mode
                 </span>
               </h2>
               <p className="text-[11px] text-zinc-400">
-                Each theme completely transforms typography, component shapes, button styles, borders, and dark color palettes.
+                Switch between Obsidian Luxe (Executive Dark) and Professional White & Black (Executive Light).
               </p>
             </div>
           </div>
@@ -55,18 +55,20 @@ export const UiSwitcherModal: React.FC<UiSwitcherModalProps> = ({ isOpen, onClos
           {/* SECTION 1: THEME SELECTION */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <label className="text-xs font-bold text-zinc-200 uppercase tracking-wider flex items-center gap-1.5">
+              <label className="text-xs font-bold text-zinc-200 uppercase tracking-wider flex items-center gap-1.5 font-mono">
                 <Sparkles size={13} className="text-brand-cyan" />
-                <span>1. Select Interface Theme & Morph UI</span>
+                <span>1. Select Interface Appearance</span>
               </label>
               <span className="text-[10px] text-zinc-400 font-mono">
                 Active: <strong className="text-brand-cyan">{THEME_PRESETS[theme]?.name || 'Obsidian Luxe'}</strong>
               </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {themesList.map((preset) => {
                 const isSelected = theme === preset.id;
+                const isLight = preset.id === 'professional-light';
+
                 return (
                   <button
                     key={preset.id}
@@ -75,85 +77,75 @@ export const UiSwitcherModal: React.FC<UiSwitcherModalProps> = ({ isOpen, onClos
                       borderRadius: preset.borderRadius,
                       fontFamily: preset.fontFamily
                     }}
-                    className={`p-4 border text-left transition relative flex flex-col justify-between group ${
+                    className={`p-5 border text-left transition relative flex flex-col justify-between group ${
                       isSelected
                         ? 'border-brand-cyan bg-brand-cyan/10 ring-2 ring-brand-cyan/60 shadow-[0_0_25px_rgba(34,211,238,0.2)]'
                         : 'border-border/80 bg-background hover:border-zinc-500 hover:bg-background-elevated/70'
                     }`}
                   >
                     {/* Header info */}
-                    <div className="flex items-start justify-between mb-2.5">
-                      <div className="flex items-center space-x-2.5">
-                        <div 
-                          className="w-4 h-4 rounded-full border border-white/20 shadow-sm shrink-0"
-                          style={{ backgroundColor: preset.accentColor }}
-                        />
-                        <div>
-                          <span className="text-sm font-bold text-zinc-100 block leading-tight">
-                            {preset.name}
-                          </span>
-                          <span className="text-[9px] text-zinc-400 opacity-90 block">
-                            {preset.category}
-                          </span>
+                    <div>
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center space-x-2.5">
+                          <div 
+                            className="w-7 h-7 rounded-lg border border-white/20 flex items-center justify-center shrink-0 shadow-sm"
+                            style={{ 
+                              backgroundColor: isLight ? '#ffffff' : '#08090b',
+                              color: isLight ? '#09090b' : '#38bdf8'
+                            }}
+                          >
+                            {isLight ? <Sun size={15} /> : <Moon size={15} />}
+                          </div>
+                          <div>
+                            <span className="text-sm font-bold text-zinc-100 block leading-tight">
+                              {preset.name}
+                            </span>
+                            <span className="text-[10px] text-zinc-400 block font-mono">
+                              {preset.category}
+                            </span>
+                          </div>
+                        </div>
+
+                        <span 
+                          className="text-[9px] font-semibold px-2 py-0.5 border uppercase tracking-wider shrink-0 rounded-full font-mono"
+                          style={{
+                            borderColor: preset.accentColor + '50',
+                            backgroundColor: preset.accentColor + '15',
+                            color: preset.accentColor
+                          }}
+                        >
+                          {preset.badge}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-zinc-300 leading-relaxed mb-4">
+                        {preset.description}
+                      </p>
+
+                      {/* Badges */}
+                      <div className="space-y-2 mb-4 text-[10px] font-mono">
+                        <div className="p-2 rounded bg-zinc-950/70 border border-border/50 flex items-center gap-2 text-zinc-300">
+                          <Type size={12} className="text-brand-cyan shrink-0" />
+                          <span className="truncate">{preset.typography}</span>
+                        </div>
+                        <div className="p-2 rounded bg-zinc-950/70 border border-border/50 flex items-center gap-2 text-zinc-300">
+                          <Shapes size={12} className="text-brand-violet shrink-0" />
+                          <span className="truncate">{preset.shape}</span>
                         </div>
                       </div>
-                      <span 
-                        className="text-[9px] font-semibold px-2 py-0.5 border uppercase tracking-wider shrink-0"
-                        style={{
-                          borderRadius: preset.borderRadius === '0px' ? '0px' : '9999px',
-                          borderColor: preset.accentColor + '50',
-                          backgroundColor: preset.accentColor + '15',
-                          color: preset.accentColor
-                        }}
-                      >
-                        {preset.badge}
-                      </span>
                     </div>
 
-                    <p className="text-[11px] text-zinc-300 leading-relaxed mb-3">
-                      {preset.description}
-                    </p>
-
-                    {/* Typography & Shape Badges */}
-                    <div className="grid grid-cols-2 gap-2 mb-3 text-[10px]">
-                      <div className="p-1.5 rounded bg-zinc-950/70 border border-border/50 flex items-center gap-1.5 text-zinc-300">
-                        <Type size={11} className="text-brand-cyan shrink-0" />
-                        <span className="truncate" title={preset.typography}>{preset.typography}</span>
-                      </div>
-                      <div className="p-1.5 rounded bg-zinc-950/70 border border-border/50 flex items-center gap-1.5 text-zinc-300">
-                        <Shapes size={11} className="text-brand-violet shrink-0" />
-                        <span className="truncate" title={preset.shape}>{preset.shape}</span>
-                      </div>
-                    </div>
-
-                    {/* Component Button Preview */}
-                    <div className="py-2 px-3 rounded bg-zinc-950/60 border border-border/40 flex items-center justify-between gap-2 mb-3">
-                      <span className="text-[10px] text-zinc-400 font-mono">Component Button:</span>
-                      <span
-                        style={{
-                          borderRadius: preset.borderRadius,
-                          fontFamily: preset.fontFamily,
-                          borderColor: preset.accentColor,
-                          backgroundColor: preset.accentColor + '20',
-                          color: preset.accentColor
-                        }}
-                        className="px-3 py-1 text-[11px] font-bold border transition shadow-sm"
-                      >
-                        {preset.id === 'cyber-matrix' ? '[ EXECUTE ]' : 'Submit & End'}
-                      </span>
-                    </div>
-
-                    {/* Color Swatches & Selection Status */}
-                    <div className="flex items-center justify-between pt-2 border-t border-border/50 text-[10px]">
+                    {/* Bottom Status bar */}
+                    <div className="pt-3 border-t border-border/50 flex items-center justify-between text-xs font-mono">
                       <div className="flex items-center space-x-1.5">
-                        <span className="w-3.5 h-3.5 rounded" style={{ backgroundColor: preset.bgPreview, border: '1px solid #444' }} title="Background (Dark)" />
-                        <span className="w-3.5 h-3.5 rounded" style={{ backgroundColor: preset.cardPreview, border: '1px solid #444' }} title="Card/Panel (Dark)" />
-                        <span className="w-3.5 h-3.5 rounded" style={{ backgroundColor: preset.accentColor }} title="Primary Accent" />
-                        <span className="w-3.5 h-3.5 rounded" style={{ backgroundColor: preset.secondaryAccent }} title="Secondary Accent" />
+                        <span className="w-3.5 h-3.5 rounded border border-white/20 shadow-sm" style={{ backgroundColor: preset.bgPreview }} title="Background" />
+                        <span className="w-3.5 h-3.5 rounded border border-white/20 shadow-sm" style={{ backgroundColor: preset.accentColor }} title="Primary Action" />
+                        <span className="w-3.5 h-3.5 rounded border border-white/20 shadow-sm" style={{ backgroundColor: preset.secondaryAccent }} title="Secondary Accent" />
                       </div>
+
                       {isSelected ? (
-                        <span className="font-bold flex items-center gap-1" style={{ color: preset.accentColor }}>
-                          <Check size={13} /> Active Theme
+                        <span className="font-bold flex items-center gap-1 text-brand-cyan">
+                          <Check size={14} /> Active Mode
                         </span>
                       ) : (
                         <span className="text-zinc-500 group-hover:text-zinc-300">Click to apply</span>
@@ -169,7 +161,7 @@ export const UiSwitcherModal: React.FC<UiSwitcherModalProps> = ({ isOpen, onClos
           {showLayoutOptions && (
             <div>
               <div className="flex items-center justify-between mb-3">
-                <label className="text-xs font-bold text-zinc-200 uppercase tracking-wider flex items-center gap-1.5">
+                <label className="text-xs font-bold text-zinc-200 uppercase tracking-wider flex items-center gap-1.5 font-mono">
                   <Layout size={13} className="text-brand-cyan" />
                   <span>2. Workspace Layout Preset</span>
                 </label>
@@ -271,7 +263,7 @@ export const UiSwitcherModal: React.FC<UiSwitcherModalProps> = ({ isOpen, onClos
           {/* SECTION 3: EDITOR FONT SIZE */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <label className="text-xs font-bold text-zinc-200 uppercase tracking-wider flex items-center gap-1.5">
+              <label className="text-xs font-bold text-zinc-200 uppercase tracking-wider flex items-center gap-1.5 font-mono">
                 <Type size={13} className="text-brand-cyan" />
                 <span>3. Monaco Code Editor Font Size</span>
               </label>
