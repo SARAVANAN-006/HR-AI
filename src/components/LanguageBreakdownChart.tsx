@@ -1,13 +1,26 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-const data = [
-  { name: 'Java', score: 85, fill: '#8b5cf6' },
-  { name: 'Python', score: 91, fill: '#22d3ee' },
-  { name: 'C++', score: 76, fill: '#10b981' }
-];
+interface LanguageScore {
+  name: string;
+  score: number;
+  fill?: string;
+}
 
-const LanguageBreakdownChart: React.FC = () => {
+interface LanguageBreakdownChartProps {
+  data?: LanguageScore[];
+}
+
+const LanguageBreakdownChart: React.FC<LanguageBreakdownChartProps> = ({ data }) => {
+  if (!data || data.length === 0) {
+    return (
+      <div className="w-full h-64 flex flex-col items-center justify-center text-center p-6 border border-dashed border-border rounded-lg font-mono">
+        <p className="text-xs text-zinc-400">No language metrics recorded yet.</p>
+        <p className="text-[10px] text-zinc-500 mt-1">Submit solutions in Java, Python, or C++ to generate comparative scores.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full h-64">
       <ResponsiveContainer width="100%" height="100%">

@@ -16,6 +16,15 @@ interface ProgressChartProps {
 }
 
 const ProgressChart: React.FC<ProgressChartProps> = ({ history }) => {
+  if (!history || history.length === 0) {
+    return (
+      <div className="w-full h-64 flex flex-col items-center justify-center text-center p-6 border border-dashed border-border rounded-lg font-mono">
+        <p className="text-xs text-zinc-400">No session trajectory data recorded yet.</p>
+        <p className="text-[10px] text-zinc-500 mt-1">Complete assessment sessions to view score progression over time.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full h-64">
       <ResponsiveContainer width="100%" height="100%">

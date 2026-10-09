@@ -128,7 +128,13 @@ export const StudyCalendarPage: React.FC = () => {
     const cached = localStorage.getItem('kodexis_study_calendar_events');
     if (cached) {
       try {
-        setEvents(JSON.parse(cached));
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed)) {
+          const dummyIds = new Set(['evt-1', 'evt-2', 'evt-3', 'evt-4', 'evt-5', 'evt-6', 'evt-7', 'evt-8']);
+          const clean = parsed.filter((e: any) => e && !dummyIds.has(e.id));
+          setEvents(clean);
+          localStorage.setItem('kodexis_study_calendar_events', JSON.stringify(clean));
+        }
       } catch {}
     } else {
       loadFallbackEvents();
@@ -140,8 +146,10 @@ export const StudyCalendarPage: React.FC = () => {
     try {
       const res = await axios.get(`${LEARNING_API_BASE}/calendar/events`);
       if (res.data && Array.isArray(res.data) && res.data.length > 0) {
-        setEvents(res.data);
-        localStorage.setItem('kodexis_study_calendar_events', JSON.stringify(res.data));
+        const dummyIds = new Set(['evt-1', 'evt-2', 'evt-3', 'evt-4', 'evt-5', 'evt-6', 'evt-7', 'evt-8']);
+        const clean = res.data.filter((e: any) => e && !dummyIds.has(e.id));
+        setEvents(clean);
+        localStorage.setItem('kodexis_study_calendar_events', JSON.stringify(clean));
       }
     } catch {
       // Retain active events
@@ -152,122 +160,22 @@ export const StudyCalendarPage: React.FC = () => {
     const cached = localStorage.getItem('kodexis_study_calendar_events');
     if (cached) {
       try {
-        setEvents(JSON.parse(cached));
-        return;
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed)) {
+          const dummyIds = new Set(['evt-1', 'evt-2', 'evt-3', 'evt-4', 'evt-5', 'evt-6', 'evt-7', 'evt-8']);
+          const clean = parsed.filter((e: any) => e && !dummyIds.has(e.id));
+          setEvents(clean);
+          localStorage.setItem('kodexis_study_calendar_events', JSON.stringify(clean));
+          return;
+        }
       } catch {
         // ignore
       }
     }
 
-    // Default sample events
-    const initialSamples: CalendarEvent[] = [
-      {
-        id: 'evt-1',
-        title: 'Core Algorithm Review: Hash Maps & Two Pointers',
-        date: todayStr,
-        time: '09:30 AM',
-        durationMinutes: 45,
-        type: 'STUDY_SESSION',
-        priority: 'HIGH',
-        concepts: ['Two Pointers', 'Hash Set Deduplication', 'Time Complexity O(N)'],
-        notes: 'Master two sum variants and pointer convergence logic before the mock interview.',
-        completed: false
-      },
-      {
-        id: 'evt-2',
-        title: 'Adaptive Diagnostic Quiz: Algorithmic Complexity',
-        date: todayStr,
-        time: '03:00 PM',
-        durationMinutes: 30,
-        type: 'ADAPTIVE_QUIZ',
-        priority: 'MEDIUM',
-        concepts: ['Big-O Notation', 'Space Complexity', 'Recursion Depth'],
-        notes: 'Complete the 10-question adaptive assessment to establish baseline BKT mastery.',
-        completed: true
-      },
-      {
-        id: 'evt-3',
-        title: 'AI Mock Interview: Sliding Window & Substrings',
-        date: getOffsetDateStr(1),
-        time: '11:00 AM',
-        durationMinutes: 60,
-        type: 'MOCK_INTERVIEW',
-        priority: 'HIGH',
-        concepts: ['Sliding Window', 'Frequency Map', 'Edge Cases'],
-        notes: 'Two-phase gated interview session. Pass conceptual logic defense first.',
-        completed: false
-      },
-      {
-        id: 'evt-4',
-        title: 'Ebbinghaus Spaced Review: Binary Trees & Traversals',
-        date: getOffsetDateStr(3),
-        time: '10:00 AM',
-        durationMinutes: 45,
-        type: 'SPACED_REVISION',
-        priority: 'HIGH',
-        concepts: ['Inorder Traversal', 'Level-order BFS', 'Tree Height'],
-        notes: 'Optimal spacing retention review for Tree structures.',
-        completed: false
-      },
-      {
-        id: 'evt-5',
-        title: 'Flashcard Sprint: Distributed Consensus & CAP Theorem',
-        date: getOffsetDateStr(5),
-        time: '02:00 PM',
-        durationMinutes: 25,
-        type: 'FLASHCARDS',
-        priority: 'MEDIUM',
-        concepts: ['CAP Theorem', 'Paxos/Raft', 'Eventual Consistency'],
-        notes: 'High-speed flashcard drill using Leitner spaced intervals.',
-        completed: false
-      },
-      {
-        id: 'evt-6',
-        title: 'Deep Study: Dynamic Programming & Memoization',
-        date: getOffsetDateStr(8),
-        time: '04:00 PM',
-        durationMinutes: 90,
-        type: 'STUDY_SESSION',
-        priority: 'HIGH',
-        concepts: ['Overlapping Subproblems', 'Optimal Substructure', '1D/2D Tabulation'],
-        notes: 'Tackle classic DP: Coin Change, Longest Common Subsequence, Knapsack.',
-        completed: false
-      },
-      {
-        id: 'evt-7',
-        title: 'Full Simulation OA: Timed Company Sandbox',
-        date: getOffsetDateStr(12),
-        time: '10:00 AM',
-        durationMinutes: 90,
-        type: 'MOCK_INTERVIEW',
-        priority: 'HIGH',
-        concepts: ['Hard Algorithms', 'Full Test Suite', 'Piston Execution'],
-        notes: 'Simulated OA timed sandbox environment.',
-        completed: false
-      },
-      {
-        id: 'evt-8',
-        title: 'Distributed Systems & Data Structures Final Milestone',
-        date: getOffsetDateStr(14),
-        time: '09:00 AM',
-        durationMinutes: 120,
-        type: 'EXAM_DEADLINE',
-        priority: 'HIGH',
-        concepts: ['Comprehensive Review', 'All Topics', 'Post-Assessment Report'],
-        notes: 'Final readiness evaluation. Projected retention target: > 92%.',
-        completed: false
-      }
-    ];
-
-    setEvents(initialSamples);
-    localStorage.setItem('kodexis_study_calendar_events', JSON.stringify(initialSamples));
+    setEvents([]);
+    localStorage.setItem('kodexis_study_calendar_events', JSON.stringify([]));
   };
-
-  function getOffsetDateStr(offsetDays: number): string {
-    const d = new Date();
-    d.setDate(d.getDate() + offsetDays);
-    return d.toISOString().split('T')[0];
-  }
 
   const showToast = (msg: string) => {
     setNotificationMsg(msg);

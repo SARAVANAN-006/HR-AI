@@ -129,15 +129,6 @@ export const KnowledgeBasePage: React.FC = () => {
     }
   };
 
-  const handleSeedSampleData = async () => {
-    try {
-      await axios.post(`${API_BASE}/knowledge/seed-sample`);
-      fetchKnowledgeData();
-    } catch (err) {
-      console.error("Failed to seed sample data:", err);
-    }
-  };
-
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -269,14 +260,6 @@ export const KnowledgeBasePage: React.FC = () => {
             <span>CLEAR ALL</span>
           </button>
           <button
-            onClick={handleSeedSampleData}
-            className="flex items-center space-x-1.5 px-3 py-2 rounded-lg border border-brand-violet/40 text-brand-violet hover:bg-brand-violet/10 text-xs font-mono transition"
-            title="Load sample curriculum for demonstration"
-          >
-            <Sparkles size={14} />
-            <span>LOAD SAMPLE</span>
-          </button>
-          <button
             onClick={() => setIsIngestModalOpen(true)}
             className="flex items-center justify-center space-x-2 px-4 py-2.5 rounded-lg bg-brand-cyan text-zinc-950 font-mono text-xs font-bold hover:bg-brand-cyan/90 transition shadow-lg shadow-brand-cyan/10 shrink-0"
           >
@@ -386,12 +369,6 @@ export const KnowledgeBasePage: React.FC = () => {
               className="px-5 py-2.5 rounded-lg bg-brand-cyan text-zinc-950 font-mono text-xs font-bold hover:bg-brand-cyan/90 transition shadow-lg shadow-brand-cyan/10"
             >
               + Upload Course Material
-            </button>
-            <button
-              onClick={handleSeedSampleData}
-              className="px-4 py-2.5 rounded-lg border border-border bg-background-panel text-zinc-300 font-mono text-xs hover:border-zinc-500 transition"
-            >
-              Load Sample Demo Data
             </button>
           </div>
         </div>

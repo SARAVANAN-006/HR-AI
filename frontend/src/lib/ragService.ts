@@ -56,78 +56,6 @@ const MISTRAL_MODEL =
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_MISTRAL_MODEL) ||
   'open-mistral-7b';
 
-// Initial verified foundation units
-const SEED_KNOWLEDGE_UNITS: KnowledgeUnit[] = [
-  {
-    id: 'unit-dist-systems-1',
-    title: 'Raft Consensus Protocol & Split-Brain Prevention',
-    sourceType: 'TEXTBOOK',
-    documentName: 'Designing Data-Intensive Applications (Kleppmann)',
-    topicName: 'Distributed Systems',
-    subtopic: 'Consensus & Quorums',
-    pageNumber: 374,
-    textSnippet:
-      'In the Raft consensus algorithm, safety is maintained through randomized election timeouts and strict majority quorums (N/2 + 1). A candidate node transitions to leader only after receiving positive votes from a majority of cluster nodes for a monotonically increasing term number. Log entries flow strictly from the leader to followers. If a network partition divides the cluster, the minority partition cannot establish quorum and cannot commit writes, preventing split-brain state divergence.',
-    hasVisualFigure: true,
-    figureTitle: 'Raft Leader Quorum Partition Matrix',
-    figureCaption: 'Figure 9.4: Split-brain prevention through odd-numbered node majority voting.'
-  },
-  {
-    id: 'unit-dbms-mvcc',
-    title: 'Multi-Version Concurrency Control (MVCC) in PostgreSQL',
-    sourceType: 'SLIDE',
-    documentName: 'CMU 15-445 Database Systems Lecture Slides',
-    topicName: 'Database Management Systems',
-    subtopic: 'Transaction Concurrency',
-    slideNumber: 18,
-    textSnippet:
-      'MVCC ensures that readers do not block writers and writers do not block readers. When an UPDATE statement executes, PostgreSQL creates a brand-new row tuple version rather than overwriting in-place. Each tuple carries xmin (the transaction ID that inserted it) and xmax (the transaction ID that deleted or updated it). Read queries only see tuple versions where xmin is committed before the snapshot began and xmax is either not yet committed or greater than the active snapshot ID.',
-    hasVisualFigure: true,
-    figureTitle: 'Tuple Version Snapshot Chain',
-    figureDescription: 'Diagram illustrating how xmin and xmax pointers trace transaction snapshot visibility.'
-  },
-  {
-    id: 'unit-transformer-attn',
-    title: 'Scaled Dot-Product & Multi-Head Self-Attention',
-    sourceType: 'TEXTBOOK',
-    documentName: 'Attention Is All You Need (Vaswani et al.)',
-    topicName: 'Artificial Intelligence & Deep Learning',
-    subtopic: 'Transformer Architecture',
-    pageNumber: 4,
-    textSnippet:
-      'Attention(Q, K, V) = softmax(Q * K^T / sqrt(d_k)) * V. The scaling factor 1/sqrt(d_k) counteracts large magnitude dot products in higher dimensions, which otherwise push softmax into regions with vanishingly small gradients. Multi-Head Attention projects Queries, Keys, and Values h times with independent parameter matrices, enabling the model to jointly attend to information across diverse representation subspaces at different positions.',
-    hasVisualFigure: true,
-    figureTitle: 'Multi-Head Attention Pipeline',
-    figureCaption: 'Parallel scaled dot-product heads concatenated and projected linearly.'
-  },
-  {
-    id: 'unit-os-virtual-mem',
-    title: 'Page Fault Handling & Translation Lookaside Buffers (TLB)',
-    sourceType: 'SLIDE',
-    documentName: 'Operating Systems: Three Easy Pieces (OSTEP)',
-    topicName: 'Operating Systems',
-    subtopic: 'Virtual Memory & Paging',
-    slideNumber: 27,
-    textSnippet:
-      'When an address translation fails to find an entry in the hardware TLB (TLB miss), the Memory Management Unit (MMU) walks the multi-level page table. If the page table entry indicates the present bit is 0, a hardware trap (Page Fault) interrupts CPU execution and switches to Ring 0 kernel mode. The OS page fault handler inspects the swap space on disk, allocates a physical frame, issues an asynchronous DMA read, updates the page table present bit, and restarts the faulting CPU instruction.',
-    hasVisualFigure: false
-  },
-  {
-    id: 'unit-cn-quic',
-    title: 'HTTP/3 over QUIC Protocol Handshake',
-    sourceType: 'VIDEO',
-    documentName: 'Stanford CS144 Computer Networks Video Lectures',
-    topicName: 'Computer Networks',
-    subtopic: 'Transport Protocols',
-    videoTimestampSeconds: 245,
-    videoDuration: '04:05',
-    textSnippet:
-      'Unlike HTTP/2 running over TCP, HTTP/3 utilizes QUIC over UDP. In TCP, packet loss on a single stream halts delivery for all concurrent multiplexed streams (Head-of-Line Blocking). QUIC eliminates HOL blocking because streams are independent UDP payloads with their own sequence spaces. Additionally, QUIC merges transport connection setup with TLS 1.3 cryptographic key exchange, achieving zero round-trip (0-RTT) connection resumption.',
-    hasVisualFigure: true,
-    figureTitle: 'TCP HOL Blocking vs QUIC Stream Independence'
-  }
-];
-
 class RagService {
   private units: KnowledgeUnit[] = [];
 
@@ -141,14 +69,23 @@ class RagService {
         const stored = localStorage.getItem('kodexis_knowledge_units');
         if (stored) {
           const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            this.units = parsed;
+          if (Array.isArray(parsed)) {
+            // Filter out any legacy dummy seed units previously stored in browser cache
+            const legacyDummyIds = new Set([
+              'unit-dist-systems-1',
+              'unit-dbms-mvcc',
+              'unit-transformer-attn',
+              'unit-os-virtual-mem',
+              'unit-cn-quic'
+            ]);
+            this.units = parsed.filter((u: any) => u && !legacyDummyIds.has(u.id));
+            this.saveUnits();
             return;
           }
         }
       } catch {}
     }
-    this.units = [...SEED_KNOWLEDGE_UNITS];
+    this.units = [];
     this.saveUnits();
   }
 

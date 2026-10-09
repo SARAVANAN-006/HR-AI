@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { LEARNING_API_BASE } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 import {
   RotateCw,
   Headphones,
@@ -95,17 +96,19 @@ export const RevisionStudioPage: React.FC = () => {
   const [examName] = useState('Distributed Systems & Algorithms Final Assessment');
 
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const activeUserId = user?.username || 'candidate';
   const API_BASE = LEARNING_API_BASE;
 
   useEffect(() => {
     fetchRevisionData();
-  }, []);
+  }, [activeUserId]);
 
   const fetchRevisionData = async () => {
     try {
       const [revRes, schedRes] = await Promise.all([
-        axios.get(`${API_BASE}/revision/material?userId=student_active_session`),
-        axios.get(`${API_BASE}/revision/schedule?userId=student_active_session&days=${examDays}&examName=${encodeURIComponent(examName)}`)
+        axios.get(`${API_BASE}/revision/material?userId=${encodeURIComponent(activeUserId)}`),
+        axios.get(`${API_BASE}/revision/schedule?userId=${encodeURIComponent(activeUserId)}&days=${examDays}&examName=${encodeURIComponent(examName)}`)
       ]);
 
       if (revRes.data) {

@@ -493,8 +493,21 @@ export const MultimodalSocraticHub: React.FC = () => {
             {/* Units List */}
             <div className="glass-panel p-4 rounded-2xl border border-border space-y-3 max-h-[380px] overflow-y-auto">
               {filteredUnits.length === 0 ? (
-                <div className="text-center py-8 font-mono text-xs text-zinc-500">
-                  No knowledge materials found matching criteria. Upload a document or reset filters.
+                <div className="text-center py-10 font-mono text-xs text-zinc-500 space-y-3">
+                  <div className="w-10 h-10 rounded-full bg-cyan-950/40 border border-cyan-500/30 flex items-center justify-center mx-auto text-cyan-400">
+                    <Upload size={18} />
+                  </div>
+                  <p className="text-zinc-300 font-bold">No Knowledge Materials Ingested</p>
+                  <p className="text-[11px] text-zinc-500 max-w-xs mx-auto font-sans">
+                    The knowledge base starts clean. Upload slides, textbook snippets, or lecture documents to enable RAG grounding.
+                  </p>
+                  <button
+                    onClick={() => setIsIngestModalOpen(true)}
+                    className="px-3.5 py-1.5 rounded-lg bg-cyan-500 text-zinc-950 font-bold text-xs hover:bg-cyan-400 transition inline-flex items-center gap-1.5"
+                  >
+                    <Upload size={13} />
+                    <span>Upload Document</span>
+                  </button>
                 </div>
               ) : (
                 filteredUnits.map((u) => {

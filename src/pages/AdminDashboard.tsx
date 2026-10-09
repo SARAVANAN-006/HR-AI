@@ -434,7 +434,7 @@ const AdminDashboard: React.FC = () => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 font-mono text-xs">
         {[
           { label: 'Active Sandboxes', val: '5 ONLINE', color: 'text-brand-cyan border-brand-cyan/20 bg-brand-cyan/5' },
-          { label: 'Total Questions', val: `${questions.length} SEEDED`, color: 'text-brand-violet border-brand-violet/20 bg-brand-violet/5' },
+          { label: 'Total Questions', val: `${questions.length} AVAILABLE`, color: 'text-brand-violet border-brand-violet/20 bg-brand-violet/5' },
           { label: 'Platform Users', val: `${candidateUsers.length} REGISTERED`, color: 'text-amber-400 border-amber-400/20 bg-amber-400/5' },
           { label: 'Live Features', val: `${features.filter(f => f.enabled).length} / ${features.length} ACTIVE`, color: 'text-brand-emerald border-brand-emerald/20 bg-brand-emerald/5' }
         ].map((m, i) => (
@@ -822,9 +822,16 @@ const AdminDashboard: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/60">
-                    {filteredCandidates.map((c) => {
-                      const latestAction = c.recentActivities[0];
-                      return (
+                    {filteredCandidates.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-8 text-center text-zinc-500 font-mono text-xs">
+                          No candidate activity records found. Registered candidates will appear here as they interact with the platform.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredCandidates.map((c) => {
+                        const latestAction = c.recentActivities[0];
+                        return (
                         <tr key={c.id} className="hover:bg-zinc-900/50 transition">
                           {/* Name & Target */}
                           <td className="py-3.5 px-4">
@@ -904,7 +911,7 @@ const AdminDashboard: React.FC = () => {
                           </td>
                         </tr>
                       );
-                    })}
+                    }))}
                   </tbody>
                 </table>
               </div>

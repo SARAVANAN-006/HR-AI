@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { LEARNING_API_BASE } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 import {
   CheckCircle2,
   XCircle,
@@ -66,6 +67,8 @@ interface DiagnosticReport {
 }
 
 export const AdaptiveAssessmentPage: React.FC = () => {
+  const { user } = useAuth();
+  const activeUserId = user?.username || 'candidate';
   const [topics, setTopics] = useState<any[]>([]);
   const [selectedTopic, setSelectedTopic] = useState<string>('ALL');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('ALL');
@@ -102,7 +105,7 @@ export const AdaptiveAssessmentPage: React.FC = () => {
       setCurrentAnswers({});
 
       const params = new URLSearchParams({
-        userId: 'student_active_session',
+        userId: activeUserId,
         count: String(questionCount)
       });
       if (selectedTopic !== 'ALL') params.append('topicId', selectedTopic);
@@ -129,7 +132,7 @@ export const AdaptiveAssessmentPage: React.FC = () => {
     try {
       setIsSubmitting(true);
       const payload = {
-        userId: 'student_active_session',
+        userId: activeUserId,
         answers: questions.map(q => ({
           questionId: q.id,
           userResponse: currentAnswers[q.id] || ''

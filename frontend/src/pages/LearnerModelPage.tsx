@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { LEARNING_API_BASE } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 import {
   Brain,
   Sparkles,
@@ -59,6 +60,9 @@ interface CourseGraph {
 }
 
 export const LearnerModelPage: React.FC = () => {
+  const { user } = useAuth();
+  const activeUserId = user?.username || 'candidate';
+
   const [mastery, setMastery] = useState<LearnerMastery | null>(null);
   const [courseGraph, setCourseGraph] = useState<CourseGraph | null>(null);
   const [activeTab, setActiveTab] = useState<'BKT_METRICS' | 'COURSE_FLOW_DAG'>('COURSE_FLOW_DAG');
@@ -73,13 +77,13 @@ export const LearnerModelPage: React.FC = () => {
 
   useEffect(() => {
     fetchLearnerData();
-  }, []);
+  }, [activeUserId]);
 
   const fetchLearnerData = async () => {
     try {
       const [masteryRes, graphRes] = await Promise.all([
-        axios.get(`${API_BASE}/learner/mastery?userId=student_active_session`),
-        axios.get(`${API_BASE}/course-map?userId=student_active_session`)
+        axios.get(`${API_BASE}/learner/mastery?userId=${encodeURIComponent(activeUserId)}`),
+        axios.get(`${API_BASE}/course-map?userId=${encodeURIComponent(activeUserId)}`)
       ]);
       setMastery(masteryRes.data);
       setCourseGraph(graphRes.data);
@@ -102,7 +106,7 @@ export const LearnerModelPage: React.FC = () => {
 
   const handleSubmitIntake = async () => {
     try {
-      const res = await axios.post(`${API_BASE}/learner/intake/submit?userId=student_active_session`, intakeAnswers);
+      const res = await axios.post(`${API_BASE}/learner/intake/submit?userId=${encodeURIComponent(activeUserId)}`, intakeAnswers);
       setIntakeResult(res.data);
       setTimeout(() => {
         setIsIntakeModalOpen(false);
