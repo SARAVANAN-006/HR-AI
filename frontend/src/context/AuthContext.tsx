@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE_URL, withFastTimeout } from '../lib/api';
+import { mongoService } from '../lib/mongoService';
 
 interface User {
   username: string;
@@ -75,6 +76,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const db = getUsersDb();
       db[u.username.toLowerCase()] = u;
       localStorage.setItem('kodexis_users_db', JSON.stringify(db));
+      mongoService.saveStudentProfile({
+        username: u.username,
+        fullName: u.fullName,
+        role: u.role,
+        targetRole: u.targetRole,
+        targetCompanies: u.targetCompanies,
+        experienceLevel: u.experienceLevel,
+        preferredLanguage: u.preferredLanguage,
+        readinessScore: u.readinessScore,
+        isOnboarded: u.isOnboarded
+      }).catch(() => {});
     } catch (e) {
       console.warn('Failed to save user to local DB:', e);
     }

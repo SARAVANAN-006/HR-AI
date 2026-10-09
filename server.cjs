@@ -57,15 +57,15 @@ function generateAiInterviewerReply(rawInput) {
 const database = {
   users: [
     {
-      username: 'vicky',
+      username: 'candidate',
       password: 'password123',
-      fullName: 'Vigneshwaran S P',
+      fullName: 'Candidate',
       role: 'ROLE_CANDIDATE',
       targetRole: 'Software Engineer',
-      targetCompanies: 'NVIDIA, Google, Meta',
+      targetCompanies: 'Top Tech Companies',
       experienceLevel: 'MEDIUM',
       preferredLanguage: 'PYTHON',
-      readinessScore: 96,
+      readinessScore: 85,
       isOnboarded: true
     }
   ],

@@ -3,7 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { withFastTimeout } from '../lib/api';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
-import { Activity, ShieldAlert, ArrowUpRight, Plus, UserCheck, Flame, Radio, Sparkles } from 'lucide-react';
+import {
+  Activity,
+  ShieldAlert,
+  ArrowUpRight,
+  Plus,
+  UserCheck,
+  Flame,
+  Radio,
+  Sparkles,
+  Calculator,
+  RotateCw
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getStreakData, type StreakData, STREAK_BADGES } from '../lib/streakService';
 import { mongoService } from '../lib/mongoService';
@@ -46,6 +57,7 @@ const Dashboard: React.FC = () => {
   const [radarData, setRadarData] = useState<any[]>([]);
   const [streakData, setStreakData] = useState<StreakData>(getStreakData);
   const [isStreakModalOpen, setIsStreakModalOpen] = useState<boolean>(false);
+  const [isScoreFlipped, setIsScoreFlipped] = useState<boolean>(false);
 
   const computeRadar = (d: DashboardData) => {
     const history = d.history;
@@ -181,7 +193,7 @@ const Dashboard: React.FC = () => {
       window.removeEventListener('kodexis_streak_updated', handleStreakUpdate);
       window.removeEventListener('storage', handleStreakUpdate);
     };
-  }, []);
+  }, [user?.username]);
 
   const getSkillColor = (level: string) => {
     switch (level) {
@@ -336,37 +348,140 @@ const Dashboard: React.FC = () => {
       {/* TOP READOUTS: READINESS SCORE & RADAR */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* Readiness index card */}
-        <div className="lg:col-span-5 glass-panel glass-panel-hover animate-glow-cyan rounded p-6 flex flex-col justify-between relative overflow-hidden">
-          <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b from-brand-cyan to-transparent" />
-          <div className="space-y-4">
-            <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Assessment Indicator</span>
-            <h3 className="text-md font-mono font-bold text-zinc-300">INTERVIEW READINESS INDEX</h3>
-            
-            <div className="flex items-baseline space-x-2 py-4">
-              <span className="text-6xl font-bold font-mono tracking-tight neon-text-cyan">{data.readinessScore}</span>
-              <span className="text-zinc-500 font-mono text-sm">/ 100</span>
-            </div>
-            
-            <div className="space-y-1.5 font-mono text-xs">
-              <div className="flex justify-between">
-                <span className="text-zinc-400">Target Role:</span>
-                <span className="text-zinc-200">{data.targetRole}</span>
+        {/* Readiness index card with 3D Flip to Score Calculation Matrix */}
+        <div 
+          onClick={() => setIsScoreFlipped(!isScoreFlipped)}
+          className="lg:col-span-5 relative [perspective:1200px] min-h-[360px] cursor-pointer group select-none"
+          title="Click card to flip and view how score is calculated"
+        >
+          <div
+            className={`relative w-full h-full transition-all duration-700 [transform-style:preserve-3d] ${
+              isScoreFlipped ? '[transform:rotateY(180deg)]' : ''
+            }`}
+          >
+            {/* FRONT FACE: READINESS INDEX */}
+            <div className="absolute inset-0 [backface-visibility:hidden] glass-panel glass-panel-hover animate-glow-cyan rounded p-6 flex flex-col justify-between overflow-hidden">
+              <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b from-brand-cyan to-transparent" />
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Assessment Indicator</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsScoreFlipped(true);
+                    }}
+                    className="flex items-center gap-1 text-[10px] font-mono text-brand-cyan bg-brand-cyan/10 hover:bg-brand-cyan/20 border border-brand-cyan/30 px-2 py-0.5 rounded-full transition"
+                  >
+                    <RotateCw size={10} className="animate-spin-slow" />
+                    <span>View Formula</span>
+                  </button>
+                </div>
+                
+                <h3 className="text-md font-mono font-bold text-zinc-300">INTERVIEW READINESS INDEX</h3>
+                
+                <div className="flex items-baseline space-x-2 py-2">
+                  <span className="text-6xl font-bold font-mono tracking-tight neon-text-cyan">{data.readinessScore}</span>
+                  <span className="text-zinc-500 font-mono text-sm">/ 100</span>
+                </div>
+                
+                <div className="space-y-1.5 font-mono text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400">Target Role:</span>
+                    <span className="text-zinc-200">{data.targetRole}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400">Experience Tier:</span>
+                    <span className="text-brand-violet font-semibold">{data.experienceLevel}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400">Language:</span>
+                    <span className="text-zinc-200">{data.preferredLanguage}</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-zinc-400">Experience Tier:</span>
-                <span className="text-brand-violet font-semibold">{data.experienceLevel}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-zinc-400">Language:</span>
-                <span className="text-zinc-200">{data.preferredLanguage}</span>
-              </div>
-            </div>
-          </div>
 
-          <div className="mt-6 pt-4 border-t border-border/60 flex items-center space-x-2 text-[11px] font-mono text-zinc-400">
-            <UserCheck size={14} className="text-brand-emerald" />
-            <span>Profile is synced with target: {data.targetCompanies}</span>
+              <div className="mt-4 pt-3 border-t border-border/60 flex items-center justify-between text-[11px] font-mono text-zinc-400">
+                <div className="flex items-center space-x-2 truncate">
+                  <UserCheck size={14} className="text-brand-emerald shrink-0" />
+                  <span className="truncate">Synced: {data.targetCompanies}</span>
+                </div>
+                <span className="text-[10px] text-brand-cyan underline decoration-dotted ml-2 shrink-0 flex items-center gap-1">
+                  <span>Click to flip ↻</span>
+                </span>
+              </div>
+            </div>
+
+            {/* BACK FACE: HOW SCORE IS CALCULATED (FORMULA & RUBRIC) */}
+            <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] glass-panel rounded p-6 flex flex-col justify-between overflow-hidden border border-brand-cyan/40 bg-zinc-950/95 shadow-[0_0_25px_rgba(6,182,212,0.15)]">
+              <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b from-brand-violet to-brand-cyan" />
+              
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-brand-cyan">
+                    <Calculator size={14} />
+                    <span className="text-[10px] font-mono uppercase tracking-widest font-bold">Calculation Rubric</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsScoreFlipped(false);
+                    }}
+                    className="flex items-center gap-1 text-[10px] font-mono text-zinc-400 hover:text-zinc-200 bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded-full transition"
+                  >
+                    <RotateCw size={10} />
+                    <span>Back</span>
+                  </button>
+                </div>
+
+                <h3 className="text-xs font-mono font-bold text-zinc-200 uppercase tracking-wider">
+                  Deterministic Multi-Factor Scoring
+                </h3>
+
+                {/* Mathematical Formula Box */}
+                <div className="p-2 rounded-lg bg-zinc-900/90 border border-cyan-500/25 font-mono text-[10px] text-cyan-300 space-y-0.5">
+                  <div className="text-[9px] uppercase tracking-wider text-zinc-400">Mathematical Formula:</div>
+                  <div className="font-bold leading-relaxed text-zinc-100">
+                    Score = (Tech × 35%) + (Concept × 25%) + (Problem × 25%) + (Comm × 15%) − Deductions
+                  </div>
+                </div>
+
+                {/* Weighted Pillars */}
+                <div className="grid grid-cols-2 gap-1.5 font-mono text-[10px]">
+                  <div className="p-1.5 rounded bg-zinc-900/60 border border-zinc-800/80">
+                    <div className="text-brand-cyan font-bold">35% Technical Core</div>
+                    <div className="text-zinc-400 text-[9px]">Syntax, DSA, correctness</div>
+                  </div>
+                  <div className="p-1.5 rounded bg-zinc-900/60 border border-zinc-800/80">
+                    <div className="text-purple-400 font-bold">25% Conceptual Depth</div>
+                    <div className="text-zinc-400 text-[9px]">Architecture, Big-O, trade-offs</div>
+                  </div>
+                  <div className="p-1.5 rounded bg-zinc-900/60 border border-zinc-800/80">
+                    <div className="text-emerald-400 font-bold">25% Problem Solving</div>
+                    <div className="text-zinc-400 text-[9px]">Edge cases, first principles</div>
+                  </div>
+                  <div className="p-1.5 rounded bg-zinc-900/60 border border-zinc-800/80">
+                    <div className="text-amber-400 font-bold">15% Communication</div>
+                    <div className="text-zinc-400 text-[9px]">Verbal clarity, structure</div>
+                  </div>
+                </div>
+
+                {/* Penalty Deductions */}
+                <div className="flex items-center gap-2 text-[9px] font-mono text-rose-300/90 bg-rose-950/20 px-2 py-1 rounded border border-rose-900/30">
+                  <span className="font-bold">Penalties:</span>
+                  <span>-5 pts per tab switch • -10 pts per speech anomaly</span>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-border/60 flex items-center justify-between text-[10px] font-mono text-zinc-400">
+                <span>Calculated dynamically by Elsa AI</span>
+                <span className="text-brand-cyan underline decoration-dotted flex items-center gap-1">
+                  <span>Flip back</span>
+                  <RotateCw size={9} />
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 

@@ -15,6 +15,7 @@ import {
   evaluateElsaAiAnswer,
   generateElsaAiFinalReport
 } from '../lib/elsaAiEngine';
+import { speakElsa } from '../lib/elsaVoice';
 import { StarkSplineView } from '../components/stark/StarkSplineView';
 import { StarkDiagnostics } from '../components/stark/StarkDiagnostics';
 import { recordStreakActivity } from '../lib/streakService';
@@ -389,89 +390,31 @@ export const StarkInterviewPage: React.FC = () => {
       return;
     }
 
-    window.speechSynthesis.cancel();
-
-    // Clean text of markdown symbols for smooth TTS pronunciation
-    const clean = text.replace(/[*_#`>[\]]/g, '').trim();
-    const utterance = new SpeechSynthesisUtterance(clean);
-
-    // Prevent Chromium garbage collection of active utterance
-    (window as any)._elsaCurrentUtterance = utterance;
-
-    // Elsa Female Voice Attributes
-    utterance.rate = 1.0;
-    utterance.pitch = 1.08;
-
-    const voices = window.speechSynthesis.getVoices();
-    // Prioritize natural female English voices
-    const femaleVoice = voices.find(
-      (v) =>
-        v.lang.startsWith('en') &&
-        (v.name.toLowerCase().includes('zira') ||
-          v.name.toLowerCase().includes('samantha') ||
-          v.name.toLowerCase().includes('victoria') ||
-          v.name.toLowerCase().includes('karen') ||
-          v.name.toLowerCase().includes('aria') ||
-          v.name.toLowerCase().includes('jenny') ||
-          v.name.toLowerCase().includes('female') ||
-          v.name.toLowerCase().includes('google us english') ||
-          v.name.toLowerCase().includes('natural') ||
-          v.name.toLowerCase().includes('eva') ||
-          v.name.toLowerCase().includes('catherine'))
-    ) || voices.find((v) => v.lang.startsWith('en'));
-
-    if (femaleVoice) {
-      utterance.voice = femaleVoice;
-    }
-
-    let safetyTimer: any = null;
-
-    utterance.onstart = () => {
-      setIsStarkSpeaking(true);
-      isStarkSpeakingRef.current = true;
-    };
-
-    utterance.onend = () => {
-      if (safetyTimer) clearTimeout(safetyTimer);
-      setIsStarkSpeaking(false);
-      isStarkSpeakingRef.current = false;
-      // Activate candidate speech recognition cleanly when Elsa finishes speaking
-      setTimeout(() => {
+    speakElsa(text, {
+      onStart: () => {
+        setIsStarkSpeaking(true);
+        isStarkSpeakingRef.current = true;
+      },
+      onEnd: () => {
+        setIsStarkSpeaking(false);
+        isStarkSpeakingRef.current = false;
+        setTimeout(() => {
+          startCandidateSpeechRecognition();
+        }, 150);
+      },
+      onError: (err) => {
+        console.warn('[Elsa TTS] Synthesis event:', err);
+        setIsStarkSpeaking(false);
+        isStarkSpeakingRef.current = false;
         startCandidateSpeechRecognition();
-      }, 150);
-    };
-
-    utterance.onerror = (e) => {
-      console.warn('TTS utterance event:', e);
-      if (safetyTimer) clearTimeout(safetyTimer);
-      setIsStarkSpeaking(false);
-      isStarkSpeakingRef.current = false;
-      startCandidateSpeechRecognition();
-    };
-
-    // Safety timeout: Ensure microphone activates even if Chrome TTS hangs
-    const words = clean.split(/\s+/).filter(Boolean);
-    const estimatedDurationMs = Math.max(3500, words.length * 370 + 1500);
-    safetyTimer = setTimeout(() => {
-      setIsStarkSpeaking(false);
-      isStarkSpeakingRef.current = false;
-      startCandidateSpeechRecognition();
-    }, estimatedDurationMs);
-
-    try {
-      window.speechSynthesis.speak(utterance);
-    } catch (e) {
-      console.warn('TTS speak error:', e);
-      setIsStarkSpeaking(false);
-      isStarkSpeakingRef.current = false;
-      startCandidateSpeechRecognition();
-    }
+      }
+    });
   };
 
   // ----------------------------------------------------
   // CONTINUOUS CANDIDATE SPEECH RECOGNITION (STT)
   // ----------------------------------------------------
-  const startCandidateSpeechRecognition = () => {
+  const startCandidateSpeechRecognition = (forceStart: boolean = false) => {
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
@@ -480,8 +423,13 @@ export const StarkInterviewPage: React.FC = () => {
       return;
     }
 
-    // Do not listen while Elsa is narrating question
-    if (isStarkSpeakingRef.current) {
+    if (forceStart) {
+      // Force cancel any ongoing speech if user clicks Start Dictation
+      window.speechSynthesis?.cancel();
+      setIsStarkSpeaking(false);
+      isStarkSpeakingRef.current = false;
+    } else if (isStarkSpeakingRef.current) {
+      // Do not listen while Elsa is narrating question unless force-started
       return;
     }
 
@@ -848,25 +796,10 @@ export const StarkInterviewPage: React.FC = () => {
     } catch {}
 
     setTimeout(() => {
-      if ('speechSynthesis' in window && !isMutedTts) {
-        const wrap = new SpeechSynthesisUtterance(
+      if (!isMutedTts) {
+        speakElsa(
           `Time is up for this interview session. Excellent effort, ${session.candidateName}! I am Elsa, and I have compiled your technical autopsy report. Your overall score is ${report.overallScore} out of 100.`
         );
-        wrap.pitch = 1.08;
-        const voices = window.speechSynthesis.getVoices();
-        const femaleVoice = voices.find(
-          (v) =>
-            v.lang.startsWith('en') &&
-            (v.name.toLowerCase().includes('zira') ||
-              v.name.toLowerCase().includes('samantha') ||
-              v.name.toLowerCase().includes('victoria') ||
-              v.name.toLowerCase().includes('karen') ||
-              v.name.toLowerCase().includes('aria') ||
-              v.name.toLowerCase().includes('female') ||
-              v.name.toLowerCase().includes('natural'))
-        ) || voices.find((v) => v.lang.startsWith('en'));
-        if (femaleVoice) wrap.voice = femaleVoice;
-        window.speechSynthesis.speak(wrap);
       }
     }, 500);
   };
@@ -1360,7 +1293,12 @@ export const StarkInterviewPage: React.FC = () => {
             {/* Mute TTS Audio Toggle */}
             <button
               onClick={() => {
-                if (isStarkSpeaking) window.speechSynthesis.cancel();
+                if (isStarkSpeaking) {
+                  window.speechSynthesis?.cancel();
+                  setIsStarkSpeaking(false);
+                  isStarkSpeakingRef.current = false;
+                  startCandidateSpeechRecognition(true);
+                }
                 setIsMutedTts(!isMutedTts);
               }}
               title={isMutedTts ? 'Unmute Elsa Voice' : 'Mute Elsa Voice'}
@@ -1597,7 +1535,7 @@ export const StarkInterviewPage: React.FC = () => {
                       if (isCandidateListening) {
                         stopCandidateSpeechRecognition();
                       } else {
-                        startCandidateSpeechRecognition();
+                        startCandidateSpeechRecognition(true);
                       }
                     }}
                     className={`py-2 px-3 rounded-xl border text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition ${

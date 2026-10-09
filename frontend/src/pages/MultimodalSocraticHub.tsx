@@ -286,13 +286,14 @@ export const MultimodalSocraticHub: React.FC = () => {
     textReader.onload = (ev) => {
       const text = ev.target?.result as string;
       if (text) {
-        const preview = text.substring(0, 1000).replace(/\r\n/g, ' ');
-        setIngestSnippet(preview);
+        // Retain full uploaded text (up to 150,000 characters)
+        const cleanText = text.substring(0, 150000);
+        setIngestSnippet(cleanText);
       }
       setIsProcessingFile(false);
     };
     textReader.onerror = () => setIsProcessingFile(false);
-    textReader.readAsText(file.slice(0, 10000));
+    textReader.readAsText(file);
   };
 
   const handleSaveIngestion = (e: React.FormEvent) => {
@@ -304,26 +305,60 @@ export const MultimodalSocraticHub: React.FC = () => {
 
     const pageOrSlideNum = parseInt(ingestPageOrSlide, 10) || 1;
 
-    const newUnit = ragService.addKnowledgeUnit({
-      title: ingestTitle,
-      sourceType: ingestType,
-      documentName: ingestDocName || 'Uploaded Engineering Document',
-      topicName: ingestTopicName || 'Computer Science',
-      subtopic: ingestSubtopic || 'Foundations',
-      pageNumber: ingestType === 'TEXTBOOK' ? pageOrSlideNum : undefined,
-      slideNumber: ingestType === 'SLIDE' ? pageOrSlideNum : undefined,
-      videoTimestampSeconds: ingestType === 'VIDEO' ? pageOrSlideNum * 60 : undefined,
-      textSnippet: ingestSnippet,
-      hasVisualFigure: ingestHasFigure,
-      figureTitle: ingestHasFigure ? ingestFigureDesc || 'Uploaded Diagram' : undefined,
-      figureDescription: ingestFigureDesc,
-      visualDataUrl: ingestVisualDataUrl || undefined
-    });
+    // If file is long (> 1500 chars), automatically create semantic chunks for RAG indexing
+    if (ingestSnippet.length > 1500) {
+      const chunkSize = 1000;
+      const overlap = 150;
+      const chunks: string[] = [];
+      let i = 0;
+      while (i < ingestSnippet.length) {
+        const chunk = ingestSnippet.substring(i, i + chunkSize);
+        chunks.push(chunk);
+        i += chunkSize - overlap;
+        if (chunks.length >= 25) break;
+      }
 
-    setUnits(ragService.getKnowledgeUnits());
-    setActiveUnit(newUnit);
+      const unitsToCreate = chunks.map((chunkText, idx) => ({
+        title: `${ingestTitle} (Part ${idx + 1})`,
+        sourceType: ingestType,
+        documentName: ingestDocName || 'Uploaded Engineering Document',
+        topicName: ingestTopicName || 'Computer Science',
+        subtopic: ingestSubtopic ? `${ingestSubtopic} - Sec ${idx + 1}` : `Section ${idx + 1}`,
+        pageNumber: ingestType === 'TEXTBOOK' ? pageOrSlideNum + idx : undefined,
+        slideNumber: ingestType === 'SLIDE' ? pageOrSlideNum + idx : undefined,
+        videoTimestampSeconds: ingestType === 'VIDEO' ? (pageOrSlideNum + idx) * 60 : undefined,
+        textSnippet: chunkText,
+        hasVisualFigure: idx === 0 ? ingestHasFigure : false,
+        figureTitle: idx === 0 && ingestHasFigure ? ingestFigureDesc || 'Uploaded Diagram' : undefined,
+        figureDescription: idx === 0 ? ingestFigureDesc : undefined,
+        visualDataUrl: idx === 0 ? ingestVisualDataUrl || undefined : undefined
+      }));
 
-    setIngestSuccessMsg(`✓ Successfully ingested "${ingestTitle}" into the RAG vector store!`);
+      const created = ragService.addKnowledgeUnitsBatch(unitsToCreate);
+      setUnits(ragService.getKnowledgeUnits());
+      if (created.length > 0) setActiveUnit(created[0]);
+      setIngestSuccessMsg(`✓ Successfully indexed ${created.length} chunks from "${ingestTitle}" into the RAG vector store!`);
+    } else {
+      const newUnit = ragService.addKnowledgeUnit({
+        title: ingestTitle,
+        sourceType: ingestType,
+        documentName: ingestDocName || 'Uploaded Engineering Document',
+        topicName: ingestTopicName || 'Computer Science',
+        subtopic: ingestSubtopic || 'Foundations',
+        pageNumber: ingestType === 'TEXTBOOK' ? pageOrSlideNum : undefined,
+        slideNumber: ingestType === 'SLIDE' ? pageOrSlideNum : undefined,
+        videoTimestampSeconds: ingestType === 'VIDEO' ? pageOrSlideNum * 60 : undefined,
+        textSnippet: ingestSnippet,
+        hasVisualFigure: ingestHasFigure,
+        figureTitle: ingestHasFigure ? ingestFigureDesc || 'Uploaded Diagram' : undefined,
+        figureDescription: ingestFigureDesc,
+        visualDataUrl: ingestVisualDataUrl || undefined
+      });
+
+      setUnits(ragService.getKnowledgeUnits());
+      setActiveUnit(newUnit);
+      setIngestSuccessMsg(`✓ Successfully ingested "${ingestTitle}" into the RAG vector store!`);
+    }
     setTimeout(() => {
       setIsIngestModalOpen(false);
       setIngestSuccessMsg('');

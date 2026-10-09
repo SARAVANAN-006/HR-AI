@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Camera, Mic, Volume2, CheckCircle2, AlertCircle, RefreshCw, Radio } from 'lucide-react';
+import { speakElsa } from '../../lib/elsaVoice';
 
 interface StarkDiagnosticsProps {
   onComplete: (mediaStream: MediaStream | null) => void;
@@ -122,43 +123,20 @@ export const StarkDiagnostics: React.FC<StarkDiagnosticsProps> = ({ onComplete, 
       return;
     }
 
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(
-      "Diagnostic check confirmed. Sound output calibrated. I am Elsa, and I am ready to conduct your interview."
+    speakElsa(
+      "Diagnostic check confirmed. Sound output calibrated. I am Elsa, and I am ready to conduct your interview.",
+      {
+        onStart: () => setIsSpeakingTest(true),
+        onEnd: () => {
+          setIsSpeakingTest(false);
+          setSpeakerTested(true);
+        },
+        onError: () => {
+          setIsSpeakingTest(false);
+          setSpeakerTested(true);
+        }
+      }
     );
-    utterance.rate = 1.0;
-    utterance.pitch = 1.08;
-
-    // Pick a natural English female voice
-    const voices = window.speechSynthesis.getVoices();
-    const femaleVoice = voices.find(v =>
-      v.lang.startsWith('en') && (
-        v.name.toLowerCase().includes('zira') ||
-        v.name.toLowerCase().includes('samantha') ||
-        v.name.toLowerCase().includes('victoria') ||
-        v.name.toLowerCase().includes('karen') ||
-        v.name.toLowerCase().includes('aria') ||
-        v.name.toLowerCase().includes('jenny') ||
-        v.name.toLowerCase().includes('female') ||
-        (v.name.toLowerCase().includes('google') && v.name.toLowerCase().includes('en') && !v.name.toLowerCase().includes('male'))
-      )
-    ) || voices.find(v => v.lang.startsWith('en')) || voices[0];
-
-    if (femaleVoice) {
-      utterance.voice = femaleVoice;
-    }
-
-    utterance.onstart = () => setIsSpeakingTest(true);
-    utterance.onend = () => {
-      setIsSpeakingTest(false);
-      setSpeakerTested(true);
-    };
-    utterance.onerror = () => {
-      setIsSpeakingTest(false);
-      setSpeakerTested(true);
-    };
-
-    window.speechSynthesis.speak(utterance);
   };
 
   // Speech Recognition Check
