@@ -50,12 +50,33 @@ import {
   HelpCircle,
   BarChart3,
   Maximize2,
-  AlertTriangle
+  AlertTriangle,
+  Calculator,
+  Hash,
+  UserCheck
 } from 'lucide-react';
+import {
+  mongoService,
+  computeScoreFormulaBreakdown,
+  type FormulaBreakdown,
+  type MongoInterviewAutopsy
+} from '../lib/mongoService';
 
 export const StarkInterviewPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // Candidate Display Name Configuration (Adapts uniquely to active user)
+  const [candidateDisplayName, setCandidateDisplayName] = useState<string>(
+    user?.fullName || user?.username || 'Candidate'
+  );
+  const [scoreFormulaBreakdown, setScoreFormulaBreakdown] = useState<FormulaBreakdown | null>(null);
+
+  useEffect(() => {
+    if (user?.fullName || user?.username) {
+      setCandidateDisplayName(user.fullName || user.username);
+    }
+  }, [user]);
 
   // Workflow Stages: 'setup' | 'diagnostics' | 'interview' | 'report'
   const [stage, setStage] = useState<'setup' | 'diagnostics' | 'interview' | 'report'>('setup');
@@ -571,7 +592,7 @@ export const StarkInterviewPage: React.FC = () => {
   // INITIALIZE INTERVIEW FLOW (POWERED BY REAL AI)
   // ----------------------------------------------------
   const initializeInterview = async () => {
-    const candidateName = user?.fullName || 'Candidate';
+    const candidateName = candidateDisplayName.trim() || user?.fullName || user?.username || 'Candidate';
     const totalSecs = durationMinutes * 60;
 
     const initialPlan = generateStarkInterviewPlan(
@@ -600,6 +621,31 @@ export const StarkInterviewPage: React.FC = () => {
     setSpeechTranscript('');
     setInterimTranscript('');
     setRemainingSeconds(totalSecs);
+
+    // Persist behavior and candidate log to MongoDB
+    mongoService.logUserBehavior(
+      'INTERVIEW_STARTED',
+      '/elsa',
+      {
+        candidateName,
+        categories: selectedCategoryIds,
+        durationMinutes,
+        experienceLevel,
+        sessionId: newSession.sessionId
+      },
+      { username: user?.username }
+    );
+    mongoService.recordCandidateLog(
+      'INFO',
+      'INTERVIEW_INITIALIZED',
+      `Session ${newSession.sessionId} initiated for candidate ${candidateName}`,
+      {
+        categories: selectedCategoryIds,
+        durationMinutes,
+        experienceLevel
+      },
+      user?.username
+    );
 
     // Prompt real AI LLM to generate Elsa's warm, human-like opening greeting
     try {
@@ -725,6 +771,72 @@ export const StarkInterviewPage: React.FC = () => {
     userDashboard.readinessScore = Math.max(userDashboard.readinessScore || 0, report.overallScore);
     localStorage.setItem(userStorageKey, JSON.stringify(userDashboard));
 
+    // Calculate transparent scoring rubric breakdown
+    const formulaBreakdown = computeScoreFormulaBreakdown(
+      report.technicalProficiencyScore,
+      report.conceptualDepthScore,
+      report.problemSolvingScore,
+      report.communicationScore
+    );
+    setScoreFormulaBreakdown(formulaBreakdown);
+
+    // Save full autopsy to MongoDB
+    const mongoAutopsy: MongoInterviewAutopsy = {
+      sessionId: completedSession.sessionId,
+      userId: 'user-' + (user?.username || 'candidate').toLowerCase(),
+      username: (user?.username || 'candidate').toLowerCase(),
+      candidateName: completedSession.candidateName,
+      targetRole: completedSession.targetRole,
+      date: new Date().toISOString(),
+      durationMinutes: completedSession.durationMinutes,
+      overallScore: report.overallScore,
+      recommendation: report.recommendation,
+      formulaBreakdown,
+      multiFactorScores: {
+        technicalProficiency: report.technicalProficiencyScore,
+        communicationScore: report.communicationScore,
+        conceptualDepthScore: report.conceptualDepthScore,
+        problemSolvingScore: report.problemSolvingScore
+      },
+      categoryScores: report.categoryScores,
+      keyStrengths: report.keyStrengths,
+      areasForImprovement: report.areasForImprovement,
+      detailedDebrief: report.detailedDebrief,
+      transcripts: completedSession.transcripts.map((t) => ({
+        ...t,
+        category: t.category || 'General Computer Science'
+      })),
+      createdAt: new Date().toISOString()
+    };
+
+    mongoService.saveInterviewAutopsy(mongoAutopsy).catch((err) => {
+      console.warn('Autopsy MongoDB sync notice:', err);
+    });
+
+    mongoService.logUserBehavior(
+      'INTERVIEW_COMPLETED',
+      '/elsa',
+      {
+        sessionId: completedSession.sessionId,
+        overallScore: report.overallScore,
+        recommendation: report.recommendation,
+        totalQuestions: completedSession.transcripts.length
+      },
+      { username: user?.username }
+    );
+
+    mongoService.recordCandidateLog(
+      'INTERVIEW_AUTOPSY',
+      'AUTOPSY_GENERATED',
+      `Final interview autopsy generated for ${completedSession.candidateName} with overall score ${report.overallScore}/100`,
+      {
+        sessionId: completedSession.sessionId,
+        overallScore: report.overallScore,
+        formula: formulaBreakdown.formula
+      },
+      user?.username
+    );
+
     // Record streak activity uniquely for this user
     recordStreakActivity('Elsa AI Interview Completed', user?.username);
 
@@ -795,6 +907,30 @@ export const StarkInterviewPage: React.FC = () => {
     };
 
     const updatedTranscripts = [...session.transcripts, transcriptItem];
+
+    // Log answer to MongoDB
+    mongoService.logUserBehavior(
+      'ANSWER_SUBMITTED',
+      '/elsa',
+      {
+        questionIndex: currentIndex,
+        category: currentQ.categoryName,
+        answerLength: fullAnswer.length,
+        score: evalResult.score
+      },
+      { username: user?.username }
+    );
+    mongoService.recordCandidateLog(
+      'INFO',
+      'SPEECH_ANSWER_RECORDED',
+      `Spoken response recorded for question #${currentIndex + 1} (${currentQ.categoryName})`,
+      {
+        questionText: currentQ.questionText,
+        score: evalResult.score,
+        durationSeconds: transcriptItem.durationSeconds
+      },
+      user?.username
+    );
 
     // If more than 60 seconds remain, Elsa truly thinks and dynamically generates the next human-like question
     if (remainingSeconds > 60) {
@@ -920,7 +1056,28 @@ export const StarkInterviewPage: React.FC = () => {
         </div>
 
         {/* Configuration Bar */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Candidate Profile Identity */}
+          <div className="border border-border bg-background-panel p-4 rounded-2xl space-y-2">
+            <label className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider block flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <UserCheck size={12} className="text-cyan-400" />
+                <span>Candidate Identity</span>
+              </span>
+              <span className="text-[9px] text-cyan-400 font-bold">LIVE PROFILE</span>
+            </label>
+            <input
+              type="text"
+              value={candidateDisplayName}
+              onChange={(e) => setCandidateDisplayName(e.target.value)}
+              placeholder="Enter your name / handle..."
+              className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs font-mono text-zinc-100 focus:outline-none focus:border-cyan-500/60 font-bold"
+            />
+            <p className="text-[9px] font-mono text-zinc-500 truncate">
+              Unique candidate identification for session autopsy logs
+            </p>
+          </div>
+
           {/* Seniority Level */}
           <div className="border border-border bg-background-panel p-4 rounded-2xl space-y-2">
             <label className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider block">
@@ -1500,6 +1657,13 @@ export const StarkInterviewPage: React.FC = () => {
   // STAGE 4: FINAL EVALUATION DOSSIER REPORT
   // ====================================================
   if (stage === 'report' && finalReport && session) {
+    const breakdown = scoreFormulaBreakdown || computeScoreFormulaBreakdown(
+      finalReport.technicalProficiencyScore,
+      finalReport.conceptualDepthScore,
+      finalReport.problemSolvingScore,
+      finalReport.communicationScore
+    );
+
     const getRecBadge = (rec: string) => {
       switch (rec) {
         case 'STRONG_HIRE':
@@ -1576,6 +1740,111 @@ export const StarkInterviewPage: React.FC = () => {
               </div>
             );
           })}
+        </div>
+
+        {/* Transparent Final Score Formula & Rubric Breakdown Card */}
+        <div className="glass-panel p-6 rounded-3xl border border-cyan-500/30 bg-gradient-to-r from-cyan-950/20 via-background-panel to-purple-950/20 space-y-5 font-mono">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold tracking-wider uppercase">
+                <Calculator size={15} />
+                <span>Transparent Scoring Mathematics & Industry Rubric</span>
+              </div>
+              <h3 className="text-base font-bold text-zinc-100">
+                Detailed Final Score Calculation ({finalReport.overallScore} / 100)
+              </h3>
+            </div>
+            <div className="px-3 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-bold">
+              Weighted Composite Model
+            </div>
+          </div>
+
+          {/* Prominent Formula Pill */}
+          <div className="p-4 rounded-2xl bg-zinc-950/70 border border-cyan-500/40 text-center space-y-1">
+            <span className="text-[10px] text-zinc-400 uppercase tracking-widest block font-bold">
+              Official Rubric Formula
+            </span>
+            <p className="text-xs md:text-sm text-cyan-300 font-bold tracking-wide">
+              Final Score = (Tech Proficiency × 35%) + (Conceptual Depth × 25%) + (Problem Solving × 25%) + (Communication × 15%)
+            </p>
+          </div>
+
+          {/* 4 Dimension Contribution Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+            {/* Tech Proficiency */}
+            <div className="p-3.5 rounded-2xl bg-background border border-border space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-cyan-400 font-bold">TECH PROFICIENCY</span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 font-bold">35% Weight</span>
+              </div>
+              <div className="flex items-baseline justify-between">
+                <span className="text-zinc-400 text-[11px]">{breakdown.technicalProficiencyScore} × 0.35 =</span>
+                <span className="text-base font-bold text-zinc-100">+{breakdown.technicalProficiencyPoints} pts</span>
+              </div>
+              <p className="text-[10px] text-zinc-500 font-sans leading-tight">
+                Data structure accuracy, syntax mastery, and concrete code implementation.
+              </p>
+            </div>
+
+            {/* Conceptual Depth */}
+            <div className="p-3.5 rounded-2xl bg-background border border-border space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-emerald-400 font-bold">CONCEPTUAL DEPTH</span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold">25% Weight</span>
+              </div>
+              <div className="flex items-baseline justify-between">
+                <span className="text-zinc-400 text-[11px]">{breakdown.conceptualDepthScore} × 0.25 =</span>
+                <span className="text-base font-bold text-zinc-100">+{breakdown.conceptualDepthPoints} pts</span>
+              </div>
+              <p className="text-[10px] text-zinc-500 font-sans leading-tight">
+                Virtual memory, concurrency quorums, protocols, and architectural internals.
+              </p>
+            </div>
+
+            {/* Problem Solving */}
+            <div className="p-3.5 rounded-2xl bg-background border border-border space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-amber-400 font-bold">PROBLEM SOLVING</span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-bold">25% Weight</span>
+              </div>
+              <div className="flex items-baseline justify-between">
+                <span className="text-zinc-400 text-[11px]">{breakdown.problemSolvingScore} × 0.25 =</span>
+                <span className="text-base font-bold text-zinc-100">+{breakdown.problemSolvingPoints} pts</span>
+              </div>
+              <p className="text-[10px] text-zinc-500 font-sans leading-tight">
+                Algorithmic trade-offs, edge-case mitigation, and scalability reasoning.
+              </p>
+            </div>
+
+            {/* Communication */}
+            <div className="p-3.5 rounded-2xl bg-background border border-border space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-purple-400 font-bold">COMMUNICATION</span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 font-bold">15% Weight</span>
+              </div>
+              <div className="flex items-baseline justify-between">
+                <span className="text-zinc-400 text-[11px]">{breakdown.communicationScore} × 0.15 =</span>
+                <span className="text-base font-bold text-zinc-100">+{breakdown.communicationPoints} pts</span>
+              </div>
+              <p className="text-[10px] text-zinc-500 font-sans leading-tight">
+                Structured articulation, collaborative dialogue, and technical conciseness.
+              </p>
+            </div>
+          </div>
+
+          {/* Summation Row */}
+          <div className="p-3.5 rounded-2xl bg-zinc-900/60 border border-border flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 text-zinc-300">
+              <Hash size={14} className="text-cyan-400" />
+              <span>Points Summation:</span>
+              <span className="font-bold text-zinc-100">
+                {breakdown.technicalProficiencyPoints} + {breakdown.conceptualDepthPoints} + {breakdown.problemSolvingPoints} + {breakdown.communicationPoints} = {breakdown.calculatedTotal} pts
+              </span>
+            </div>
+            <div className="text-[11px] text-zinc-400">
+              Persisted to MongoDB collection <code className="text-cyan-400">interview_autopsies</code>
+            </div>
+          </div>
         </div>
 
         {/* Category Breakdown & Feedback */}

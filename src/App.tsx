@@ -15,8 +15,7 @@ import InterviewRoom from './pages/InterviewRoom';
 import Report from './pages/Report';
 import AdminDashboard from './pages/AdminDashboard';
 import AssessmentDashboardPage from './pages/AssessmentDashboardPage';
-import { KnowledgeBasePage } from './pages/KnowledgeBasePage';
-import { SocraticTutorPage } from './pages/SocraticTutorPage';
+import { MultimodalSocraticHub } from './pages/MultimodalSocraticHub';
 import { AdaptiveAssessmentPage } from './pages/AdaptiveAssessmentPage';
 import { LearnerModelPage } from './pages/LearnerModelPage';
 import { RevisionStudioPage } from './pages/RevisionStudioPage';
@@ -31,7 +30,6 @@ import {
   Activity,
   BrainCircuit,
   BookOpen,
-  MessageSquare,
   GraduationCap,
   GitBranch,
   RotateCw,
@@ -85,8 +83,7 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
     : [
         { name: 'Dashboard Console', path: '/dashboard', icon: LayoutDashboard },
         { name: 'Elsa AI Interview', path: '/elsa', icon: Radio },
-        { name: 'Multimodal Knowledge', path: '/knowledge', icon: BookOpen },
-        { name: 'Socratic AI Tutor', path: '/tutor', icon: MessageSquare },
+        { name: 'Knowledge & Socratic AI (RAG)', path: '/knowledge', icon: BookOpen },
         { name: 'Adaptive Assessment', path: '/assessment', icon: GraduationCap },
         { name: 'Learner Model & DAG', path: '/learner-model', icon: GitBranch },
         { name: 'Targeted Revision', path: '/revision', icon: RotateCw },
@@ -273,7 +270,7 @@ const App: React.FC = () => {
           element={
             <ProtectedRoute>
               <DashboardLayout>
-                <KnowledgeBasePage />
+                <MultimodalSocraticHub />
               </DashboardLayout>
             </ProtectedRoute>
           }
@@ -283,7 +280,7 @@ const App: React.FC = () => {
           element={
             <ProtectedRoute>
               <DashboardLayout>
-                <SocraticTutorPage />
+                <MultimodalSocraticHub />
               </DashboardLayout>
             </ProtectedRoute>
           }

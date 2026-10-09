@@ -1,5 +1,6 @@
 import React from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Download } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface HistoryItem {
   id: string;
@@ -17,11 +18,22 @@ interface SessionHistoryProps {
 }
 
 const SessionHistory: React.FC<SessionHistoryProps> = ({ history, onSelectSession }) => {
+  const navigate = useNavigate();
+
+  const handleExportPDF = (sessId: string) => {
+    // Navigate to full detailed report page for printing/saving PDF
+    const cleanId = sessId.replace('sess_', '');
+    navigate(`/report/${cleanId}`);
+  };
+
   return (
     <div className="border border-border bg-background-panel rounded p-6 font-mono space-y-4 relative overflow-hidden">
       <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-brand-cyan" />
       <div className="border-b border-border/40 pb-3 flex justify-between items-center">
-        <h3 className="text-xs font-bold text-zinc-200 uppercase">Assessment Session Archive</h3>
+        <div>
+          <h3 className="text-xs font-bold text-zinc-200 uppercase">Assessment Session Archive</h3>
+          <p className="text-[10px] text-zinc-400">Member 3 Candidate Assessment History & Scorecard Export</p>
+        </div>
         <span className="text-[10px] text-zinc-500">{history.length} Session records</span>
       </div>
 
@@ -35,7 +47,7 @@ const SessionHistory: React.FC<SessionHistoryProps> = ({ history, onSelectSessio
               <th className="py-2.5 px-3 text-right">Readiness Index</th>
               <th className="py-2.5 px-3 text-center">Complexity</th>
               <th className="py-2.5 px-3 text-center">Test cases</th>
-              <th className="py-2.5 px-3 text-right">Action</th>
+              <th className="py-2.5 px-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/20 text-zinc-300">
@@ -51,12 +63,20 @@ const SessionHistory: React.FC<SessionHistoryProps> = ({ history, onSelectSessio
                 <td className="py-3 px-3 text-right font-bold text-brand-cyan">{sess.score}%</td>
                 <td className="py-3 px-3 text-center text-zinc-400">{sess.timeComp}</td>
                 <td className="py-3 px-3 text-center text-emerald-400 font-bold">{sess.testPass}</td>
-                <td className="py-3 px-3 text-right">
+                <td className="py-3 px-3 text-right flex items-center justify-end space-x-2">
+                  <button
+                    onClick={() => handleExportPDF(sess.id)}
+                    className="inline-flex items-center space-x-1 px-2.5 py-1 rounded bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-brand-cyan hover:border-brand-cyan text-[10px] font-bold transition duration-200 uppercase"
+                    title="Export Official PDF Scorecard"
+                  >
+                    <Download size={10} />
+                    <span>PDF Report</span>
+                  </button>
                   <button
                     onClick={() => onSelectSession(sess)}
                     className="inline-flex items-center space-x-1 px-3 py-1 rounded bg-brand-cyan/10 border border-brand-cyan/20 text-brand-cyan hover:bg-brand-cyan hover:text-background text-[10px] font-bold transition duration-200 uppercase"
                   >
-                    <span>Load telemetry</span>
+                    <span>Load Telemetry</span>
                     <ChevronRight size={10} />
                   </button>
                 </td>
@@ -70,3 +90,4 @@ const SessionHistory: React.FC<SessionHistoryProps> = ({ history, onSelectSessio
 };
 
 export default SessionHistory;
+

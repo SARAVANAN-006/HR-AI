@@ -68,7 +68,7 @@ public class DataInitializer implements CommandLineRunner {
 
         // 2. Create Candidate Profile
         if (profileRepository.findByUser(vicky).isEmpty()) {
-            CandidateProfile vickyProfile = new CandidateProfile(vicky, "Vigneshwaran S P");
+            CandidateProfile vickyProfile = new CandidateProfile(vicky, "Demo Candidate");
             vickyProfile.setTargetRole("Software Engineer");
             vickyProfile.setTargetCompanies("NVIDIA, Google, Meta");
             vickyProfile.setExperienceLevel(Enums.Difficulty.MEDIUM);

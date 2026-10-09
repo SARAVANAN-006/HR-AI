@@ -6,6 +6,7 @@ import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Responsi
 import { Activity, ShieldAlert, ArrowUpRight, Plus, UserCheck, Flame, Radio, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getStreakData, type StreakData, STREAK_BADGES } from '../lib/streakService';
+import { mongoService } from '../lib/mongoService';
 import { StreakModal } from '../components/StreakModal';
 import { StreakAvatarBadge } from '../components/StreakAvatarBadge';
 
@@ -136,6 +137,39 @@ const Dashboard: React.FC = () => {
         }
         setLoading(false);
       });
+
+    // Hydrate persistent autopsies from MongoDB
+    mongoService.getUserAutopsies(user?.username).then((autopsies) => {
+      if (autopsies && autopsies.length > 0) {
+        setData((prev) => {
+          if (!prev) return prev;
+          const mongoHistory: SessionHistory[] = autopsies.map((a, idx) => ({
+            sessionId: idx + 500,
+            topic: 'Core CS Architecture',
+            title: `Elsa AI Tech Autopsy (${a.durationMinutes}m) - ${a.recommendation.replace('_', ' ')}`,
+            difficulty: 'ADAPTIVE',
+            language: 'STT / Speech',
+            score: a.overallScore,
+            date: a.date || a.createdAt
+          }));
+
+          const existingTitles = new Set(prev.history.map((h) => h.title));
+          const uniqueEntries = mongoHistory.filter((m) => !existingTitles.has(m.title));
+          if (uniqueEntries.length === 0) return prev;
+
+          const updatedHistory = [...uniqueEntries, ...prev.history];
+          const highestScore = Math.max(prev.readinessScore, ...autopsies.map((a) => a.overallScore));
+
+          const updated = {
+            ...prev,
+            history: updatedHistory,
+            readinessScore: highestScore
+          };
+          setRadarData(computeRadar(updated));
+          return updated;
+        });
+      }
+    }).catch(() => {});
 
     const handleStreakUpdate = () => {
       setStreakData(getStreakData());

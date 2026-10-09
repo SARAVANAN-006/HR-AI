@@ -36,7 +36,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cached = localStorage.getItem('kodexis_user');
     if (cached) {
       try {
-        return JSON.parse(cached);
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed.fullName === 'string' && parsed.fullName.toLowerCase().includes('vigneshwaran')) {
+          parsed.fullName = parsed.username ? (parsed.username.charAt(0).toUpperCase() + parsed.username.slice(1)) : 'Candidate';
+          localStorage.setItem('kodexis_user', JSON.stringify(parsed));
+        }
+        return parsed;
       } catch {
         return null;
       }
@@ -78,16 +83,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshUser = async () => {
     try {
       const response = await withFastTimeout(axios.get('/api/auth/me'), 2000, 'User profile fetch');
-      setUser(response.data);
-      localStorage.setItem('kodexis_user', JSON.stringify(response.data));
-      saveUserToDb(response.data);
+      const data = response.data;
+      if (data && typeof data.fullName === 'string' && data.fullName.toLowerCase().includes('vigneshwaran')) {
+        data.fullName = data.username ? (data.username.charAt(0).toUpperCase() + data.username.slice(1)) : 'Candidate';
+      }
+      setUser(data);
+      localStorage.setItem('kodexis_user', JSON.stringify(data));
+      saveUserToDb(data);
     } catch (error) {
       console.warn('Backend server offline or sleeping. Retaining active session:', error);
       if (!user) {
         const cached = localStorage.getItem('kodexis_user');
         if (cached) {
           try {
-            setUser(JSON.parse(cached));
+            const parsed = JSON.parse(cached);
+            if (parsed && typeof parsed.fullName === 'string' && parsed.fullName.toLowerCase().includes('vigneshwaran')) {
+              parsed.fullName = parsed.username ? (parsed.username.charAt(0).toUpperCase() + parsed.username.slice(1)) : 'Candidate';
+            }
+            setUser(parsed);
           } catch {}
         }
       }
