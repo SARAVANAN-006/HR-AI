@@ -14,6 +14,7 @@ import LiveCodeEvaluator from '../components/LiveCodeEvaluator';
 import SessionHistory from '../components/SessionHistory';
 import { useAuth } from '../context/AuthContext';
 import { mongoService } from '../lib/mongoService';
+import { mysqlService } from '../lib/mysqlService';
 
 const sampleCodeJava = `public class TwoSum {
     public int[] solveTwoSum(int[] nums, int target) {
@@ -40,7 +41,10 @@ export default function AssessmentDashboardPage() {
   useEffect(() => {
     const loadRealData = async () => {
       try {
-        const autopsies = await mongoService.getUserAutopsies(user?.username);
+        let autopsies: any[] = await mysqlService.getUserAutopsies(user?.username);
+        if (!autopsies || autopsies.length === 0) {
+          autopsies = await mongoService.getUserAutopsies(user?.username);
+        }
         if (autopsies && autopsies.length > 0) {
           const mappedHistory = autopsies.map(a => ({
             id: a.sessionId,

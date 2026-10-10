@@ -648,11 +648,9 @@ public class DataInitializer implements CommandLineRunner {
                             new TestCase("5,4,8,11,null,13,4,7,2,null,null,null,1", "48", true),
                             new TestCase("-2,-1", "-1", true)
                     ));
-
-            seedMockHistory(vicky, q1, q2);
         }
 
-        System.out.println("[KODEXIS] Database successfully seeded.");
+        System.out.println("[KODEXIS] Database successfully seeded (questions & admin).");
     }
 
     private InterviewQuestion createQ(
@@ -748,76 +746,5 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         return "import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        // TODO: Implement your solution here\n    }\n}\n";
-    }
-
-    private void seedMockHistory(User user, InterviewQuestion q1, InterviewQuestion q3) {
-        // Mock Session 1 (Two Sum - Passed with 88 score)
-        InterviewSession s1 = new InterviewSession(user, q1, Enums.Difficulty.EASY, Enums.Language.PYTHON, 30, "Coding + Explanation");
-        s1.setState(Enums.SessionState.REPORT);
-        s1.setStartedAt(LocalDateTime.now().minusDays(3));
-        s1.setCompletedAt(LocalDateTime.now().minusDays(3).plusMinutes(25));
-        s1.setLastSubmittedCode("def twoSum(nums, target):\n    seen = {}\n    for i, n in enumerate(nums):\n        diff = target - n\n        if diff in seen:\n            return [seen[diff], i]\n        seen[n] = i\n    return []");
-        s1.setTelemetryLog("[{\"time\":\"2026-08-06 10:00:00\",\"event\":\"Session initiated\"},{\"time\":\"2026-08-06 10:03:00\",\"event\":\"Explained sliding window approach\"},{\"time\":\"2026-08-06 10:07:00\",\"event\":\"AI Interviewer recommended Hashing\"},{\"time\":\"2026-08-06 10:08:00\",\"event\":\"State transitioned to CODING\"},{\"time\":\"2026-08-06 10:18:00\",\"event\":\"Run draft tests passed\"},{\"time\":\"2026-08-06 10:25:00\",\"event\":\"Final submit run completed\"}]");
-        sessionRepository.save(s1);
-
-        Submission sub1 = new Submission(s1, s1.getLastSubmittedCode(), Enums.Language.PYTHON, 8, 8, Enums.ExecutionResultStatus.SUCCESS);
-        sub1.setExecutionTimeMs(45L);
-        submissionRepository.save(sub1);
-
-        Assessment a1 = new Assessment(s1);
-        a1.setOverallScore(88);
-        a1.setCorrectnessScore(100);
-        a1.setProblemSolvingScore(90);
-        a1.setEfficiencyScore(90);
-        a1.setCodeQualityScore(85);
-        a1.setDebuggingScore(80);
-        a1.setEdgeCasesScore(85);
-        a1.setCommunicationScore(80);
-        a1.setDetectedTimeComplexity("O(n)");
-        a1.setDetectedSpaceComplexity("O(n)");
-        a1.setAutopsySummary("Excellent performance. Selected optimal Hash Map mapping strategy on first code attempt. Successfully maintained O(n) efficiency.");
-        a1.setWhatWentWell("Fast conceptual logic mapping. Standard naming styles. Optimal space-time trade-off.");
-        a1.setAreasToImprove("Avoid writing redundant declaration brackets. Proactively mention key constraints on empty input lists.");
-        a1.setInterviewerFeedback("Very strong. The candidate immediately understood the O(n) optimization path and bypassed the nested loop route.");
-        a1.setSuggestedPractice("Sliding Window, Sorting, Arrays");
-        assessmentRepository.save(a1);
-
-        // Save mock messages
-        messageRepository.save(new InterviewMessage(s1, "AI", "Welcome. Let's solve Two Sum. Explain your approach first."));
-        messageRepository.save(new InterviewMessage(s1, "CANDIDATE", "I can use a hash map to keep track of indices of elements we have visited so we find the match in one pass."));
-        messageRepository.save(new InterviewMessage(s1, "AI", "Excellent. You can proceed to code in the editor panel."));
-        messageRepository.save(new InterviewMessage(s1, "CANDIDATE", "Code written and submitted."));
-        messageRepository.save(new InterviewMessage(s1, "AI", "Great. Tests passed. Let's review complexity."));
-
-        // Mock Session 2 (Valid Parentheses - Passed with 76 score)
-        InterviewSession s2 = new InterviewSession(user, q3, Enums.Difficulty.EASY, Enums.Language.PYTHON, 30, "Full Simulation");
-        s2.setState(Enums.SessionState.REPORT);
-        s2.setStartedAt(LocalDateTime.now().minusDays(1));
-        s2.setCompletedAt(LocalDateTime.now().minusDays(1).plusMinutes(20));
-        s2.setLastSubmittedCode("def isValid(s):\n    stack = []\n    for char in s:\n        if char in '({[':\n            stack.append(char)\n        else:\n            if not stack: return False\n            top = stack.pop()\n            if char == ')' and top != '(': return False\n            if char == '}' and top != '{': return False\n            if char == ']' and top != '[': return False\n    return len(stack) == 0");
-        s2.setTelemetryLog("[{\"time\":\"2026-08-08 14:00:00\",\"event\":\"Session initiated\"},{\"time\":\"2026-08-08 14:02:00\",\"event\":\"Began writing stack code directly\"},{\"time\":\"2026-08-08 14:10:00\",\"event\":\"First test failed with runtime error\"},{\"time\":\"2026-08-08 14:15:00\",\"event\":\"Fixed popping empty stack condition\"},{\"time\":\"2026-08-08 14:20:00\",\"event\":\"All test cases verified\"}]");
-        sessionRepository.save(s2);
-
-        Submission sub2 = new Submission(s2, s2.getLastSubmittedCode(), Enums.Language.PYTHON, 8, 8, Enums.ExecutionResultStatus.SUCCESS);
-        sub2.setExecutionTimeMs(62L);
-        submissionRepository.save(sub2);
-
-        Assessment a2 = new Assessment(s2);
-        a2.setOverallScore(76);
-        a2.setCorrectnessScore(100);
-        a2.setProblemSolvingScore(80);
-        a2.setEfficiencyScore(80);
-        a2.setCodeQualityScore(70);
-        a2.setDebuggingScore(60); // Low because of early runtime crash
-        a2.setEdgeCasesScore(75);
-        a2.setCommunicationScore(70);
-        a2.setDetectedTimeComplexity("O(n)");
-        a2.setDetectedSpaceComplexity("O(n)");
-        a2.setAutopsySummary("Good correction flow. The candidate started coding without validating empty stack calls which caused an early RuntimeException. However, they resolved the crash within 5 minutes.");
-        a2.setWhatWentWell("Used standard Stack framework correctly. Clean conditional mapping logic.");
-        a2.setAreasToImprove("Perform dry-runs before early execution runs to catch indexing crash lines. Communicate thoughts while refactoring compiler logs.");
-        a2.setInterviewerFeedback("Solid recovery. Missing the empty-stack check on line 8 is a common trap, but the candidate refactored quickly. Needs more defensive programming discipline.");
-        a2.setSuggestedPractice("Stacks, Parsing, Error Logging");
-        assessmentRepository.save(a2);
     }
 }

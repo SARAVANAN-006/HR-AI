@@ -39,12 +39,31 @@ public class ProgressController {
             user = userRepository.findByUsername(username).orElse(null);
         }
         if (user == null) {
-            user = userRepository.findByUsername("vicky").orElseGet(() ->
-                    userRepository.findAll().stream().findFirst().orElse(null)
-            );
-        }
-        if (user == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "No candidate profile found"));
+            Map<String, Object> data = new HashMap<>();
+            data.put("fullName", "Candidate");
+            data.put("targetRole", "Software Engineer");
+            data.put("targetCompanies", "Top Tech Companies");
+            data.put("experienceLevel", "ENTRY");
+            data.put("preferredLanguage", "PYTHON");
+            data.put("readinessScore", 0);
+            Map<String, String> skillMap = new LinkedHashMap<>();
+            skillMap.put("Arrays", "DEVELOPING");
+            skillMap.put("Strings", "DEVELOPING");
+            skillMap.put("Hashing", "DEVELOPING");
+            skillMap.put("Linked Lists", "DEVELOPING");
+            skillMap.put("Stacks & Queues", "DEVELOPING");
+            skillMap.put("Trees", "DEVELOPING");
+            skillMap.put("Graphs", "DEVELOPING");
+            skillMap.put("Recursion", "DEVELOPING");
+            skillMap.put("Dynamic Programming", "DEVELOPING");
+            skillMap.put("Greedy Algorithms", "DEVELOPING");
+            skillMap.put("Backtracking", "DEVELOPING");
+            skillMap.put("Sorting & Searching", "DEVELOPING");
+            skillMap.put("System Design", "DEVELOPING");
+            data.put("skills", skillMap);
+            data.put("history", Collections.emptyList());
+            data.put("weaknesses", Collections.emptyList());
+            return ResponseEntity.ok(data);
         }
         final User finalUser = user;
         return profileRepository.findByUser(finalUser)
@@ -139,6 +158,32 @@ public class ProgressController {
 
                             return ResponseEntity.ok(data);
                         })
-                        .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Profile not found")));
+                        .orElseGet(() -> {
+                            Map<String, Object> fallback = new HashMap<>();
+                            fallback.put("fullName", finalUser.getUsername());
+                            fallback.put("targetRole", "Software Engineer");
+                            fallback.put("targetCompanies", "Top Tech Companies");
+                            fallback.put("experienceLevel", "ENTRY");
+                            fallback.put("preferredLanguage", "PYTHON");
+                            fallback.put("readinessScore", 0);
+                            Map<String, String> skillMap = new LinkedHashMap<>();
+                            skillMap.put("Arrays", "DEVELOPING");
+                            skillMap.put("Strings", "DEVELOPING");
+                            skillMap.put("Hashing", "DEVELOPING");
+                            skillMap.put("Linked Lists", "DEVELOPING");
+                            skillMap.put("Stacks & Queues", "DEVELOPING");
+                            skillMap.put("Trees", "DEVELOPING");
+                            skillMap.put("Graphs", "DEVELOPING");
+                            skillMap.put("Recursion", "DEVELOPING");
+                            skillMap.put("Dynamic Programming", "DEVELOPING");
+                            skillMap.put("Greedy Algorithms", "DEVELOPING");
+                            skillMap.put("Backtracking", "DEVELOPING");
+                            skillMap.put("Sorting & Searching", "DEVELOPING");
+                            skillMap.put("System Design", "DEVELOPING");
+                            fallback.put("skills", skillMap);
+                            fallback.put("history", Collections.emptyList());
+                            fallback.put("weaknesses", Collections.emptyList());
+                            return ResponseEntity.ok(fallback);
+                        });
     }
 }

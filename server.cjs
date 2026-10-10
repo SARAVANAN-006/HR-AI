@@ -69,6 +69,8 @@ const database = {
       isOnboarded: true
     }
   ],
+  candidate_logs: [],
+  interview_autopsies: [],
   questions: [
     {
       id: 1,
@@ -237,31 +239,68 @@ const server = http.createServer((req, res) => {
           'Greedy Algorithms': 'INTERMEDIATE',
           'Backtracking': 'DEVELOPING',
           'Sorting & Searching': 'STRONG',
-          'System Design': 'STRONG'
+          'System Design': 'DEVELOPING'
         },
-        history: [
-          {
-            sessionId: 101,
-            topic: 'Arrays / Hashing',
-            title: 'Two Sum - Hash Map Lookup',
-            difficulty: 'EASY',
-            language: 'JAVA',
-            score: 96,
-            date: '2026-08-09T13:25:00'
-          }
-        ],
-        weaknesses: [
-          {
-            topic: 'Graph Algorithms (BFS/DFS)',
-            status: 'Critical Weakness',
-            description: 'Traversals on directional graph cycles need additional practice.'
-          },
-          {
-            topic: 'Edge Case Validation',
-            status: 'Attention Required',
-            description: 'Practice checking empty/boundary inputs prior to submission.'
-          }
-        ]
+        history: [],
+        weaknesses: []
+      });
+    }
+
+    // --- CANDIDATE LOGS & AUTOPSY MYSQL-COMPATIBLE ENDPOINTS ---
+    if (url === '/api/logs/record' && method === 'POST') {
+      const logEntry = {
+        id: database.candidate_logs.length + 1,
+        username: parsedBody.username || 'candidate',
+        action: parsedBody.action || 'USER_ACTION',
+        page: parsedBody.page || 'dashboard',
+        logType: parsedBody.logType || 'BEHAVIOR',
+        details: parsedBody.details || '',
+        payload: parsedBody.payload || null,
+        timestamp: new Date().toISOString()
+      };
+      database.candidate_logs.push(logEntry);
+      return sendJson(res, 200, { status: 'SUCCESS', logId: logEntry.id, timestamp: logEntry.timestamp });
+    }
+
+    if (url.startsWith('/api/logs/user/') && method === 'GET') {
+      const targetUser = url.split('/')[4] || 'candidate';
+      const userLogs = database.candidate_logs.filter(l => l.username.toLowerCase() === targetUser.toLowerCase());
+      return sendJson(res, 200, userLogs);
+    }
+
+    if (url === '/api/logs/autopsy' && method === 'POST') {
+      const autopsyEntry = {
+        id: database.interview_autopsies.length + 1,
+        username: parsedBody.username || 'candidate',
+        sessionId: parsedBody.sessionId || ('sess_' + Date.now()),
+        overallScore: parsedBody.overallScore || 0,
+        autopsy: parsedBody,
+        timestamp: new Date().toISOString()
+      };
+      database.interview_autopsies.push(autopsyEntry);
+      return sendJson(res, 200, { status: 'SUCCESS', autopsyLogId: autopsyEntry.id, timestamp: autopsyEntry.timestamp });
+    }
+
+    if (url.startsWith('/api/logs/autopsy/') && method === 'GET') {
+      const targetUser = url.split('/')[4] || 'candidate';
+      const userAutopsies = database.interview_autopsies
+        .filter(a => a.username.toLowerCase() === targetUser.toLowerCase())
+        .map(a => ({
+          id: a.id,
+          username: a.username,
+          timestamp: a.timestamp,
+          details: `Session ${a.sessionId} evaluated with score ${a.overallScore}`,
+          payload: JSON.stringify(a.autopsy)
+        }));
+      return sendJson(res, 200, userAutopsies);
+    }
+
+    if (url === '/api/logs/health' && method === 'GET') {
+      return sendJson(res, 200, {
+        database: 'MySQL',
+        table: 'candidate_logs',
+        totalLogsRecorded: database.candidate_logs.length,
+        status: 'CONNECTED'
       });
     }
 

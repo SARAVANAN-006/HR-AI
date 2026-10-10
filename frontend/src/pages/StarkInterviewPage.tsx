@@ -62,6 +62,7 @@ import {
   type FormulaBreakdown,
   type MongoInterviewAutopsy
 } from '../lib/mongoService';
+import { mysqlService } from '../lib/mysqlService';
 
 export const StarkInterviewPage: React.FC = () => {
   const { user } = useAuth();
@@ -570,7 +571,21 @@ export const StarkInterviewPage: React.FC = () => {
     setInterimTranscript('');
     setRemainingSeconds(totalSecs);
 
-    // Persist behavior and candidate log to MongoDB
+    // Persist behavior and candidate log to MySQL & MongoDB
+    mysqlService.recordBehavior(user?.username || 'candidate', 'INTERVIEW_STARTED', '/elsa', {
+      candidateName,
+      categories: selectedCategoryIds,
+      durationMinutes,
+      experienceLevel,
+      sessionId: newSession.sessionId
+    });
+    mysqlService.recordCandidateLog(
+      user?.username || 'candidate',
+      'INFO',
+      'INTERVIEW_INITIALIZED',
+      `Session ${newSession.sessionId} initiated for candidate ${candidateName}`,
+      { categories: selectedCategoryIds, durationMinutes, experienceLevel }
+    );
     mongoService.logUserBehavior(
       'INTERVIEW_STARTED',
       '/elsa',
@@ -757,6 +772,54 @@ export const StarkInterviewPage: React.FC = () => {
       createdAt: new Date().toISOString()
     };
 
+    // Persist autopsy directly to MySQL Enterprise Storage
+    mysqlService.recordInterviewAutopsy({
+      sessionId: completedSession.sessionId,
+      username: user?.username || 'candidate',
+      candidateName: completedSession.candidateName,
+      targetRole: user?.targetRole || 'Software Engineer',
+      date: new Date().toISOString(),
+      durationMinutes: completedSession.durationMinutes,
+      overallScore: report.overallScore,
+      recommendation: report.recommendation,
+      formulaBreakdown: formulaBreakdown,
+      multiFactorScores: {
+        technicalProficiency: report.technicalProficiencyScore,
+        communicationScore: report.communicationScore,
+        conceptualDepthScore: report.conceptualDepthScore,
+        problemSolvingScore: report.problemSolvingScore
+      },
+      categoryScores: report.categoryScores,
+      keyStrengths: report.keyStrengths,
+      areasForImprovement: report.areasForImprovement,
+      detailedDebrief: report.detailedDebrief,
+      transcripts: completedSession.transcripts.map((t) => ({
+        ...t,
+        category: t.category || 'General Computer Science'
+      }))
+    }).catch((err) => {
+      console.warn('Autopsy MySQL sync notice:', err);
+    });
+
+    mysqlService.recordBehavior(user?.username || 'candidate', 'INTERVIEW_COMPLETED', '/elsa', {
+      sessionId: completedSession.sessionId,
+      overallScore: report.overallScore,
+      recommendation: report.recommendation,
+      totalQuestions: completedSession.transcripts.length
+    });
+
+    mysqlService.recordCandidateLog(
+      user?.username || 'candidate',
+      'INTERVIEW_AUTOPSY',
+      'AUTOPSY_GENERATED',
+      `Final interview autopsy generated for ${completedSession.candidateName} with overall score ${report.overallScore}/100`,
+      {
+        sessionId: completedSession.sessionId,
+        overallScore: report.overallScore,
+        formula: formulaBreakdown.formula
+      }
+    );
+
     mongoService.saveInterviewAutopsy(mongoAutopsy).catch((err) => {
       console.warn('Autopsy MongoDB sync notice:', err);
     });
@@ -841,7 +904,25 @@ export const StarkInterviewPage: React.FC = () => {
 
     const updatedTranscripts = [...session.transcripts, transcriptItem];
 
-    // Log answer to MongoDB
+    // Log answer to MySQL & MongoDB
+    mysqlService.recordBehavior(user?.username || 'candidate', 'ANSWER_SUBMITTED', '/elsa', {
+      questionIndex: currentIndex,
+      category: currentQ.categoryName,
+      answerLength: fullAnswer.length,
+      score: evalResult.score
+    });
+    mysqlService.recordCandidateLog(
+      user?.username || 'candidate',
+      'INFO',
+      'SPEECH_ANSWER_RECORDED',
+      `Spoken response recorded for question #${currentIndex + 1} (${currentQ.categoryName})`,
+      {
+        questionText: currentQ.questionText,
+        score: evalResult.score,
+        durationSeconds: transcriptItem.durationSeconds
+      }
+    );
+
     mongoService.logUserBehavior(
       'ANSWER_SUBMITTED',
       '/elsa',

@@ -103,38 +103,8 @@ const Dashboard: React.FC = () => {
             "Dynamic Programming": "DEVELOPING",
             "Graphs": "WEAK"
           },
-          history: [
-            {
-              sessionId: 101,
-              topic: "Arrays / Hashing",
-              title: "Two Sum - Hash Map Lookup",
-              difficulty: "EASY",
-              language: "PYTHON",
-              score: 96,
-              date: "2026-08-09T13:25:00"
-            },
-            {
-              sessionId: 102,
-              topic: "Stacks / Queues",
-              title: "Valid Parentheses",
-              difficulty: "EASY",
-              language: "PYTHON",
-              score: 84,
-              date: "2026-08-07T14:30:00"
-            }
-          ],
-          weaknesses: [
-            {
-              topic: "Graphs & Traversal",
-              status: "ATTENTION NEEDED",
-              description: "Low practice volume on BFS/DFS traversal algorithms."
-            },
-            {
-              topic: "Dynamic Programming",
-              status: "DEVELOPING",
-              description: "Suboptimal space complexity on 2D memoization grids."
-            }
-          ]
+          history: [],
+          weaknesses: []
         };
 
         setData(mockDashboard);

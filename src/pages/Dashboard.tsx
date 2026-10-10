@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getStreakData, type StreakData, STREAK_BADGES } from '../lib/streakService';
-import { mongoService } from '../lib/mongoService';
+import { mysqlService } from '../lib/mysqlService';
 import { StreakModal } from '../components/StreakModal';
 import { StreakAvatarBadge } from '../components/StreakAvatarBadge';
 
@@ -96,12 +96,24 @@ const Dashboard: React.FC = () => {
       return;
     }
 
+    // Helper to purge any legacy mock/seeded data
+    const sanitizeRealHistory = (hList: SessionHistory[]): SessionHistory[] => {
+      if (!Array.isArray(hList)) return [];
+      return hList.filter((item) => {
+        const title = (item.title || '').toLowerCase().trim();
+        const isMockTwoSum = (title === 'two sum' || title === 'two sum - hash map lookup') && (item.score === 88 || item.score === 96);
+        const isMockValidParen = title.includes('valid parentheses') && (item.score === 76 || item.score === 84);
+        return !(isMockTwoSum || isMockValidParen);
+      });
+    };
+
     // Instant local cache hydration scoped to active user
     const userStorageKey = `kodexis_candidate_dashboard_${user?.username ? user.username.toLowerCase() : 'default'}`;
     const cached = localStorage.getItem(userStorageKey);
     if (cached) {
       try {
         const parsed: DashboardData = JSON.parse(cached);
+        parsed.history = sanitizeRealHistory(parsed.history || []);
         setData(parsed);
         setRadarData(computeRadar(parsed));
         setLoading(false);
@@ -110,11 +122,18 @@ const Dashboard: React.FC = () => {
       }
     }
 
+    // Log user view in MySQL
+    mysqlService.recordBehavior(user?.username || 'candidate', 'DASHBOARD_VIEWED', '/dashboard');
+
     withFastTimeout(axios.get('/api/progress/dashboard'), 2500, 'Dashboard metrics fetch')
       .then((res) => {
-        setData(res.data);
-        localStorage.setItem(userStorageKey, JSON.stringify(res.data));
-        setRadarData(computeRadar(res.data));
+        const cleanData: DashboardData = {
+          ...res.data,
+          history: sanitizeRealHistory(res.data?.history || [])
+        };
+        setData(cleanData);
+        localStorage.setItem(userStorageKey, JSON.stringify(cleanData));
+        setRadarData(computeRadar(cleanData));
         setLoading(false);
       })
       .catch(() => {
@@ -150,12 +169,12 @@ const Dashboard: React.FC = () => {
         setLoading(false);
       });
 
-    // Hydrate persistent autopsies from MongoDB
-    mongoService.getUserAutopsies(user?.username).then((autopsies) => {
+    // Hydrate persistent autopsies from MySQL
+    mysqlService.getUserAutopsies(user?.username).then((autopsies) => {
       if (autopsies && autopsies.length > 0) {
         setData((prev) => {
           if (!prev) return prev;
-          const mongoHistory: SessionHistory[] = autopsies.map((a, idx) => ({
+          const mysqlHistory: SessionHistory[] = autopsies.map((a, idx) => ({
             sessionId: idx + 500,
             topic: 'Core CS Architecture',
             title: `Elsa AI Tech Autopsy (${a.durationMinutes}m) - ${a.recommendation.replace('_', ' ')}`,
@@ -166,10 +185,10 @@ const Dashboard: React.FC = () => {
           }));
 
           const existingTitles = new Set(prev.history.map((h) => h.title));
-          const uniqueEntries = mongoHistory.filter((m) => !existingTitles.has(m.title));
+          const uniqueEntries = mysqlHistory.filter((m) => !existingTitles.has(m.title));
           if (uniqueEntries.length === 0) return prev;
 
-          const updatedHistory = [...uniqueEntries, ...prev.history];
+          const updatedHistory = sanitizeRealHistory([...uniqueEntries, ...prev.history]);
           const highestScore = Math.max(prev.readinessScore, ...autopsies.map((a) => a.overallScore));
 
           const updated = {
@@ -227,7 +246,12 @@ const Dashboard: React.FC = () => {
       {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-border pb-6 gap-4">
         <div>
-          <h2 className="text-xl font-bold font-mono text-zinc-100 uppercase">Technical Performance Console</h2>
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-xl font-bold font-mono text-zinc-100 uppercase">Technical Performance Console</h2>
+            <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+              MYSQL PERSISTENCE
+            </span>
+          </div>
           <p className="text-xs text-zinc-400">Telemetry logs for candidate <span className="text-brand-cyan font-semibold">{data.fullName}</span> (Target: {data.targetRole})</p>
         </div>
         <div className="flex items-center gap-2.5">

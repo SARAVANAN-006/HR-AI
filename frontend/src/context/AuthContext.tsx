@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE_URL, withFastTimeout } from '../lib/api';
 import { mongoService } from '../lib/mongoService';
+import { mysqlService } from '../lib/mysqlService';
 
 interface User {
   username: string;
@@ -86,6 +87,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         preferredLanguage: u.preferredLanguage,
         readinessScore: u.readinessScore,
         isOnboarded: u.isOnboarded
+      }).catch(() => {});
+      mysqlService.recordBehavior(u.username, 'USER_PROFILE_SAVED', '/login', {
+        fullName: u.fullName,
+        role: u.role,
+        targetRole: u.targetRole,
+        experienceLevel: u.experienceLevel
       }).catch(() => {});
     } catch (e) {
       console.warn('Failed to save user to local DB:', e);
