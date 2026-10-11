@@ -27,6 +27,22 @@ interface AuthContextType {
   refreshUser: () => Promise<void>;
 }
 
+// Automatically purge any stale legacy cached sessions containing old hardcoded names
+const sanitizeLegacyStorage = () => {
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith('kodexis_') || key.startsWith('assessment_'))) {
+        const val = localStorage.getItem(key);
+        if (val && (val.toLowerCase().includes('vigneshwaran') || val.toLowerCase().includes('vicky'))) {
+          localStorage.removeItem(key);
+        }
+      }
+    }
+  } catch {}
+};
+sanitizeLegacyStorage();
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Axios Base URL configuration pointing to backend Spring Boot (local or Render cloud)
@@ -38,12 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cached = localStorage.getItem('kodexis_user');
     if (cached) {
       try {
-        const parsed = JSON.parse(cached);
-        if (parsed && typeof parsed.fullName === 'string' && parsed.fullName.toLowerCase().includes('vigneshwaran')) {
-          parsed.fullName = parsed.username ? (parsed.username.charAt(0).toUpperCase() + parsed.username.slice(1)) : 'Candidate';
-          localStorage.setItem('kodexis_user', JSON.stringify(parsed));
-        }
-        return parsed;
+        return JSON.parse(cached);
       } catch {
         return null;
       }
@@ -103,9 +114,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response = await withFastTimeout(axios.get('/api/auth/me'), 2000, 'User profile fetch');
       const data = response.data;
-      if (data && typeof data.fullName === 'string' && data.fullName.toLowerCase().includes('vigneshwaran')) {
-        data.fullName = data.username ? (data.username.charAt(0).toUpperCase() + data.username.slice(1)) : 'Candidate';
-      }
       setUser(data);
       localStorage.setItem('kodexis_user', JSON.stringify(data));
       saveUserToDb(data);
@@ -115,11 +123,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const cached = localStorage.getItem('kodexis_user');
         if (cached) {
           try {
-            const parsed = JSON.parse(cached);
-            if (parsed && typeof parsed.fullName === 'string' && parsed.fullName.toLowerCase().includes('vigneshwaran')) {
-              parsed.fullName = parsed.username ? (parsed.username.charAt(0).toUpperCase() + parsed.username.slice(1)) : 'Candidate';
-            }
-            setUser(parsed);
+            setUser(JSON.parse(cached));
           } catch {}
         }
       }

@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Play, Settings, BrainCircuit, User, Heart, ShieldAlert, VolumeX, Sparkles } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const StartInterview: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [difficulty, setDifficulty] = useState<string>('MEDIUM');
   const [language, setLanguage] = useState<string>('PYTHON');
   const [duration, setDuration] = useState<number>(45);
@@ -12,7 +14,7 @@ const StartInterview: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
 
   // New Dossier & Persona States
-  const [candidateAlias, setCandidateAlias] = useState<string>('Vicky');
+  const [candidateAlias, setCandidateAlias] = useState<string>(user?.fullName || 'Candidate');
   const [targetRole, setTargetRole] = useState<string>('Software Engineer');
   const [candidateMood, setCandidateMood] = useState<string>('Feeling Confident');
   const [interviewerPersona, setInterviewerPersona] = useState<string>('Rigorous Tech Lead');

@@ -85,12 +85,12 @@ const Dashboard: React.FC = () => {
       .catch(() => {
         console.warn('Backend offline. Loading candidate dashboard telemetry...');
         const mockDashboard: DashboardData = {
-          fullName: "Vigneshwaran S P",
-          targetRole: "Software Engineer",
-          targetCompanies: "NVIDIA, Google, Meta",
-          experienceLevel: "MEDIUM",
-          preferredLanguage: "PYTHON",
-          readinessScore: 88,
+          fullName: user?.fullName || "Candidate",
+          targetRole: user?.targetRole || "Software Engineer",
+          targetCompanies: user?.targetCompanies || "Top Tech Companies",
+          experienceLevel: user?.experienceLevel || "MEDIUM",
+          preferredLanguage: user?.preferredLanguage || "PYTHON",
+          readinessScore: user?.readinessScore ?? 85,
           skills: {
             "Arrays / Hashing": "EXPERT",
             "Strings": "STRONG",

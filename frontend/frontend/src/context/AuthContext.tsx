@@ -51,17 +51,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.warn('Backend server offline. Retaining active session.');
       if (!user) {
-        setUser({
-          username: 'vicky',
-          role: 'ROLE_CANDIDATE',
-          fullName: 'Vigneshwaran S P',
-          targetRole: 'Software Engineer',
-          targetCompanies: 'NVIDIA, Google, Meta',
-          experienceLevel: 'MEDIUM',
-          preferredLanguage: 'PYTHON',
-          readinessScore: 88,
-          isOnboarded: true
-        });
+        // No hardcoded fallback
       }
     }
   };
@@ -77,12 +67,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return true;
     } catch (error) {
       console.warn('Backend server offline at http://localhost:8080. Logging in with Demo Session Mode...');
+      const cleanUsername = username ? username.trim() : 'candidate';
       const mockUser: User = {
-        username: username || 'vicky',
+        username: cleanUsername,
         role: 'ROLE_CANDIDATE',
-        fullName: 'Vigneshwaran S P',
+        fullName: cleanUsername.charAt(0).toUpperCase() + cleanUsername.slice(1),
         targetRole: 'Software Engineer',
-        targetCompanies: 'NVIDIA, Google, Meta',
+        targetCompanies: 'Top Tech Companies',
         experienceLevel: 'MEDIUM',
         preferredLanguage: 'PYTHON',
         readinessScore: 88,
@@ -106,12 +97,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return true;
     } catch (error) {
       console.warn('Backend server offline at http://localhost:8080. Registering with Demo Session Mode...');
+      const cleanUsername = username ? username.trim() : 'candidate';
+      const cleanFullName = (fullName && fullName.trim()) ? fullName.trim() : (cleanUsername.charAt(0).toUpperCase() + cleanUsername.slice(1));
       const mockUser: User = {
-        username: username || 'vicky',
+        username: cleanUsername,
         role: 'ROLE_CANDIDATE',
-        fullName: fullName || 'Vigneshwaran S P',
+        fullName: cleanFullName,
         targetRole: 'Software Engineer',
-        targetCompanies: 'NVIDIA, Google, Meta',
+        targetCompanies: 'Top Tech Companies',
         experienceLevel: 'MEDIUM',
         preferredLanguage: 'PYTHON',
         readinessScore: 85,

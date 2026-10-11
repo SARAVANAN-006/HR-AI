@@ -76,12 +76,9 @@ The client will launch at `http://localhost:5173`.
 
 ---
 
-## 5. Seed Data Details
-The system pre-seeds realistic records for candidate evaluations on launch:
-- **Candidate Username**: `vicky` | **Password**: `password`
-- **Full Profile**: Vigneshwaran S P
-- **Role Targets**: Software Engineer @ NVIDIA, Google, Meta
-- **Seeded History**: 2 Completed mock interviews (Two Sum, Valid Parentheses) populate the Technical DNA and dashboard telemetry immediately.
+## 5. User & Authentication Setup
+The system dynamically provisions and isolates candidate accounts:
+- **Candidate Accounts**: 100% Dynamic — Register any candidate account directly on the login/register screen with your custom full name, target role, and preferred stack.
 - **Admin Username**: `admin` | **Password**: `admin123`
 
 ---

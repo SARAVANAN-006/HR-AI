@@ -43,53 +43,30 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) throws Exception {
+        // Clean up any legacy test users if they exist
+        userRepository.findByUsername("vicky").ifPresent(legacyUser -> {
+            profileRepository.findByUser(legacyUser).ifPresent(profileRepository::delete);
+            userRepository.delete(legacyUser);
+        });
+
         boolean questionsNeedSeed = questionRepository.count() < 30 ||
                 questionRepository.findAll().stream().anyMatch(q -> q.getPythonTemplate() != null &&
                         (q.getPythonTemplate().contains("seen = {}") || q.getPythonTemplate().contains("diff in seen") || q.getPythonTemplate().contains("st = []")));
 
-        if (userRepository.existsByUsername("vicky") && !questionsNeedSeed) {
+        if (userRepository.existsByUsername("admin") && !questionsNeedSeed) {
             return; // Already initialized
         }
 
         System.out.println("[KODEXIS] Initializing database seed records...");
 
-        // 1. Create Users
-        User vicky = userRepository.findByUsername("vicky").orElse(null);
-        if (vicky == null) {
-            vicky = new User("vicky", passwordEncoder.encode("password"), Enums.Role.ROLE_CANDIDATE);
-            userRepository.save(vicky);
-        }
-
+        // 1. Create Admin User
         User admin = userRepository.findByUsername("admin").orElse(null);
         if (admin == null) {
             admin = new User("admin", passwordEncoder.encode("admin123"), Enums.Role.ROLE_ADMIN);
             userRepository.save(admin);
         }
 
-        // 2. Create Candidate Profile
-        if (profileRepository.findByUser(vicky).isEmpty()) {
-            CandidateProfile vickyProfile = new CandidateProfile(vicky, "Demo Candidate");
-            vickyProfile.setTargetRole("Software Engineer");
-            vickyProfile.setTargetCompanies("NVIDIA, Google, Meta");
-            vickyProfile.setExperienceLevel(Enums.Difficulty.MEDIUM);
-            vickyProfile.setPreferredLanguage(Enums.Language.PYTHON);
-            vickyProfile.setReadinessScore(82);
-
-            // Seed skill vectors
-            vickyProfile.setArraysProficiency(Enums.SkillLevel.EXPERT);
-            vickyProfile.setStringsProficiency(Enums.SkillLevel.STRONG);
-            vickyProfile.setHashingProficiency(Enums.SkillLevel.EXPERT);
-            vickyProfile.setLinkedListsProficiency(Enums.SkillLevel.INTERMEDIATE);
-            vickyProfile.setStacksQueuesProficiency(Enums.SkillLevel.STRONG);
-            vickyProfile.setTreesProficiency(Enums.SkillLevel.DEVELOPING);
-            vickyProfile.setGraphsProficiency(Enums.SkillLevel.WEAK);
-            vickyProfile.setRecursionProficiency(Enums.SkillLevel.INTERMEDIATE);
-            vickyProfile.setDynamicProgrammingProficiency(Enums.SkillLevel.DEVELOPING);
-            vickyProfile.setGreedyProficiency(Enums.SkillLevel.INTERMEDIATE);
-            vickyProfile.setSortingSearchingProficiency(Enums.SkillLevel.STRONG);
-            vickyProfile.setSystemDesignProficiency(Enums.SkillLevel.STRONG);
-            profileRepository.save(vickyProfile);
-        }
+        // 2. Candidate profiles are strictly created dynamically upon user registration or onboarding.
 
         // 3. Create Questions & Test Cases
         if (questionsNeedSeed) {

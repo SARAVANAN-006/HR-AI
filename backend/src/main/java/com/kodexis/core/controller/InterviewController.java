@@ -2,6 +2,7 @@ package com.kodexis.core.controller;
 
 import com.kodexis.core.model.*;
 import com.kodexis.core.repository.AssessmentRepository;
+import com.kodexis.core.repository.CandidateProfileRepository;
 import com.kodexis.core.repository.InterviewMessageRepository;
 import com.kodexis.core.repository.InterviewSessionRepository;
 import com.kodexis.core.repository.UserRepository;
@@ -25,17 +26,20 @@ public class InterviewController {
     private final InterviewMessageRepository messageRepository;
     private final AssessmentRepository assessmentRepository;
     private final UserRepository userRepository;
+    private final CandidateProfileRepository profileRepository;
 
     public InterviewController(InterviewService interviewService,
                                InterviewSessionRepository sessionRepository,
                                InterviewMessageRepository messageRepository,
                                AssessmentRepository assessmentRepository,
-                               UserRepository userRepository) {
+                               UserRepository userRepository,
+                               CandidateProfileRepository profileRepository) {
         this.interviewService = interviewService;
         this.sessionRepository = sessionRepository;
         this.messageRepository = messageRepository;
         this.assessmentRepository = assessmentRepository;
         this.userRepository = userRepository;
+        this.profileRepository = profileRepository;
     }
 
     public static class StartRequest {
@@ -122,12 +126,14 @@ public class InterviewController {
             user = userRepository.findByUsername(username).orElse(null);
         }
         if (user == null) {
-            user = userRepository.findByUsername("vicky").orElseGet(() ->
-                    userRepository.findAll().stream().findFirst().orElseGet(() -> {
-                        User fallback = new User("vicky", "password", Enums.Role.ROLE_CANDIDATE);
-                        return userRepository.save(fallback);
-                    })
-            );
+            String guestName = (request.candidateAlias != null && !request.candidateAlias.isBlank())
+                    ? request.candidateAlias.trim()
+                    : "Candidate";
+            String guestUsername = guestName.toLowerCase().replaceAll("[^a-z0-9]", "") + "_" + (System.currentTimeMillis() % 100000);
+            User guestUser = new User(guestUsername, "guest123", Enums.Role.ROLE_CANDIDATE);
+            user = userRepository.save(guestUser);
+            CandidateProfile guestProfile = new CandidateProfile(user, guestName);
+            profileRepository.save(guestProfile);
         }
 
         InterviewSession session = interviewService.startSession(
@@ -151,15 +157,7 @@ public class InterviewController {
             optSession = sessionRepository.findAll().stream().findFirst();
         }
         if (optSession.isEmpty()) {
-            // Auto create session if DB is freshly seeded
-            User user = userRepository.findByUsername("vicky").orElseGet(() -> {
-                User fallback = new User("vicky", "password", Enums.Role.ROLE_CANDIDATE);
-                return userRepository.save(fallback);
-            });
-            InterviewSession fallbackSession = interviewService.startSession(
-                    user, Enums.Difficulty.MEDIUM, Enums.Language.PYTHON, 45, "Full Simulation"
-            );
-            return ResponseEntity.ok(fallbackSession);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Interview session not found"));
         }
         return ResponseEntity.ok(optSession.get());
     }

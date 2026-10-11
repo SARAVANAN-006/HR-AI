@@ -91,9 +91,8 @@ The React client runs at `http://localhost:5173`.
 
 ---
 
-## 5. Seed Data Details
-Pre-seeded evaluation credentials:
-- **Candidate Username**: `vicky` | **Password**: `password` (Candidate: Vigneshwaran S P)
+## 5. User & Authentication Setup
+- **Candidate Accounts**: 100% Dynamic — Register any candidate account directly on the login/register screen with your custom full name, target role, and preferred stack.
 - **Admin Username**: `admin` | **Password**: `admin123`
 
 ---

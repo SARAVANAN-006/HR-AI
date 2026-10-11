@@ -99,27 +99,42 @@ const server = http.createServer((req, res) => {
 
     // --- AUTH ROUTES ---
     if (url === '/api/auth/login' && method === 'POST') {
-      const user = database.users[0];
+      const username = parsedBody.username || 'candidate';
+      const existingUser = database.users.find(u => u.username.toLowerCase() === username.toLowerCase());
+      const user = existingUser || {
+        username: username,
+        role: username.toLowerCase().includes('admin') ? 'ROLE_ADMIN' : 'ROLE_CANDIDATE',
+        fullName: username.charAt(0).toUpperCase() + username.slice(1),
+        targetRole: 'Software Engineer',
+        targetCompanies: 'Top Tech Companies',
+        experienceLevel: 'MEDIUM',
+        preferredLanguage: 'PYTHON',
+        readinessScore: 85,
+        isOnboarded: true
+      };
       return sendJson(res, 200, {
-        token: 'kodexis_jwt_session_token_9982',
+        token: `kodexis_jwt_session_token_${Date.now()}`,
         ...user
       });
     }
 
     if (url === '/api/auth/register' && method === 'POST') {
+      const username = parsedBody.username || 'candidate';
+      const fullName = parsedBody.fullName || (username.charAt(0).toUpperCase() + username.slice(1));
       const newUser = {
-        username: parsedBody.username || 'vicky',
-        role: 'ROLE_CANDIDATE',
-        fullName: parsedBody.fullName || 'Vigneshwaran S P',
+        username: username,
+        role: username.toLowerCase().includes('admin') ? 'ROLE_ADMIN' : 'ROLE_CANDIDATE',
+        fullName: fullName,
         targetRole: 'Software Engineer',
-        targetCompanies: 'NVIDIA, Google, Meta',
+        targetCompanies: 'Top Tech Companies',
         experienceLevel: 'MEDIUM',
         preferredLanguage: 'PYTHON',
-        readinessScore: 88,
+        readinessScore: 85,
         isOnboarded: true
       };
+      database.users.push(newUser);
       return sendJson(res, 200, {
-        token: 'kodexis_jwt_session_token_9982',
+        token: `kodexis_jwt_session_token_${Date.now()}`,
         ...newUser
       });
     }
