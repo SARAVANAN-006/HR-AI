@@ -180,3 +180,28 @@ CREATE TABLE IF NOT EXISTS candidate_logs (
     INDEX idx_candidate_logs_type (log_type),
     INDEX idx_candidate_logs_timestamp (timestamp)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------
+-- 10. CANDIDATE SKILL TELEMETRY (DEDICATED LIVE PERFORMANCE TABLE)
+-- ----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS candidate_skill_telemetry (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT,
+    username VARCHAR(255) NOT NULL,
+    topic VARCHAR(255) NOT NULL,
+    proficiency_level VARCHAR(50) NOT NULL,
+    proficiency_score INT NOT NULL,
+    problems_attempted INT NOT NULL DEFAULT 0,
+    problems_passed INT NOT NULL DEFAULT 0,
+    accuracy_percentage DOUBLE NOT NULL DEFAULT 0.0,
+    avg_execution_time_ms DOUBLE DEFAULT 0.0,
+    ai_behavior_score DOUBLE DEFAULT 75.0,
+    identified_strengths TEXT,
+    identified_weaknesses TEXT,
+    ai_behavior_notes TEXT,
+    visual_preference VARCHAR(50) DEFAULT 'BAR_CHART',
+    last_updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_skill_telemetry_username (username),
+    INDEX idx_skill_telemetry_topic (topic)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

@@ -99,6 +99,25 @@ export interface MySQLInterviewAutopsy {
   createdAt: string;
 }
 
+export interface CandidateSkillTelemetry {
+  id?: number;
+  userId?: number;
+  username: string;
+  topic: string;
+  proficiencyLevel: 'EXPERT' | 'STRONG' | 'INTERMEDIATE' | 'DEVELOPING' | 'NOVICE' | string;
+  proficiencyScore: number;
+  problemsAttempted: number;
+  problemsPassed: number;
+  accuracyPercentage: number;
+  avgExecutionTimeMs?: number;
+  aiBehaviorScore?: number;
+  identifiedStrengths?: string;
+  identifiedWeaknesses?: string;
+  aiBehaviorNotes?: string;
+  visualPreference?: 'BAR_CHART' | 'HISTOGRAM' | 'PIE_CHART' | 'RADAR' | string;
+  lastUpdated?: string;
+}
+
 class MySQLStorageService {
   private fallbackStore: Map<string, any[]> = new Map();
 
@@ -300,6 +319,95 @@ class MySQLStorageService {
 
   private calculateDefaultBreakdown(score: number): FormulaBreakdown {
     return this.calculateScoreBreakdown(score, score, score, score, 0);
+  }
+
+  /**
+   * Retrieve candidate's live skill telemetry rows from dedicated MySQL table candidate_skill_telemetry
+   */
+  async getUserSkillTelemetry(username: string): Promise<CandidateSkillTelemetry[]> {
+    if (!username) return [];
+    try {
+      const res = await axios.get(`/api/logs/table/candidate_skill_telemetry/${encodeURIComponent(username)}`, { timeout: 3500 });
+      if (res.data && Array.isArray(res.data.data)) {
+        return res.data.data;
+      }
+    } catch {
+      // Fallback
+    }
+    const key = `skill_telemetry_${username}`;
+    return this.fallbackStore.get(key) || [];
+  }
+
+  /**
+   * Fetch full SQL table data for candidate_skill_telemetry
+   */
+  async getAllSkillTelemetryTable(): Promise<{ tableName: string; rowCount: number; data: CandidateSkillTelemetry[] }> {
+    try {
+      const res = await axios.get('/api/logs/table/candidate_skill_telemetry', { timeout: 3500 });
+      return res.data;
+    } catch {
+      return { tableName: 'candidate_skill_telemetry', rowCount: 0, data: [] };
+    }
+  }
+
+  /**
+   * Persist candidate's visual preference (BAR_CHART, HISTOGRAM, PIE_CHART, RADAR) into MySQL
+   */
+  async saveVisualPreference(username: string, preference: 'BAR_CHART' | 'HISTOGRAM' | 'PIE_CHART' | 'RADAR' | string): Promise<void> {
+    try {
+      await axios.post('/api/logs/preferences', { username, visualPreference: preference }, { timeout: 3000 });
+    } catch {
+      const key = `pref_${username}`;
+      this.fallbackStore.set(key, [preference]);
+      this.persistFallback();
+    }
+  }
+
+  /**
+   * Get dedicated SQL Table DDL Schema
+   */
+  async getSqlSchema(): Promise<{ tableName: string; tableLink: string; schemaDdl: string }> {
+    try {
+      const res = await axios.get('/api/logs/sql/schema', { timeout: 3000 });
+      return res.data;
+    } catch {
+      return {
+        tableName: 'candidate_skill_telemetry',
+        tableLink: '/api/logs/table/candidate_skill_telemetry',
+        schemaDdl: `-- KODEXIS Dedicated SQL Relational Telemetry Table
+CREATE TABLE IF NOT EXISTS candidate_skill_telemetry (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT,
+    username VARCHAR(255) NOT NULL,
+    topic VARCHAR(255) NOT NULL,
+    proficiency_level VARCHAR(50) NOT NULL,
+    proficiency_score INT NOT NULL,
+    problems_attempted INT NOT NULL DEFAULT 0,
+    problems_passed INT NOT NULL DEFAULT 0,
+    accuracy_percentage DOUBLE NOT NULL DEFAULT 0.0,
+    avg_execution_time_ms DOUBLE DEFAULT 0.0,
+    ai_behavior_score DOUBLE DEFAULT 75.0,
+    identified_strengths TEXT,
+    identified_weaknesses TEXT,
+    ai_behavior_notes TEXT,
+    visual_preference VARCHAR(50) DEFAULT 'BAR_CHART',
+    last_updated TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_skill_telemetry_username (username),
+    INDEX idx_skill_telemetry_topic (topic)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
+      };
+    }
+  }
+
+  /**
+   * Send live evaluation telemetry to update MySQL relational row
+   */
+  async recordSkillEvaluation(telemetry: Partial<CandidateSkillTelemetry>): Promise<void> {
+    try {
+      await axios.post('/api/logs/telemetry/evaluate', telemetry, { timeout: 3500 });
+    } catch {
+      // Offline fallback
+    }
   }
 
   /**
