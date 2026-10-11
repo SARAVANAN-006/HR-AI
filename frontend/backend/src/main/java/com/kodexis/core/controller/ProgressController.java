@@ -129,7 +129,12 @@ public class ProgressController {
 
                             // Build final response DTO
                             Map<String, Object> data = new HashMap<>();
-                            data.put("fullName", profile.getFullName());
+                            String cleanName = profile.getFullName();
+                            if (cleanName != null && (cleanName.toLowerCase().contains("vigneshwaran") || cleanName.toLowerCase().contains("vicky"))) {
+                                cleanName = finalUser.getUsername() != null ? 
+                                    (finalUser.getUsername().substring(0, 1).toUpperCase() + finalUser.getUsername().substring(1)) : "Candidate";
+                            }
+                            data.put("fullName", cleanName != null ? cleanName : "Candidate");
                             data.put("targetRole", profile.getTargetRole());
                             data.put("targetCompanies", profile.getTargetCompanies());
                             data.put("experienceLevel", profile.getExperienceLevel() != null ? profile.getExperienceLevel().name() : null);

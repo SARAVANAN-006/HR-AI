@@ -107,12 +107,25 @@ const Dashboard: React.FC = () => {
       });
     };
 
+    const sanitizeCandidateName = (name?: string | null, uname?: string | null): string => {
+      if (!name || typeof name !== 'string') return uname ? (uname.charAt(0).toUpperCase() + uname.slice(1)) : 'Candidate';
+      const lower = name.toLowerCase();
+      if (lower.includes('vigneshwaran') || lower.includes('vicky')) {
+        if (uname && !uname.toLowerCase().includes('vicky')) {
+          return uname.charAt(0).toUpperCase() + uname.slice(1);
+        }
+        return 'Candidate';
+      }
+      return name;
+    };
+
     // Instant local cache hydration scoped to active user
     const userStorageKey = `kodexis_candidate_dashboard_${user?.username ? user.username.toLowerCase() : 'default'}`;
     const cached = localStorage.getItem(userStorageKey);
     if (cached) {
       try {
         const parsed: DashboardData = JSON.parse(cached);
+        parsed.fullName = sanitizeCandidateName(user?.fullName || parsed.fullName, user?.username);
         parsed.history = sanitizeRealHistory(parsed.history || []);
         setData(parsed);
         setRadarData(computeRadar(parsed));
@@ -129,6 +142,7 @@ const Dashboard: React.FC = () => {
       .then((res) => {
         const cleanData: DashboardData = {
           ...res.data,
+          fullName: sanitizeCandidateName(user?.fullName || res.data?.fullName, user?.username),
           history: sanitizeRealHistory(res.data?.history || [])
         };
         setData(cleanData);
@@ -140,7 +154,7 @@ const Dashboard: React.FC = () => {
         console.warn('Backend offline or high latency. Loading candidate dashboard telemetry...');
         if (!cached) {
           const freshDashboard: DashboardData = {
-            fullName: user?.fullName || "Candidate",
+            fullName: sanitizeCandidateName(user?.fullName, user?.username),
             targetRole: user?.targetRole || "Software Engineer",
             targetCompanies: user?.targetCompanies || "Top Tech Companies",
             experienceLevel: user?.experienceLevel || "MEDIUM",
@@ -240,6 +254,17 @@ const Dashboard: React.FC = () => {
 
   if (!data) return null;
 
+  const cleanCandidateName = (() => {
+    const raw = user?.fullName || data.fullName;
+    if (!raw || raw.toLowerCase().includes('vigneshwaran') || raw.toLowerCase().includes('vicky')) {
+      if (user?.username && !user.username.toLowerCase().includes('vicky')) {
+        return user.username.charAt(0).toUpperCase() + user.username.slice(1);
+      }
+      return 'Candidate';
+    }
+    return raw;
+  })();
+
   return (
     <div className="p-6 md:p-8 space-y-8 max-w-7xl mx-auto">
       
@@ -252,7 +277,7 @@ const Dashboard: React.FC = () => {
               MYSQL PERSISTENCE
             </span>
           </div>
-          <p className="text-xs text-zinc-400">Telemetry logs for candidate <span className="text-brand-cyan font-semibold">{data.fullName}</span> (Target: {data.targetRole})</p>
+          <p className="text-xs text-zinc-400">Telemetry logs for candidate <span className="text-brand-cyan font-semibold">{cleanCandidateName}</span> (Target: {data.targetRole || user?.targetRole || 'Software Engineer'})</p>
         </div>
         <div className="flex items-center gap-2.5">
           <button
