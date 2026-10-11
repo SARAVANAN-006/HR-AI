@@ -7,6 +7,7 @@ import {
 } from '../lib/ragService';
 import { VoicePoweredOrb } from '../components/ui/voice-powered-orb';
 import ReactMarkdown from 'react-markdown';
+import { extractTextFromPdf, sanitizeTextSnippet } from '../lib/pdfExtractor';
 import {
   Video,
   BookOpen,
@@ -270,6 +271,30 @@ export const MultimodalSocraticHub: React.FC = () => {
     if (!ingestTitle) setIngestTitle(baseName);
     if (!ingestDocName) setIngestDocName(file.name);
 
+    const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
+
+    if (isPdf) {
+      setIngestSnippet('Extracting text from PDF pages...');
+      extractTextFromPdf(file)
+        .then((extractedText) => {
+          const clean = sanitizeTextSnippet(extractedText, file.name);
+          setIngestSnippet(clean.substring(0, 150000));
+          setIsProcessingFile(false);
+        })
+        .catch((err) => {
+          console.warn('PDF extraction fallback:', err);
+          const textReader = new FileReader();
+          textReader.onload = (ev) => {
+            const raw = (ev.target?.result as string) || '';
+            setIngestSnippet(sanitizeTextSnippet(raw, file.name));
+            setIsProcessingFile(false);
+          };
+          textReader.onerror = () => setIsProcessingFile(false);
+          textReader.readAsText(file);
+        });
+      return;
+    }
+
     if (file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onload = (ev) => {
@@ -287,7 +312,7 @@ export const MultimodalSocraticHub: React.FC = () => {
       const text = ev.target?.result as string;
       if (text) {
         // Retain full uploaded text (up to 150,000 characters)
-        const cleanText = text.substring(0, 150000);
+        const cleanText = sanitizeTextSnippet(text, file.name).substring(0, 150000);
         setIngestSnippet(cleanText);
       }
       setIsProcessingFile(false);
@@ -635,11 +660,29 @@ export const MultimodalSocraticHub: React.FC = () => {
 
                 {/* Excerpt */}
                 <div className="space-y-1">
-                  <span className="text-[10px] font-mono text-zinc-400 uppercase">
-                    Grounding Text Excerpt:
-                  </span>
-                  <div className="p-3 rounded-xl bg-zinc-950/60 border border-border text-xs text-zinc-300 leading-relaxed font-sans">
-                    {activeUnit.textSnippet}
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono text-zinc-400 uppercase">
+                      Grounding Text Excerpt:
+                    </span>
+                    {(activeUnit.textSnippet.startsWith('%PDF') || activeUnit.textSnippet.includes('obj <</Type /Page')) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const repaired = sanitizeTextSnippet(activeUnit.textSnippet, activeUnit.documentName);
+                          ragService.updateKnowledgeUnit(activeUnit.id, { textSnippet: repaired });
+                          setActiveUnit({ ...activeUnit, textSnippet: repaired });
+                          setUnits(ragService.getKnowledgeUnits());
+                        }}
+                        className="text-[10px] font-mono text-cyan-400 hover:text-cyan-300 underline flex items-center gap-1"
+                        title="Click to repair raw binary PDF excerpt into clean syllabus text"
+                      >
+                        <Sparkles size={11} />
+                        <span>Repair Grounding Text</span>
+                      </button>
+                    )}
+                  </div>
+                  <div className="p-3 rounded-xl bg-zinc-950/60 border border-border text-xs text-zinc-300 leading-relaxed font-sans max-h-72 overflow-y-auto whitespace-pre-line">
+                    {sanitizeTextSnippet(activeUnit.textSnippet, activeUnit.documentName)}
                   </div>
                 </div>
 

@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   Trash2
 } from 'lucide-react';
+import { extractTextFromPdf, sanitizeTextSnippet } from '../lib/pdfExtractor';
 
 interface MultimodalUnit {
   id: string;
@@ -140,13 +141,30 @@ export const KnowledgeBasePage: React.FC = () => {
     if (!ingestTitle) setIngestTitle(baseName);
     if (!ingestDocName) setIngestDocName(baseName);
 
+    const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
+    if (isPdf) {
+      setIngestSnippet('Extracting text from PDF pages...');
+      extractTextFromPdf(file)
+        .then((text) => {
+          const clean = sanitizeTextSnippet(text, baseName);
+          setIngestSnippet(clean);
+          autoExtractConceptsFromText(clean, baseName);
+          setIsProcessingFile(false);
+        })
+        .catch(() => {
+          setIsProcessingFile(false);
+        });
+      return;
+    }
+
     // If text/markdown/json, read directly
     if (file.name.endsWith('.txt') || file.name.endsWith('.md') || file.name.endsWith('.json')) {
       const reader = new FileReader();
       reader.onload = (event) => {
         const text = event.target?.result as string || '';
-        setIngestSnippet(text);
-        autoExtractConceptsFromText(text, baseName);
+        const clean = sanitizeTextSnippet(text, baseName);
+        setIngestSnippet(clean);
+        autoExtractConceptsFromText(clean, baseName);
         setIsProcessingFile(false);
       };
       reader.readAsText(file);
@@ -530,7 +548,7 @@ export const KnowledgeBasePage: React.FC = () => {
                     Source-Grounded Transcript / Text Content
                   </span>
                   <div className="p-4 rounded-xl bg-background-panel border border-border text-xs text-zinc-300 leading-relaxed font-sans space-y-3">
-                    <p className="whitespace-pre-line">{activeUnit.textSnippet}</p>
+                    <p className="whitespace-pre-line">{sanitizeTextSnippet(activeUnit.textSnippet, activeUnit.documentName)}</p>
                   </div>
                 </div>
 
