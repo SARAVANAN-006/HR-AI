@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Terminal, Brain, ShieldAlert, ArrowRight, Play, Sparkles, Radio } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { VoicePoweredOrb } from '../components/ui/voice-powered-orb';
+import { KodexisGuideBot } from '../components/KodexisGuideBot';
 
 const Landing: React.FC = () => {
   const navigate = useNavigate();
@@ -427,6 +428,9 @@ const Landing: React.FC = () => {
       <footer className="border-t border-border/40 bg-background py-8 text-center text-xs font-mono text-zinc-600">
         <p>© 2026 KODEXIS. AI Technical Interview Sandbox. All rights reserved.</p>
       </footer>
+
+      {/* HOME PAGE GUIDE BOT */}
+      <KodexisGuideBot />
     </div>
   );
 };

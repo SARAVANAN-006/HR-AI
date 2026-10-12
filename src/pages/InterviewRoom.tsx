@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { withFastTimeout } from '../lib/api';
 import Editor from '@monaco-editor/react';
-import { Brain, Play, Send, Activity, Award, Clock, Code2, Maximize2, Minimize2, FileCode, GitCommit, ChevronLeft, ChevronRight, RotateCcw, Terminal, Lock, Unlock, Sparkles, ShieldAlert, CheckCircle2, X, Palette } from 'lucide-react';
+import { Brain, Play, Send, Activity, Award, Clock, Code2, Maximize2, Minimize2, FileCode, GitCommit, ChevronLeft, ChevronRight, RotateCcw, Terminal, Lock, Unlock, Sparkles, ShieldAlert, CheckCircle2, X, Palette, LogOut } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { UiSwitcherModal } from '../components/UiSwitcherModal';
 import ReactMarkdown from 'react-markdown';
@@ -11,6 +11,9 @@ import { isFeatureEnabled } from '../lib/featureFlags';
 import { logUserActivity } from '../lib/auditLogs';
 import { calculateLegitimateAssessment, saveLegitimateAssessment, verifyCodeCorrectness } from '../lib/evaluationEngine';
 import { recordStreakActivity } from '../lib/streakService';
+import { getRandomQuestion, getQuestionById, getAllQuestions } from '../lib/questionBank';
+import { mysqlService } from '../lib/mysqlService';
+import { useAuth } from '../context/AuthContext';
 
 interface TestCase {
   id: number;
@@ -666,8 +669,16 @@ const InterviewRoom: React.FC = () => {
   });
   const [tabSwitchWarning, setTabSwitchWarning] = useState<string | null>(null);
 
-  const isAiInterviewMode = (session?.interviewMode || '').toLowerCase().includes('ai');
-  const isEditorLocked = isFeatureEnabled('STRICT_LOGIC_GATE') && isAiInterviewMode && session?.state === 'DISCUSSION';
+  const { user } = useAuth();
+  const activeUsername = user?.username || 'candidate';
+  const [showExitFeedbackModal, setShowExitFeedbackModal] = useState<boolean>(false);
+
+  const isFullSimulation =
+    (session?.interviewMode || '').toLowerCase().includes('simulation') ||
+    (session?.interviewMode || '').toLowerCase().includes('full') ||
+    sessionStorage.getItem('kodexis_interview_mode') === 'simulation';
+  const isAiInterviewMode = !isFullSimulation && (session?.interviewMode || '').toLowerCase().includes('ai');
+  const isEditorLocked = !isFullSimulation && isFeatureEnabled('STRICT_LOGIC_GATE') && isAiInterviewMode && session?.state === 'DISCUSSION';
 
   // Trigger fullscreen prompt when candidate enters coding phase
   useEffect(() => {
@@ -1007,116 +1018,127 @@ const InterviewRoom: React.FC = () => {
       })
       .catch((err) => {
         console.warn('Failed to load interview room details from backend, booting offline session:', err);
-        const fallbackQuestion: Question = {
-          id: Number(id) || 11,
-          title: "Longest Subarray With Target Sum",
-          description: "Find the length of the longest subarray that sums to `k`.\n\n" +
-            "**Input Format:**\n" +
-            "First line: Target sum `k` (integer).\n" +
-            "Second line: Comma-separated array integers.\n\n" +
-            "**Output Format:**\n" +
-            "Single integer denoting the maximum length of contiguous subarray whose elements sum to `k`.\n\n" +
-            "**Example 1:**\n" +
-            "Input:\n15\n1,2,3,7,5\nOutput:\n3\nExplanation: Subarray [3, 7, 5] has sum 15 with length 3.\n\n" +
-            "**Example 2:**\n" +
-            "Input:\n3\n-1,2,3\nOutput:\n1\nExplanation: Subarray [3] has sum 3 with length 1.",
-          difficulty: "MEDIUM",
-          topic: "Arrays / Hashing",
-          expectedTimeComplexity: "O(n)",
-          expectedSpaceComplexity: "O(n)",
-          javaTemplate: `import java.util.*;
 
-public class Main {
-    public static int longestSubarray(int[] nums, int k) {
-        // TODO: Implement your solution here
-        return 0;
-    }
+        let chosenQuestion: Question | null = null;
+        let prefDifficulty = 'MEDIUM';
+        let prefLanguage = 'PYTHON';
+        let prefDuration = 45;
+        let prefMode = 'AI Interview';
 
-    public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
-        if (!sc.hasNextLine()) return;
-        int k = Integer.parseInt(sc.nextLine().trim());
-        if (!sc.hasNextLine()) return;
-        String[] parts = sc.nextLine().trim().split(",");
-        int[] nums = Arrays.stream(parts).mapToInt(Integer::parseInt).toArray();
-        System.out.println(longestSubarray(nums, k));
-    }
-}`,
-          pythonTemplate: `import sys
+        try {
+          const storedPref = sessionStorage.getItem('kodexis_offline_pref');
+          if (storedPref) {
+            const parsed = JSON.parse(storedPref);
+            if (parsed.difficulty) prefDifficulty = parsed.difficulty;
+            if (parsed.language) prefLanguage = parsed.language;
+            if (parsed.duration) prefDuration = Number(parsed.duration);
+            if (parsed.mode) prefMode = parsed.mode;
+            if (parsed.questionId) {
+              const matched = getQuestionById(Number(parsed.questionId));
+              if (matched) chosenQuestion = matched as unknown as Question;
+            }
+          }
+        } catch (e) {
+          console.warn('Error reading stored offline pref:', e);
+        }
 
-def longestSubarray(nums, k):
-    # TODO: Implement your solution here
-    pass
+        // If route id is a valid question id in questionBank, prefer it
+        if (!chosenQuestion && id && !isNaN(Number(id))) {
+          const qFromId = getQuestionById(Number(id));
+          if (qFromId) chosenQuestion = qFromId as unknown as Question;
+        }
 
-if __name__ == '__main__':
-    lines = sys.stdin.read().splitlines()
-    if len(lines) >= 2:
-        k = int(lines[0].strip())
-        nums = [int(x) for x in lines[1].strip().split(',') if x.strip()]
-        print(longestSubarray(nums, k))`,
-          javascriptTemplate: `const fs = require('fs');
+        // If still null, pick a random question based on preferred difficulty
+        if (!chosenQuestion) {
+          chosenQuestion = getRandomQuestion(prefDifficulty) as unknown as Question;
+        }
 
-function longestSubarray(nums, k) {
-    // TODO: Implement your solution here
-    return 0;
-}
-
-const input = fs.readFileSync(0, 'utf-8').trim().split('\\n');
-if (input.length >= 2) {
-    const k = parseInt(input[0].trim());
-    const nums = input[1].trim().split(',').map(Number);
-    console.log(longestSubarray(nums, k));
-}`,
-          cppTemplate: `// C++ template`,
-          cTemplate: `// C template`,
-          csharpTemplate: `// C# template`,
-          goTemplate: `// Go template`,
-          testCases: [
-            { id: 1, input: "15\n1,2,3,7,5", expectedOutput: "3", isHidden: false },
-            { id: 2, input: "3\n-1,2,3", expectedOutput: "1", isHidden: false },
-            { id: 3, input: "0\n1,-1,5,-2,3", expectedOutput: "2", isHidden: false },
-            { id: 4, input: "5\n5,1,2,3", expectedOutput: "1", isHidden: false },
-            { id: 5, input: "6\n1,2,3,0,0,6", expectedOutput: "5", isHidden: false },
-            { id: 6, input: "5\n1,1,1,1,1", expectedOutput: "5", isHidden: true },
-            { id: 7, input: "10\n1,2,3,4", expectedOutput: "4", isHidden: true },
-            { id: 8, input: "99\n1", expectedOutput: "0", isHidden: true },
-          ]
-        };
+        const isSim = (prefMode || '').toLowerCase().includes('simulation') || (prefMode || '').toLowerCase().includes('full');
 
         const offlineSession: Session = {
-          id: Number(id) || 1,
-          question: fallbackQuestion,
-          state: 'DISCUSSION',
-          language: 'PYTHON',
-          difficulty: 'MEDIUM',
-          durationMinutes: 45,
-          interviewMode: 'AI Interview',
+          id: chosenQuestion.id,
+          question: chosenQuestion,
+          state: isSim ? 'CODING' : 'DISCUSSION',
+          language: prefLanguage,
+          difficulty: chosenQuestion.difficulty || prefDifficulty,
+          durationMinutes: prefDuration,
+          interviewMode: prefMode,
           startedAt: new Date().toISOString()
         };
 
         setSession(offlineSession);
-        setLanguage('PYTHON');
-        setTimeRemaining(45 * 60);
+        setLanguage(prefLanguage);
+        setTimeRemaining(prefDuration * 60);
 
-        const template = cleanStarterCode(fallbackQuestion.pythonTemplate, 'PYTHON');
+        const langKey = prefLanguage.toLowerCase();
+        let starterCode = chosenQuestion.pythonTemplate;
+        if (langKey.includes('java') && !langKey.includes('script')) starterCode = chosenQuestion.javaTemplate;
+        else if (langKey.includes('script')) starterCode = chosenQuestion.javascriptTemplate;
+        else if (langKey.includes('c++') || langKey.includes('cpp')) starterCode = chosenQuestion.cppTemplate;
+
+        const template = cleanStarterCode(starterCode, prefLanguage);
         setOriginalCode(template);
-        const savedDraft = localStorage.getItem(`interview-code-${offlineSession.id}-PYTHON`);
+        const savedDraft = localStorage.getItem(`interview-code-${offlineSession.id}-${prefLanguage}`);
         if (savedDraft && !isLeakedSolution(savedDraft) && savedDraft !== template) {
           setCode(savedDraft);
         } else {
           setCode(template);
         }
 
+        const welcomeContent = isSim
+          ? `Welcome to your KODEXIS Full Simulation for **${chosenQuestion.title}**!\n\nIn this mode, the code editor is completely unlocked and accessible from the start. You have ${prefDuration} minutes to code, dry-run test cases, optimize Big-O complexity, and execute your solution.`
+          : `Welcome to your KODEXIS Technical Interview for **${chosenQuestion.title}**!\n\nI am your AI Interviewer. In this session, you must first explain and defend your conceptual algorithm in the chat (or via the **Fast Check** button).\n\n**To unlock the code editor, specify:**\n- Which data structure(s) you will use\n- How your algorithm handles edge cases\n- Expected Big-O time and space complexity\n\nOnce approved, the code editor unlocks automatically.`;
+
         setMessages([
           {
             id: 1,
             sender: 'AI',
-            content: `Welcome to your KODEXIS Technical Interview for **${fallbackQuestion.title}**!\n\nI am your AI Interviewer. In this session, you must first explain and defend your conceptual algorithm in the chat (or via the **Fast Check** button).\n\n**To unlock the code editor, specify:**\n- Which data structure(s) you will use\n- How prefix sums/lookups work\n- Expected Big-O time and space complexity\n\nOnce approved, the code editor unlocks automatically.`,
+            content: welcomeContent,
             timestamp: new Date().toISOString()
           }
         ]);
       });
   }, [id]);
+
+  const handleSwitchToRandomQuestion = () => {
+    const currentQId = session?.question?.id || 0;
+    const all = getAllQuestions();
+    const others = all.filter(q => q.id !== currentQId);
+    const newQ = (others[Math.floor(Math.random() * others.length)] || all[0]) as unknown as Question;
+
+    const isSim = (session?.interviewMode || '').toLowerCase().includes('simulation') || (session?.interviewMode || '').toLowerCase().includes('full');
+    const updatedSession: Session = {
+      ...session!,
+      id: newQ.id,
+      question: newQ,
+      state: isSim ? 'CODING' : 'DISCUSSION',
+      difficulty: newQ.difficulty
+    };
+    setSession(updatedSession);
+
+    const langKey = language.toLowerCase();
+    let starterCode = newQ.pythonTemplate;
+    if (langKey.includes('java') && !langKey.includes('script')) starterCode = newQ.javaTemplate;
+    else if (langKey.includes('script')) starterCode = newQ.javascriptTemplate;
+    else if (langKey.includes('c++') || langKey.includes('cpp')) starterCode = newQ.cppTemplate;
+    const template = cleanStarterCode(starterCode, language);
+    setOriginalCode(template);
+    setCode(template);
+    setTestResults([]);
+    setExecutionSummary(null);
+    setTerminalStatus('idle');
+    setTerminalOutput(`Switched to: ${newQ.title} (${newQ.difficulty} • ${newQ.topic})`);
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        sender: 'AI',
+        content: `Problem switched to **${newQ.title}** (${newQ.difficulty} • ${newQ.topic})!\n\n${newQ.description.slice(0, 300)}...`,
+        timestamp: new Date().toISOString()
+      }
+    ]);
+  };
 
   useEffect(() => {
     // Scroll Chat to bottom when new message arrives
@@ -1416,6 +1438,79 @@ if (input.length >= 2) {
       // 4b. Record Streak Progress
       recordStreakActivity(`Completed session for ${session?.question?.title || 'Technical Interview'}`);
 
+      // 4c. Update Candidate Telemetry in MySQL and Local Dashboard Cache
+      const uname = activeUsername || 'candidate';
+      const topic = session?.question?.topic || 'DSA';
+      const passedCount = testResults.filter(t => t.passed).length;
+      const totalCases = testResults.length || session?.question?.testCases?.length || 1;
+      const calcScore = computedAssessment.overallScore;
+      const newProfLevel = calcScore >= 85 ? 'EXPERT' : calcScore >= 70 ? 'STRONG' : calcScore >= 50 ? 'INTERMEDIATE' : 'DEVELOPING';
+
+      // Record to MySQL audit & candidate log table
+      mysqlService.recordCandidateLog(
+        uname,
+        'INTERVIEW_AUTOPSY',
+        'SESSION_COMPLETED',
+        `Completed interview on ${session?.question?.title} with score ${calcScore}/100.`,
+        {
+          sessionId: id || sessionPayload.id,
+          topic,
+          score: calcScore,
+          tabSwitches: tabSwitchCount,
+          passedCases: `${passedCount}/${totalCases}`,
+          language
+        }
+      ).catch(() => {});
+
+      // Record live skill evaluation into MySQL table candidate_skill_telemetry
+      mysqlService.recordSkillEvaluation({
+        username: uname,
+        topic,
+        proficiencyScore: calcScore,
+        proficiencyLevel: newProfLevel,
+        problemsAttempted: 1,
+        problemsPassed: passedCount === totalCases ? 1 : 0,
+        accuracyPercentage: Math.round((passedCount / totalCases) * 100),
+        avgExecutionTimeMs: executionSummary?.executionTimeMs || 38,
+        aiBehaviorScore: Math.max(40, 100 - (tabSwitchCount * 15)),
+        identifiedStrengths: passedCount > 0 ? `Proficient with ${topic} logic, clean syntax` : 'Active algorithmic attempt',
+        identifiedWeaknesses: tabSwitchCount > 0 ? `${tabSwitchCount} tab switch proctor deductions` : 'Verify edge-case bounds',
+        aiBehaviorNotes: `Coding style: ${code.split('\n').length > 35 ? 'Extensive structure' : 'Idiomatic & concise'}, Proctor status: ${tabSwitchCount === 0 ? 'Flawless' : 'Flagged'}`
+      }).catch(() => {});
+
+      // Update candidate's personalized dashboard cache
+      try {
+        const dashKey = `kodexis_candidate_dashboard_${uname.toLowerCase()}`;
+        const existingDashStr = localStorage.getItem(dashKey);
+        if (existingDashStr) {
+          const dash = JSON.parse(existingDashStr);
+          if (!dash.skills) dash.skills = {};
+          if (!dash.numericSkills) dash.numericSkills = {};
+          dash.skills[topic] = newProfLevel;
+          dash.numericSkills[topic] = calcScore;
+          
+          const numScores = Object.values(dash.numericSkills) as number[];
+          if (numScores.length > 0) {
+            dash.readinessScore = Math.round(numScores.reduce((a, b) => a + b, 0) / numScores.length);
+          }
+
+          if (!Array.isArray(dash.history)) dash.history = [];
+          dash.history.unshift({
+            sessionId: Number(id) || Date.now(),
+            topic,
+            title: session?.question?.title || 'Coding Challenge',
+            difficulty: session?.question?.difficulty || 'MEDIUM',
+            language,
+            score: calcScore,
+            date: new Date().toISOString()
+          });
+
+          localStorage.setItem(dashKey, JSON.stringify(dash));
+        }
+      } catch (e) {
+        console.warn('Error updating candidate dashboard cache:', e);
+      }
+
       // 5. Submit to backend if available
       await withFastTimeout(
         axios.post(`/api/interviews/${id}/submit`, { code, language }),
@@ -1638,14 +1733,34 @@ if (input.length >= 2) {
             <FileCode size={11} />
             <span>Description: {isDescriptionOpen ? 'ON' : 'OFF'}</span>
           </button>
+
+          {/* Next Random Problem Button */}
+          <button
+            onClick={handleSwitchToRandomQuestion}
+            className="px-2.5 py-1 rounded border text-[10px] font-mono font-bold transition flex items-center gap-1.5 bg-zinc-800 border-border text-zinc-300 hover:text-white hover:border-brand-cyan/40"
+            title="Switch problem dynamically from multi-topic Question Bank"
+          >
+            <RotateCcw size={11} className="text-brand-cyan" />
+            <span className="hidden md:inline">Next Problem</span>
+          </button>
         </div>
 
-        {/* Stopwatch */}
-        <div className="flex items-center space-x-4">
+        {/* Stopwatch & Action Buttons */}
+        <div className="flex items-center space-x-3">
           <div className="flex items-center space-x-1.5 font-mono text-xs bg-zinc-900 border border-border px-3 py-1 rounded">
             <Clock size={14} className="text-brand-cyan" />
             <span className="text-zinc-300 font-bold">{formatTime(timeRemaining)}</span>
           </div>
+
+          {/* Early Exit & Feedback Button */}
+          <button
+            onClick={() => setShowExitFeedbackModal(true)}
+            className="flex items-center space-x-1.5 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 rounded text-xs font-mono font-bold transition shadow-[0_0_10px_rgba(244,63,94,0.15)]"
+            title="Conclude or exit with live autopsy feedback report"
+          >
+            <LogOut size={13} />
+            <span className="hidden sm:inline">Exit & Feedback</span>
+          </button>
 
           <button
             onClick={handleSubmitCode}
@@ -2622,6 +2737,126 @@ if (input.length >= 2) {
         onClose={() => setIsSwitcherOpen(false)}
         showLayoutOptions={true}
       />
+
+      {/* EXIT & EARLY FEEDBACK AUTOPSY MODAL */}
+      {showExitFeedbackModal && (
+        <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-zinc-950 border border-border/80 rounded-2xl max-w-xl w-full p-6 space-y-5 shadow-[0_0_50px_rgba(0,0,0,0.8)] animate-fade-in font-sans">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-border/60 pb-3">
+              <div className="flex items-center space-x-2.5">
+                <div className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-brand-cyan">
+                  <Brain size={18} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold font-mono text-zinc-100 uppercase tracking-wider">
+                    Interview Session Exit & Feedback
+                  </h3>
+                  <p className="text-xs text-zinc-400">
+                    Live candidate telemetry for <strong className="text-zinc-200">{activeUsername}</strong>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowExitFeedbackModal(false)}
+                className="p-1 rounded text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900 transition"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Problem & Telemetry Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center font-mono">
+              <div className="p-3 rounded-xl bg-zinc-900/70 border border-border/50">
+                <span className="text-[10px] text-zinc-500 uppercase block mb-1">Problem</span>
+                <span className="text-xs font-bold text-zinc-200 truncate block" title={session.question.title}>
+                  {session.question.title}
+                </span>
+              </div>
+              <div className="p-3 rounded-xl bg-zinc-900/70 border border-border/50">
+                <span className="text-[10px] text-zinc-500 uppercase block mb-1">Tests Passed</span>
+                <span className="text-xs font-bold text-emerald-400">
+                  {testResults.filter(t => t.passed).length} / {testResults.length || session.question.testCases?.length || 0}
+                </span>
+              </div>
+              <div className="p-3 rounded-xl bg-zinc-900/70 border border-border/50">
+                <span className="text-[10px] text-zinc-500 uppercase block mb-1">Lines of Code</span>
+                <span className="text-xs font-bold text-cyan-300">
+                  {code.trim().split('\n').length} lines
+                </span>
+              </div>
+              <div className="p-3 rounded-xl bg-zinc-900/70 border border-border/50">
+                <span className="text-[10px] text-zinc-500 uppercase block mb-1">Proctor Status</span>
+                <span className={`text-xs font-bold ${tabSwitchCount === 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                  {tabSwitchCount === 0 ? 'Clean (0)' : `${tabSwitchCount} Warnings`}
+                </span>
+              </div>
+            </div>
+
+            {/* AI Behavioral & Coding Style Feedback Preview */}
+            <div className="p-4 rounded-xl bg-zinc-900/50 border border-cyan-500/20 space-y-2">
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="text-cyan-400 font-bold flex items-center gap-1.5">
+                  <Sparkles size={12} /> Live AI Evaluation Preview
+                </span>
+                <span className="text-[10px] text-zinc-400">
+                  Topic: {session.question.topic || 'DSA'}
+                </span>
+              </div>
+              <p className="text-xs text-zinc-300 leading-relaxed font-sans">
+                {testResults.some(t => t.passed)
+                  ? `Solid performance observed on ${session.question.title}. Algorithmic structure demonstrates clear comprehension of ${session.question.topic}. Deductions: ${tabSwitchCount * 5} pts.`
+                  : `Draft contains active logic. Run tests or submit to finalize assessment and sync telemetry to your MySQL skill profile.`}
+              </p>
+              <div className="flex flex-wrap gap-2 pt-1 text-[10px] font-mono">
+                <span className="px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-300">
+                  Style: {code.length > 300 ? 'Structured' : 'Concise'}
+                </span>
+                <span className="px-2 py-0.5 rounded bg-purple-500/10 border border-purple-500/30 text-purple-300">
+                  Complexity: {session.question.expectedTimeComplexity || 'O(N)'}
+                </span>
+                <span className="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300">
+                  Mode: {session.interviewMode || 'OA'}
+                </span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowExitFeedbackModal(false);
+                  handleSubmitCode();
+                }}
+                disabled={isSubmitLoading}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-brand-violet hover:bg-brand-violet/90 text-white text-xs font-mono font-bold transition flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(139,92,246,0.3)]"
+              >
+                <Award size={14} />
+                <span>Submit & View Autopsy Report</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowExitFeedbackModal(false);
+                  navigate('/dashboard');
+                }}
+                className="py-2.5 px-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-border text-zinc-300 hover:text-white text-xs font-mono font-bold transition flex items-center justify-center gap-1.5"
+              >
+                <LogOut size={13} />
+                <span>Exit to Dashboard</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowExitFeedbackModal(false)}
+                className="py-2.5 px-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-border text-zinc-500 hover:text-zinc-300 text-xs font-mono transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

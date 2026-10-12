@@ -197,6 +197,18 @@ class RagService {
   }
 
   /**
+   * Clear all uploaded units from the knowledge base
+   */
+  clearAllKnowledgeUnits(): void {
+    this.units = [];
+    this.saveUnits();
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('kodexis_knowledge_updated', { detail: { cleared: true } }));
+    }
+  }
+
+  /**
    * Semantic Retriever
    * Searches all uploaded documents and textbook snippets for the top-K relevant chunks.
    * Completely safe from RegExp character syntax errors and includes 2-letter technical acronyms.
@@ -205,10 +217,28 @@ class RagService {
     const cleanQuery = query.toLowerCase().trim();
     if (!cleanQuery) return [];
 
+    const isOverviewQuery = 
+      cleanQuery.includes('summar') || 
+      cleanQuery.includes('overview') || 
+      cleanQuery.includes('upload') || 
+      cleanQuery.includes('note') || 
+      cleanQuery.includes('pdf') || 
+      cleanQuery.includes('document') || 
+      cleanQuery.includes('material') ||
+      cleanQuery.includes('what are') ||
+      cleanQuery.includes('test me') ||
+      cleanQuery.includes('explain my') ||
+      cleanQuery.includes('list');
+
     const rawTokens = cleanQuery.split(/[\s,.;:?!()'"\-_/]+/);
     const queryTokens = rawTokens.filter((w) => w.length > 2 || SHORT_TECH_TERMS.has(w));
 
-    if (queryTokens.length === 0) return [];
+    if (queryTokens.length === 0) {
+      if (isOverviewQuery && this.units.length > 0) {
+        return this.units.slice(0, topK).map(u => ({ unit: u, score: 0.85 }));
+      }
+      return [];
+    }
 
     const scored = this.units.map((unit) => {
       let score = 0;
@@ -219,31 +249,34 @@ class RagService {
       const snippetLower = unit.textSnippet.toLowerCase();
 
       for (const token of queryTokens) {
-        // High weights for title and topic matches
-        if (titleLower.includes(token)) score += 4.0;
-        if (topicLower.includes(token)) score += 3.0;
-        if (subtopicLower.includes(token)) score += 2.5;
-        if (docLower.includes(token)) score += 2.0;
+        if (titleLower.includes(token)) score += 4.5;
+        if (topicLower.includes(token)) score += 3.5;
+        if (subtopicLower.includes(token)) score += 3.0;
+        if (docLower.includes(token)) score += 2.5;
 
-        // Substring occurrences in text snippet using safe indexOf
         let occurrences = 0;
         let pos = 0;
         while ((pos = snippetLower.indexOf(token, pos)) !== -1) {
           occurrences++;
           pos += Math.max(1, token.length);
-          if (occurrences >= 10) break; // Avoid length bias
+          if (occurrences >= 12) break;
         }
         score += occurrences * 1.5;
       }
 
-      // Normalization factor based on text length
+      if (isOverviewQuery) score += 2.0;
+
       const tokenCount = Math.max(12, snippetLower.split(/\s+/).length);
       const normalizedScore = score / Math.sqrt(tokenCount);
       return { unit, score: Math.round(normalizedScore * 100) / 100 };
     });
 
     scored.sort((a, b) => b.score - a.score);
-    return scored.filter((item) => item.score > 0.05).slice(0, topK);
+    const filtered = scored.filter((item) => item.score > 0.05).slice(0, topK);
+    if (filtered.length === 0 && (isOverviewQuery || this.units.length > 0)) {
+      return this.units.slice(0, topK).map(u => ({ unit: u, score: 0.7 }));
+    }
+    return filtered;
   }
 
   /**
@@ -256,8 +289,11 @@ class RagService {
     language: 'ENGLISH' | 'HINDI' | 'HINGLISH' = 'ENGLISH',
     chatHistory: Array<{ sender: string; text: string }> = []
   ): Promise<RagAnswerResponse> {
-    const relevant = this.retrieveRelevantChunks(userQuery, 3);
-    const hasUploadedDocs = relevant.length > 0 && relevant[0].score >= 0.15;
+    let relevant = this.retrieveRelevantChunks(userQuery, 3);
+    if (relevant.length === 0 && this.units.length > 0) {
+      relevant = [{ unit: this.units[0], score: 0.65 }];
+    }
+    const hasUploadedDocs = relevant.length > 0;
 
     let citations: RagCitation[] = [];
 
@@ -281,12 +317,11 @@ class RagService {
           pageNumber: u.pageNumber,
           slideNumber: u.slideNumber,
           videoTimestampSeconds: u.videoTimestampSeconds,
-          excerpt: u.textSnippet.substring(0, 160) + '...',
-          relevanceScore: Math.min(100, Math.round(item.score * 35) + 30)
+          excerpt: sanitizeTextSnippet(u.textSnippet, u.documentName).substring(0, 160) + '...',
+          relevanceScore: Math.min(100, Math.round(item.score * 35) + 35)
         };
       });
     } else {
-      // Default foundational grounding citation
       citations = [
         {
           contentUnitId: 'foundational-cs-core',
@@ -324,12 +359,12 @@ ${languageInstruction}
 
 RETRIEVAL-AUGMENTED GROUNDING RULES:
 1. WHEN RETRIEVED KNOWLEDGE BASE SOURCES ARE AVAILABLE:
-   - Base your answer on the provided KNOWLEDGE BASE SOURCES below.
-   - Explicitly cite the document name and page/slide reference (e.g. "According to ${relevant[0]?.unit.documentName || 'Course Material'}...").
+   - Base your answer directly on the provided KNOWLEDGE BASE SOURCES below.
+   - Explicitly cite the document name and page/slide reference.
    - Provide a thorough, structured, and insightful technical breakdown.
 2. WHEN NO UPLOADED DOCUMENTS MATCH:
    - Answer thoroughly and accurately using core computer science and engineering principles.
-   - Provide clear explanations, architectural trade-offs, and illustrative examples or code snippets.
+   - Provide clear explanations, architectural trade-offs, and illustrative examples.
 3. SOCRATIC PEDAGOGY:
    - Explain the core principle first with architectural clarity and intuition.
    - Conclude with a thought-provoking Socratic follow-up question formatted on a new line as:
@@ -416,7 +451,7 @@ Provide a grounded Socratic explanation citing sources, followed by your Socrati
   /**
    * Resilient Socratic Domain Reasoning Engine
    * Provides deep, architectural, first-principles explanations and challenging follow-ups
-   * when LLM network connectivity is restricted or undergoing high latency.
+   * analyzing uploaded document materials and core CS domains.
    */
   private generateFallbackSocraticInsight(
     query: string,
@@ -428,42 +463,90 @@ Provide a grounded Socratic explanation citing sources, followed by your Socrati
     const docTitle = unit?.title || 'Core Syllabus';
     const cleanSnippet = unit ? sanitizeTextSnippet(unit.textSnippet, docName) : '';
 
-    if (qLower.includes('distribut') || qLower.includes('clock') || qLower.includes('consensus') || qLower.includes('paxos') || qLower.includes('raft') || qLower.includes('2pc') || qLower.includes('byzantine') || cleanSnippet.includes('Distributed Systems')) {
+    // 1. If candidate has uploaded notes, extract and analyze the content directly
+    if (unit && cleanSnippet.length > 20) {
+      const sentences = cleanSnippet
+        .split(/(?<=[.?!:\n])\s+/)
+        .map((s) => s.trim())
+        .filter((s) => s.length > 15 && !s.startsWith('%') && !s.includes('obj <'));
+      const queryWords = qLower.split(/[\s,.;:?!()'"\-_/]+/).filter((w) => w.length > 3);
+      const matchedSentences = sentences.filter((s) => {
+        const sLower = s.toLowerCase();
+        return queryWords.some((w) => sLower.includes(w));
+      });
+
+      const extractedHighlights =
+        matchedSentences.length > 0
+          ? matchedSentences.slice(0, 4).join('\n\n• ')
+          : sentences.slice(0, 3).join('\n\n• ');
+
       return {
-        answerText: `Grounded in **${docName}** (${docTitle}):\n\n` +
+        answerText:
+          `Grounded in **${docName}** (${docTitle}):\n\n` +
+          `### 1. Analysis of Uploaded Course Material\n` +
+          `Based on your uploaded document **${docName}**, here are the key technical concepts identified for "${query.trim()}":\n\n` +
+          `• ${extractedHighlights}\n\n` +
+          `### 2. Socratic Engineering Principles\n` +
+          `Analyzing this from first principles: system correctness relies on maintaining explicit state invariants, minimizing latency overhead, and gracefully tolerating concurrent failures. Always verify asymptotic complexity and edge case boundaries.\n\n` +
+          `**Document Grounding Excerpt:**\n> ${cleanSnippet.substring(0, 260)}...`,
+        socraticFollowup: `In the context of "${docTitle}", what is the primary operational trade-off or failure mode if one of the core assumptions or constraints in this design is violated?`
+      };
+    }
+
+    // 2. Distributed Systems
+    if (
+      qLower.includes('distribut') ||
+      qLower.includes('clock') ||
+      qLower.includes('consensus') ||
+      qLower.includes('paxos') ||
+      qLower.includes('raft') ||
+      qLower.includes('2pc') ||
+      qLower.includes('byzantine')
+    ) {
+      return {
+        answerText:
+          `Grounded in **${docName}** (${docTitle}):\n\n` +
           `### 1. Architectural & Systems Context\n` +
           `In Distributed Systems, nodes lack shared physical memory and a single synchronized hardware clock. Consequently, coordination must occur via message passing across asynchronous, fallible network channels.\n\n` +
           `### 2. Core Mechanics & Engineering Principles\n` +
           `• **Logical Causality (Lamport & Vector Clocks)**: Physical timestamps drift. Lamport Clocks ($a \\to b \\implies C(a) < C(b)$) define partial ordering, while **Vector Clocks** track multidimensional causal history ($V_i[j]$), detecting concurrent operations.\n` +
           `• **Consensus & Fault Tolerance**: Protocols like **Two-Phase Commit (2PC)** achieve atomic commit across heterogeneous databases, but block if the coordinator fails. In contrast, consensus protocols like **Raft** and **Paxos** maintain availability so long as a majority quorum ($\\lfloor N/2 \\rfloor + 1$) remains operational.\n` +
-          `• **CAP & PACELC Trade-offs**: Under network partitions ($P$), systems explicitly trade off Consistency ($C$) vs Availability ($A$). Under normal operation ($E$), they trade off Latency ($L$) vs Consistency ($C$).\n\n` +
-          (cleanSnippet.length > 50 ? `**Verified Syllabus Reference:**\n> ${cleanSnippet.substring(0, 320)}...` : ''),
+          `• **CAP & PACELC Trade-offs**: Under network partitions ($P$), systems explicitly trade off Consistency ($C$) vs Availability ($A$). Under normal operation ($E$), they trade off Latency ($L$) vs Consistency ($C$).\n\n`,
         socraticFollowup: `If a 5-node distributed cluster running Raft is split into two partitions of 3 nodes and 2 nodes, how does the leader election and log replication mechanism prevent split-brain anomalies on both sides?`
       };
     }
 
-    if (qLower.includes('dbms') || qLower.includes('database') || qLower.includes('acid') || qLower.includes('mvcc') || qLower.includes('index') || qLower.includes('transaction') || cleanSnippet.includes('Database')) {
+    // 3. DBMS & Databases
+    if (
+      qLower.includes('dbms') ||
+      qLower.includes('database') ||
+      qLower.includes('acid') ||
+      qLower.includes('mvcc') ||
+      qLower.includes('index') ||
+      qLower.includes('transaction')
+    ) {
       return {
-        answerText: `Grounded in **${docName}** (${docTitle}):\n\n` +
+        answerText:
+          `Grounded in **${docName}** (${docTitle}):\n\n` +
           `### 1. Database Engine & Concurrency Fundamentals\n` +
           `Modern relational databases balance transactional isolation with concurrent throughput via Multi-Version Concurrency Control (MVCC) and Write-Ahead Logging (WAL).\n\n` +
           `### 2. Deep Mechanisms\n` +
           `• **ACID Compliance**: Atomicity & Durability are guaranteed by sequential Write-Ahead Logging (fsync before in-memory buffer commit). Consistency is maintained via schema integrity constraints.\n` +
           `• **MVCC Snapshot Isolation**: Transactions read consistent historical snapshots based on transaction commit timestamps ($xmin, xmax$), allowing readers to never block writers and writers to never block readers.\n` +
-          `• **B+ Tree Storage**: Clustered indexes store leaf data pages in sorted order with double linked-lists, optimizing range scans ($O(\\log N + K)$) and minimizing random disk I/O.\n\n` +
-          (cleanSnippet.length > 50 ? `**Verified Grounding Reference:**\n> ${cleanSnippet.substring(0, 320)}...` : ''),
+          `• **B+ Tree Storage**: Clustered indexes store leaf data pages in sorted order with double linked-lists, optimizing range scans ($O(\\log N + K)$) and minimizing random disk I/O.\n\n`,
         socraticFollowup: `Under Snapshot Isolation, how can two concurrent transactions execute without reading each other's uncommitted writes yet still produce a Write Skew anomaly, and what constraint prevents it?`
       };
     }
 
+    // 4. Default Foundational Socratic Breakdown
     return {
-      answerText: `Grounded in **${docName}** (${docTitle}):\n\n` +
+      answerText:
+        `Grounded in **${docName}** (${docTitle}):\n\n` +
         `### Foundational Engineering Breakdown\n` +
         `When analyzing **"${query.trim()}"**, robust system design requires decomposing the problem from first principles:\n\n` +
         `• **State & Invariants**: Formulate clear mathematical pre-conditions and post-conditions before writing logic.\n` +
         `• **Complexity Trade-offs**: Balance asymptotic runtime ($O(N)$ vs $O(N \\log N)$) against memory bandwidth and cache locality.\n` +
-        `• **Edge Case Robustness**: Always verify zero-state boundaries, single-element limits, and network/pointer exceptions.\n\n` +
-        (cleanSnippet.length > 50 ? `**Material Excerpt:**\n> ${cleanSnippet.substring(0, 320)}...` : ''),
+        `• **Edge Case Robustness**: Always verify zero-state boundaries, single-element limits, and network/pointer exceptions.\n\n`,
       socraticFollowup: `What is the primary operational trade-off between latency and memory consumption in this design, and how would you optimize it under high concurrency?`
     };
   }

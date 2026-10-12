@@ -54,7 +54,8 @@ import {
   AlertTriangle,
   Calculator,
   Hash,
-  UserCheck
+  UserCheck,
+  LogOut
 } from 'lucide-react';
 import {
   mongoService,
@@ -1434,6 +1435,20 @@ export const StarkInterviewPage: React.FC = () => {
               }`}
             >
               {isMutedTts ? <VolumeX size={15} /> : <Volume2 size={15} />}
+            </button>
+
+            {/* EARLY QUIT & FEEDBACK BUTTON */}
+            <button
+              onClick={() => {
+                if (window.confirm("Conclude interview now and generate comprehensive AI evaluation feedback?")) {
+                  handleTimeExpiredWrapup();
+                }
+              }}
+              className="px-3 py-1.5 rounded-xl border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/25 text-rose-300 hover:text-white font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-[0_0_12px_rgba(244,63,94,0.2)]"
+              title="End Interview & Get AI Autopsy Report Now"
+            >
+              <LogOut size={13} />
+              <span className="hidden sm:inline">End & Feedback</span>
             </button>
           </div>
         </header>

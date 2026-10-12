@@ -27,7 +27,8 @@ import {
   AlertTriangle,
   Brain,
   LayoutGrid,
-  HelpCircle
+  HelpCircle,
+  Trash2
 } from 'lucide-react';
 
 interface ChatMessage {
@@ -259,6 +260,29 @@ export const MultimodalSocraticHub: React.FC = () => {
     handleSendQuery(query);
   };
 
+  const handleDeleteUnit = (unitId: string) => {
+    if (window.confirm("Are you sure you want to delete this note from your Knowledge Base?")) {
+      ragService.deleteKnowledgeUnit(unitId);
+      const remaining = ragService.getKnowledgeUnits();
+      setUnits(remaining);
+      if (activeUnit?.id === unitId) {
+        setActiveUnit(remaining.length > 0 ? remaining[0] : null);
+      }
+      setIngestSuccessMsg("Note deleted successfully.");
+      setTimeout(() => setIngestSuccessMsg(""), 3000);
+    }
+  };
+
+  const handleClearAllNotes = () => {
+    if (window.confirm("Are you sure you want to delete all uploaded notes and materials? This action cannot be undone.")) {
+      ragService.clearAllKnowledgeUnits();
+      setUnits([]);
+      setActiveUnit(null);
+      setIngestSuccessMsg("All notes cleared successfully.");
+      setTimeout(() => setIngestSuccessMsg(""), 3000);
+    }
+  };
+
   // File Upload Ingestion
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -467,6 +491,17 @@ export const MultimodalSocraticHub: React.FC = () => {
             </button>
           </div>
 
+          {units.length > 0 && (
+            <button
+              onClick={handleClearAllNotes}
+              className="px-3 py-2 rounded-xl border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 text-red-300 font-mono text-xs font-bold transition flex items-center gap-1.5"
+              title="Clear all uploaded notes"
+            >
+              <Trash2 size={13} />
+              <span>Clear All Notes</span>
+            </button>
+          )}
+
           {/* Upload Button */}
           <button
             onClick={() => setIsIngestModalOpen(true)}
@@ -613,18 +648,31 @@ export const MultimodalSocraticHub: React.FC = () => {
                             {u.slideNumber ? `[Slide ${u.slideNumber}]` : u.pageNumber ? `[Page ${u.pageNumber}]` : u.videoTimestampSeconds ? `[${Math.floor(u.videoTimestampSeconds / 60)}m]` : ''}
                           </p>
                         </div>
-
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleAskAboutUnit(u);
-                          }}
-                          className="shrink-0 px-2 py-1 rounded-lg border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 font-mono text-[9px] hover:bg-cyan-500/20 transition flex items-center gap-1"
-                          title="Ask Socratic AI about this knowledge unit"
-                        >
-                          <Sparkles size={11} />
-                          <span>Ask AI</span>
-                        </button>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteUnit(u.id);
+                            }}
+                            className="p-1 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 transition"
+                            title="Delete this note from Knowledge Base"
+                          >
+                            <Trash2 size={11} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAskAboutUnit(u);
+                            }}
+                            className="px-2 py-1 rounded-lg border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 font-mono text-[9px] hover:bg-cyan-500/20 transition flex items-center gap-1"
+                            title="Ask Socratic AI about this knowledge unit"
+                          >
+                            <Sparkles size={11} />
+                            <span>Ask AI</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -649,13 +697,25 @@ export const MultimodalSocraticHub: React.FC = () => {
                     </p>
                   </div>
 
-                  <button
-                    onClick={() => handleAskAboutUnit(activeUnit)}
-                    className="px-3 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-mono text-xs font-bold transition flex items-center gap-1 shadow-md shrink-0"
-                  >
-                    <Brain size={13} />
-                    <span>Query Socratic AI</span>
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteUnit(activeUnit.id)}
+                      className="px-2.5 py-1.5 rounded-xl border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-mono text-xs font-semibold transition flex items-center gap-1"
+                      title="Delete this note"
+                    >
+                      <Trash2 size={13} />
+                      <span>Delete Note</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAskAboutUnit(activeUnit)}
+                      className="px-3 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-mono text-xs font-bold transition flex items-center gap-1 shadow-md"
+                    >
+                      <Brain size={13} />
+                      <span>Query Socratic AI</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Excerpt */}

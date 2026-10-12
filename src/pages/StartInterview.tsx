@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { withFastTimeout } from '../lib/api';
+import { getRandomQuestion } from '../lib/questionBank';
 import { Play, Settings, BrainCircuit, Lock, Unlock, Sparkles, Code2, Radio, ArrowUpRight } from 'lucide-react';
 
 const StartInterview: React.FC = () => {
@@ -14,6 +15,7 @@ const StartInterview: React.FC = () => {
 
   const handleStart = async () => {
     setLoading(true);
+    const randomQ = getRandomQuestion(difficulty);
     try {
       const response = await withFastTimeout(
         axios.post('/api/interviews', {
@@ -27,10 +29,13 @@ const StartInterview: React.FC = () => {
       );
       const session = response.data;
       navigate(`/interview/${session.id}`);
-    } catch (error) {
-      console.warn('Backend server offline or high latency. Launching Demo Interview Room instantly...');
-      sessionStorage.setItem('kodexis_offline_pref', JSON.stringify({ difficulty, language, duration, mode }));
-      navigate('/interview/1');
+    } catch {
+      console.warn('Backend server offline or high latency. Launching dynamic interview session...');
+      sessionStorage.setItem(
+        'kodexis_offline_pref',
+        JSON.stringify({ difficulty, language, duration, mode, questionId: randomQ.id })
+      );
+      navigate(`/interview/${randomQ.id}`);
     } finally {
       setLoading(false);
     }
