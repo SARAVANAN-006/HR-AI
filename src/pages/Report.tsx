@@ -6,6 +6,7 @@ import { ArrowLeft, Calendar, CheckCircle2, ShieldAlert, GitCommit, ExternalLink
 import RadarChart from '../components/RadarChart';
 import CodeQualityInspector from '../components/CodeQualityInspector';
 import { getStoredAssessment, getStoredSession, calculateLegitimateAssessment, saveLegitimateAssessment } from '../lib/evaluationEngine';
+import { mongoService } from '../lib/mongoService';
 import { useTheme } from '../context/ThemeContext';
 import { UiSwitcherModal } from '../components/UiSwitcherModal';
 import { StreakBadge } from '../components/StreakBadge';
@@ -59,119 +60,132 @@ const Report: React.FC = () => {
   const [isStreakModalOpen, setIsStreakModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
-    // 1. Instant zero-latency hydration from static localStorage storage
-    const storedAssessment = id ? getStoredAssessment(id) : null;
-    const storedSession = id ? getStoredSession(id) : null;
+    async function loadReportData() {
+      if (!id) return;
 
-    if (storedAssessment && storedSession) {
-      setSession(storedSession);
-      setAssessment(storedAssessment);
+      // 1. Primary: Direct zero-latency fetch from MongoDB Cluster
       try {
-        setTelemetry(JSON.parse(storedSession.telemetryLog || '[]'));
+        const mongoData = await mongoService.getAssessment(id);
+        if (mongoData?.assessment && mongoData?.session) {
+          setSession(mongoData.session);
+          setAssessment(mongoData.assessment);
+          try {
+            setTelemetry(JSON.parse(mongoData.session.telemetryLog || '[]'));
+          } catch {
+            setTelemetry([]);
+          }
+          setLoading(false);
+          return;
+        }
       } catch (e) {
-        setTelemetry([]);
+        console.warn('MongoDB assessment fetch fallback:', e);
       }
-      setLoading(false);
-      return;
-    }
 
-    // 2. Otherwise query backend with fast latency guard
-    withFastTimeout(
-      Promise.all([
-        axios.get(`/api/interviews/${id}`),
-        axios.get(`/api/interviews/${id}/assessment`)
-      ]),
-      2500,
-      'Report assessment load'
-    )
-      .then(([sRes, aRes]) => {
-        setSession(sRes.data);
-        setAssessment(aRes.data);
+      // 2. Secondary: Query backend REST endpoints
+      try {
+        const [sRes, aRes] = await withFastTimeout(
+          Promise.all([
+            axios.get(`/api/interviews/${id}`),
+            axios.get(`/api/interviews/${id}/assessment`)
+          ]),
+          2500,
+          'Report assessment load'
+        );
 
-        // Parse telemetry
+        if (sRes.data && aRes.data) {
+          setSession(sRes.data);
+          setAssessment(aRes.data);
+          try {
+            setTelemetry(JSON.parse(sRes.data.telemetryLog || '[]'));
+          } catch {
+            setTelemetry([]);
+          }
+          saveLegitimateAssessment(id, aRes.data, sRes.data);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // Fall through to stored cache or calculation
+      }
+
+      // 3. Fallback to statically stored evaluation in cache
+      const storedAssessment = getStoredAssessment(id);
+      const storedSession = getStoredSession(id);
+      if (storedAssessment && storedSession) {
+        setSession(storedSession);
+        setAssessment(storedAssessment);
         try {
-          const logs = JSON.parse(sRes.data.telemetryLog);
-          setTelemetry(logs);
-        } catch (e) {
+          setTelemetry(JSON.parse(storedSession.telemetryLog || '[]'));
+        } catch {
           setTelemetry([]);
         }
-
-        // Cache permanently in localStorage so it remains static
-        if (id) {
-          saveLegitimateAssessment(id, aRes.data, sRes.data);
-        }
         setLoading(false);
-      })
-      .catch(() => {
-        console.warn('Backend offline or un-evaluated. Computing and persisting legitimate KODEXIS assessment...');
-        const savedFinalCode = id ? (
-          localStorage.getItem(`interview-final-${id}`) ||
-          localStorage.getItem(`interview-code-${id}-PYTHON`) ||
-          localStorage.getItem(`interview-code-${id}-JAVA`) ||
-          localStorage.getItem(`interview-code-${id}-JAVASCRIPT`)
-        ) : null;
+        return;
+      }
 
-        const tabSwitchesStr = id ? (
-          localStorage.getItem(`interview-tab-switches-${id}`) ||
-          sessionStorage.getItem(`interview-tab-switches-${id}`)
-        ) : null;
-        const tabSwitches = tabSwitchesStr ? parseInt(tabSwitchesStr, 10) : 0;
+      // 4. Compute legitimate evaluation from actual recorded code without dummy mock strings
+      const savedFinalCode = (
+        localStorage.getItem(`interview-final-${id}`) ||
+        localStorage.getItem(`interview-code-${id}-PYTHON`) ||
+        localStorage.getItem(`interview-code-${id}-JAVA`) ||
+        localStorage.getItem(`interview-code-${id}-JAVASCRIPT`) ||
+        ""
+      );
 
-        const defaultCode = savedFinalCode || "def longestSubarray(nums, k):\n    m, s, mx = {0: -1}, 0, 0\n    for i, x in enumerate(nums):\n        s += x\n        if s - k in m:\n            mx = max(mx, i - m[s - k])\n        if s not in m:\n            m[s] = i\n    return mx";
+      const tabSwitchesStr = (
+        localStorage.getItem(`interview-tab-switches-${id}`) ||
+        sessionStorage.getItem(`interview-tab-switches-${id}`) ||
+        "0"
+      );
+      const tabSwitches = parseInt(tabSwitchesStr, 10) || 0;
 
-        const questionInfo = {
-          title: "Longest Subarray With Target Sum",
-          topic: "Arrays / Hashing",
-          difficulty: "MEDIUM",
-          expectedTimeComplexity: "O(n)",
-          expectedSpaceComplexity: "O(n)"
-        };
+      const questionInfo = {
+        title: "Technical Interview Problem",
+        topic: "Data Structures & Algorithms",
+        difficulty: "MEDIUM",
+        expectedTimeComplexity: "O(n)",
+        expectedSpaceComplexity: "O(n)"
+      };
 
-        // Deterministically and legitimately compute assessment based on actual code and proctoring
-        const legitimateAssessment = calculateLegitimateAssessment({
-          sessionId: id || 1,
-          code: defaultCode,
-          language: "PYTHON",
-          question: questionInfo,
-          tabSwitchCount: tabSwitches,
-          logicApproved: true,
-          chatMessagesCount: 3,
-          testResults: [],
-          runCount: 1,
-          errorCount: 0,
-          executionTimeMs: 38
-        });
-
-        const legitimateSession: Session = {
-          id: Number(id) || 1,
-          question: questionInfo,
-          language: "PYTHON",
-          difficulty: "MEDIUM",
-          startedAt: new Date(Date.now() - 25 * 60 * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          completedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          lastSubmittedCode: defaultCode,
-          telemetryLog: JSON.stringify([
-            { time: "Phase 1", event: "Session initiated" },
-            { time: "Phase 1", event: "Candidate logic validated and approved" },
-            ...(tabSwitches > 0 ? [{ time: "Phase 2", event: `${tabSwitches} tab switch infractions recorded by proctor` }] : []),
-            { time: "Phase 2", event: "Solution executed in sandbox runtime" },
-            { time: "Phase 3", event: `Multi-Factor Assessment Engine evaluation finalized with score ${legitimateAssessment.overallScore}/100` }
-          ])
-        };
-
-        // Save permanently so data is static, legitimate, and never fluctuates on refresh
-        if (id) {
-          saveLegitimateAssessment(id, legitimateAssessment, legitimateSession);
-        }
-
-        setSession(legitimateSession);
-        setAssessment(legitimateAssessment);
-        setTelemetry(JSON.parse(legitimateSession.telemetryLog));
-        setLoading(false);
+      const legitimateAssessment = calculateLegitimateAssessment({
+        sessionId: id || 1,
+        code: savedFinalCode,
+        language: "PYTHON",
+        question: questionInfo,
+        tabSwitchCount: tabSwitches,
+        logicApproved: savedFinalCode.trim().length > 0,
+        chatMessagesCount: 1,
+        testResults: [],
+        runCount: 0,
+        errorCount: 0,
+        executionTimeMs: 0
       });
+
+      const legitimateSession: Session = {
+        id: Number(id) || 1,
+        question: questionInfo,
+        language: "PYTHON",
+        difficulty: "MEDIUM",
+        startedAt: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
+        completedAt: new Date().toISOString(),
+        lastSubmittedCode: savedFinalCode,
+        telemetryLog: JSON.stringify([
+          { time: "Phase 1", event: "Session initialized" },
+          { time: "Phase 2", event: `Assessment evaluated with score ${legitimateAssessment.overallScore}/100` }
+        ])
+      };
+
+      setSession(legitimateSession);
+      setAssessment(legitimateAssessment);
+      saveLegitimateAssessment(id, legitimateAssessment, legitimateSession);
+      setLoading(false);
+    }
+
+    loadReportData();
   }, [id]);
 
   const getScoreTier = (score: number) => {
+    if (score === 0) return { label: 'Unattended / Zero Credit (0/100)', color: 'text-red-400 border-red-500/30 bg-red-500/10' };
     if (score >= 90) return { label: 'Elite technical proficiency', color: 'text-brand-cyan border-brand-cyan/30 bg-brand-cyan/5' };
     if (score >= 80) return { label: 'Strong Technical Readiness', color: 'text-brand-cyan border-brand-cyan/20 bg-brand-cyan/5' };
     if (score >= 65) return { label: 'Intermediate Technical readiness', color: 'text-zinc-300 border-zinc-700 bg-zinc-900/40' };

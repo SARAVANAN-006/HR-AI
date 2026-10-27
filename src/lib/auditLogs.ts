@@ -1,3 +1,6 @@
+import { mysqlService } from './mysqlService';
+import { mongoService } from './mongoService';
+
 export interface CandidateActivity {
   id: string;
   timestamp: string;
@@ -101,7 +104,7 @@ export const getAuditUsers = (): CandidateUsageLog[] => {
   }
 };
 
-export const logUserActivity = (activity: Omit<CandidateActivity, 'id' | 'timestamp'>): void => {
+export const logUserActivity = (activity: Omit<CandidateActivity, 'id' | 'timestamp'>, username?: string): void => {
   try {
     const raw = localStorage.getItem('kodexis_user_custom_logs');
     const existing: CandidateActivity[] = raw ? JSON.parse(raw) : [];
@@ -112,8 +115,45 @@ export const logUserActivity = (activity: Omit<CandidateActivity, 'id' | 'timest
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
-    const updated = [newActivity, ...existing].slice(0, 50); // keep recent 50
+    const updated = [newActivity, ...existing].slice(0, 100);
     localStorage.setItem('kodexis_user_custom_logs', JSON.stringify(updated));
+
+    // Persist live activity directly to MySQL and backend candidate_logs
+    let activeUsername = username;
+    if (!activeUsername) {
+      try {
+        const u = JSON.parse(localStorage.getItem('kodexis_user') || '{}');
+        activeUsername = u.username;
+      } catch {}
+    }
+    const uname = activeUsername || 'candidate';
+
+    mysqlService.recordCandidateLog(
+      uname,
+      activity.status === 'WARNING' ? 'WARN' : 'AUDIT',
+      activity.actionType,
+      activity.description,
+      {
+        questionTitle: activity.questionTitle,
+        difficulty: activity.difficulty,
+        metrics: activity.metrics,
+        timestamp: new Date().toISOString()
+      }
+    ).catch(() => {});
+
+    // Record directly into MongoDB Cluster
+    mongoService.recordCandidateLog(
+      activity.status === 'WARNING' ? 'WARN' : 'AUDIT',
+      activity.actionType,
+      activity.description,
+      {
+        questionTitle: activity.questionTitle,
+        difficulty: activity.difficulty,
+        metrics: activity.metrics,
+        timestamp: new Date().toISOString()
+      },
+      uname
+    ).catch(() => {});
   } catch (e) {
     console.error('Failed to log user activity:', e);
   }

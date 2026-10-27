@@ -9,11 +9,12 @@ import { UiSwitcherModal } from '../components/UiSwitcherModal';
 import ReactMarkdown from 'react-markdown';
 import { isFeatureEnabled } from '../lib/featureFlags';
 import { logUserActivity } from '../lib/auditLogs';
-import { calculateLegitimateAssessment, saveLegitimateAssessment, verifyCodeCorrectness } from '../lib/evaluationEngine';
+import { calculateLegitimateAssessment, saveLegitimateAssessment } from '../lib/evaluationEngine';
 import { recordStreakActivity } from '../lib/streakService';
 import { getRandomQuestion, getQuestionById, getAllQuestions } from '../lib/questionBank';
 import { mysqlService } from '../lib/mysqlService';
 import { useAuth } from '../context/AuthContext';
+import { runTestSuiteWithSandbox } from '../lib/pistonService';
 
 interface TestCase {
   id: number;
@@ -1010,11 +1011,20 @@ const InterviewRoom: React.FC = () => {
           }
         }
 
-        // Load Chat logs
+        // Load Chat logs from local storage or backend
+        try {
+          const localChat = localStorage.getItem(`interview-messages-${id}`);
+          if (localChat) {
+            const parsed = JSON.parse(localChat);
+            if (Array.isArray(parsed) && parsed.length > 0) setMessages(parsed);
+          }
+        } catch {}
         return withFastTimeout(axios.get(`/api/interviews/${id}/messages`), 1500, 'Chat messages loading');
       })
       .then((res) => {
-        if (res && res.data && res.data.length > 0) setMessages(res.data);
+        if (res && res.data && res.data.length > 0) {
+          setMessages(prev => prev.length > 1 ? prev : res.data);
+        }
       })
       .catch((err) => {
         console.warn('Failed to load interview room details from backend, booting offline session:', err);
@@ -1089,16 +1099,40 @@ const InterviewRoom: React.FC = () => {
           ? `Welcome to your KODEXIS Full Simulation for **${chosenQuestion.title}**!\n\nIn this mode, the code editor is completely unlocked and accessible from the start. You have ${prefDuration} minutes to code, dry-run test cases, optimize Big-O complexity, and execute your solution.`
           : `Welcome to your KODEXIS Technical Interview for **${chosenQuestion.title}**!\n\nI am your AI Interviewer. In this session, you must first explain and defend your conceptual algorithm in the chat (or via the **Fast Check** button).\n\n**To unlock the code editor, specify:**\n- Which data structure(s) you will use\n- How your algorithm handles edge cases\n- Expected Big-O time and space complexity\n\nOnce approved, the code editor unlocks automatically.`;
 
-        setMessages([
-          {
-            id: 1,
-            sender: 'AI',
-            content: welcomeContent,
-            timestamp: new Date().toISOString()
+        let restoredChat: Message[] | null = null;
+        try {
+          const localChat = localStorage.getItem(`interview-messages-${id}`);
+          if (localChat) {
+            const parsed = JSON.parse(localChat);
+            if (Array.isArray(parsed) && parsed.length > 0) restoredChat = parsed;
           }
-        ]);
+        } catch {}
+
+        if (restoredChat && restoredChat.length > 0) {
+          setMessages(restoredChat);
+        } else {
+          setMessages([
+            {
+              id: 1,
+              sender: 'AI',
+              content: welcomeContent,
+              timestamp: new Date().toISOString()
+            }
+          ]);
+        }
       });
   }, [id]);
+
+  // Persist messages across refresh
+  useEffect(() => {
+    if (id && messages && messages.length > 0) {
+      try {
+        localStorage.setItem(`interview-messages-${id}`, JSON.stringify(messages));
+      } catch (err) {
+        console.warn('Failed to save interview messages to localStorage:', err);
+      }
+    }
+  }, [id, messages]);
 
   const handleSwitchToRandomQuestion = () => {
     const currentQId = session?.question?.id || 0;
@@ -1175,6 +1209,18 @@ const InterviewRoom: React.FC = () => {
       communication: { value: Math.min(100, prev.communication.value + 10), label: 'Observed' }
     }));
 
+    // Log user chat activity for live logs and telemetry
+    logUserActivity({
+      actionType: 'SOLVE',
+      description: `Sent mentor clarification message (${userText.slice(0, 45)}...) during ${session?.state || 'DISCUSSION'} phase.`,
+      questionTitle: session?.question?.title || 'Coding Problem',
+      difficulty: session?.question?.difficulty || 'MEDIUM',
+      status: 'INFO',
+      metrics: {
+        logicVerdict: session?.state || 'DISCUSSION'
+      }
+    });
+
     try {
       const response = await withFastTimeout(
         axios.post(`/api/interviews/${id}/message`, { content: userText, code, language }),
@@ -1242,10 +1288,29 @@ const InterviewRoom: React.FC = () => {
     setTestResults([]);
     setExecutionSummary(null);
 
+    // Log user code execution trigger
+    logUserActivity({
+      actionType: 'RUN_CODE',
+      description: `Initiated code execution sandbox test run (${language}).`,
+      questionTitle: session?.question?.title || 'Coding Problem',
+      difficulty: session?.question?.difficulty || 'MEDIUM',
+      status: 'INFO',
+      metrics: {
+        runtimeMs: 0
+      }
+    });
+
     try {
+      const publicCases = (session?.question?.testCases || []).filter(tc => !tc.isHidden);
+      const testCasesToSend = publicCases.length > 0 ? publicCases : (session?.question?.testCases || []);
+
       const response = await withFastTimeout(
-        axios.post(`/api/interviews/${id}/run`, { code, language }),
-        3500,
+        axios.post(`/api/interviews/${id}/run`, {
+          code,
+          language,
+          testCases: testCasesToSend
+        }),
+        6500,
         'Code run sandbox'
       );
       const outcome = response.data;
@@ -1266,7 +1331,7 @@ const InterviewRoom: React.FC = () => {
       // Build formatted console output with clearly labelled sections
       let logText = '';
       if (isTle) {
-        logText = `STATUS: TIME LIMIT EXCEEDED\n\nERROR:\nYour solution exceeded the 5-second time limit.\nThis typically indicates an infinite loop or quadratic time complexity on a large input.\nOptimize your approach and try again.`;
+        logText = `STATUS: TIME LIMIT EXCEEDED\n\nERROR:\nYour solution exceeded the execution time limit.\nThis typically indicates an infinite loop or quadratic time complexity on a large input.\nOptimize your approach and try again.`;
       } else if (outcome.status === 'COMPILE_ERROR') {
         logText = `STATUS: COMPILE ERROR\n\nERROR:\n${outcome.consoleOutput || 'No compiler output.'}`;
       } else if (outcome.status === 'RUNTIME_ERROR') {
@@ -1276,7 +1341,6 @@ const InterviewRoom: React.FC = () => {
       } else {
         logText = `STATUS: WRONG ANSWER\n\nOUTPUT:\n${outcome.consoleOutput || '(empty output)'}\n\nEXECUTION TIME: ${outcome.executionTimeMs} ms`;
       }
-
 
       setTerminalOutput(logText);
 
@@ -1309,53 +1373,54 @@ const InterviewRoom: React.FC = () => {
         ...(isCompileOrRuntime ? { debugging: { value: Math.max(20, prev.debugging.value - 15), label: 'Attention Needed' } } : {}),
       }));
 
+      // Log execution results
+      logUserActivity({
+        actionType: 'RUN_CODE',
+        description: `Executed test suite: ${outcome.passedCases}/${outcome.totalCases} passed (${outcome.status}) in ${outcome.executionTimeMs} ms.`,
+        questionTitle: session?.question?.title || 'Coding Problem',
+        difficulty: session?.question?.difficulty || 'MEDIUM',
+        status: isSuccess ? 'PASSED' : (isTle ? 'WARNING' : 'FAILED'),
+        metrics: {
+          runtimeMs: outcome.executionTimeMs,
+          testCasesPassed: `${outcome.passedCases}/${outcome.totalCases}`
+        }
+      });
+
     } catch (error: unknown) {
-      const axiosError = error as { message?: string; response?: { data?: { error?: string } } };
-      if (axiosError?.response?.data?.error) {
-        setTerminalStatus('error');
-        setTerminalOutput(`Sandbox execution error:\n\n${axiosError.response.data.error}`);
-      } else {
-        // Offline execution verification fallback
-        const publicCases = (session?.question.testCases || []).filter(tc => !tc.isHidden);
-        const qInfo = {
-          title: session?.question.title || 'Technical Interview Problem',
-          topic: session?.question.topic || 'Algorithms',
-          difficulty: session?.question.difficulty || 'MEDIUM',
-          expectedTimeComplexity: session?.question.expectedTimeComplexity || 'O(n)',
-          expectedSpaceComplexity: session?.question.expectedSpaceComplexity || 'O(n)',
-          testCases: publicCases
-        };
-        const verification = verifyCodeCorrectness(code, qInfo);
-        const isPassed = verification.correctnessScore >= 80;
-        const details = publicCases.map((tc, idx) => ({
-          input: tc.input,
-          expectedOutput: tc.expectedOutput,
-          actualOutput: (isPassed || idx < verification.passedCount) ? tc.expectedOutput : 'Mismatch / Incomplete execution',
-          passed: isPassed || idx < verification.passedCount,
-          error: (isPassed || idx < verification.passedCount) ? null : 'Failed output verification on input bounds'
-        }));
+      console.warn("Backend execution endpoint unavailable, executing client sandbox runner:", error);
+      const publicCases = (session?.question?.testCases || []).filter(tc => !tc.isHidden);
+      const casesToRun = publicCases.length > 0 ? publicCases : [
+        { id: 1, input: "9\n2,7,11,15", expectedOutput: "0,1" }
+      ];
 
-        const passedCasesCount = details.filter(d => d.passed).length;
-        const totalCasesCount = details.length || 1;
-        const runStatus = passedCasesCount === totalCasesCount ? 'SUCCESS' : (passedCasesCount > 0 ? 'PARTIAL' : 'FAILED');
+      try {
+        const outcome = await runTestSuiteWithSandbox(code, language, casesToRun as any);
 
-        setTerminalStatus(runStatus === 'SUCCESS' ? 'success' : 'error');
-        setTerminalOutput(`STATUS: ${runStatus === 'SUCCESS' ? 'ACCEPTED' : (runStatus === 'PARTIAL' ? 'WRONG ANSWER' : 'EXECUTION FAILED')} (SANDBOX ENGINE)\n\n${passedCasesCount}/${totalCasesCount} public test cases passed.\nExecution Time: 38 ms\nMemory: 14.2 MB`);
-        setTestResults(details);
+        const isTle = outcome.status === 'TIMEOUT';
+        const isCompileOrRuntime = outcome.status === 'COMPILE_ERROR' || outcome.status === 'RUNTIME_ERROR';
+        const isSuccess = outcome.status === 'SUCCESS';
+
+        setTerminalStatus(isTle ? 'timeout' : (isSuccess ? 'success' : 'error'));
+        setTerminalOutput(`STATUS: ${outcome.status} (CLIENT SANDBOX ENGINE)\n\n${outcome.consoleOutput}`);
+        setTestResults(outcome.details);
         setConsoleTab('testcases');
         setActiveTestCaseIdx(0);
         setExecutionSummary({
-          status: runStatus,
-          passedCases: passedCasesCount,
-          totalCases: totalCasesCount,
-          executionTimeMs: 38,
-          memoryUsedKb: 14200
+          status: outcome.status,
+          passedCases: outcome.passedCases,
+          totalCases: outcome.totalCases,
+          executionTimeMs: outcome.executionTimeMs,
+          memoryUsedKb: outcome.memoryUsedKb ?? 14200
         });
         setSignals(prev => ({
           ...prev,
-          correctness: { value: Math.round((passedCasesCount / totalCasesCount) * 100), label: runStatus },
-          complexity: { value: 85, label: 'Observed O(N)' }
+          correctness: { value: Math.round((outcome.passedCases / outcome.totalCases) * 100), label: outcome.status },
+          complexity: { value: 85, label: 'Observed O(N)' },
+          ...(isCompileOrRuntime ? { debugging: { value: Math.max(20, prev.debugging.value - 15), label: 'Attention Needed' } } : {})
         }));
+      } catch (clientErr) {
+        setTerminalStatus('error');
+        setTerminalOutput(`Execution error:\n\n${String(clientErr)}`);
       }
     } finally {
       setIsRunning(false);
@@ -1363,12 +1428,17 @@ const InterviewRoom: React.FC = () => {
   };
 
   const handleSubmitCode = async () => {
+    const totalDurationSecs = (session?.durationMinutes || 45) * 60;
+    const timeSpentSeconds = Math.max(0, totalDurationSecs - timeRemaining);
+
     const validation = validateCodeContent(code, language);
     if (!validation.isValid) {
-      alert(`Cannot submit un-implemented code:\n\n${validation.message}`);
-      return;
+      if (!window.confirm(`Notice: Code appears un-implemented (${validation.message}).\n\nSubmitting now will evaluate this assessment as 0 / 100 under standardized scoring. Do you still wish to submit?`)) {
+        return;
+      }
+    } else {
+      if (!window.confirm("Submit solution and initialize multi-factor assessment? This terminates the session.")) return;
     }
-    if (!window.confirm("Submit solution and initialize multi-factor assessment? This terminates the session.")) return;
     setIsSubmitLoading(true);
 
     try {
@@ -1384,6 +1454,7 @@ const InterviewRoom: React.FC = () => {
           difficulty: session?.question?.difficulty || 'MEDIUM',
           expectedTimeComplexity: session?.question?.expectedTimeComplexity || 'O(n)',
           expectedSpaceComplexity: session?.question?.expectedSpaceComplexity || 'O(n)',
+          starterCode: originalCode,
           testCases: session?.question?.testCases || []
         },
         tabSwitchCount,
@@ -1392,7 +1463,8 @@ const InterviewRoom: React.FC = () => {
         testResults,
         runCount: executionSummary ? 1 : 0,
         errorCount: terminalStatus === 'error' ? 1 : 0,
-        executionTimeMs: executionSummary?.executionTimeMs || 38
+        executionTimeMs: executionSummary?.executionTimeMs || 38,
+        timeSpentSeconds
       });
 
       // 2. Build full session payload for static persistence
@@ -1478,42 +1550,87 @@ const InterviewRoom: React.FC = () => {
         aiBehaviorNotes: `Coding style: ${code.split('\n').length > 35 ? 'Extensive structure' : 'Idiomatic & concise'}, Proctor status: ${tabSwitchCount === 0 ? 'Flawless' : 'Flagged'}`
       }).catch(() => {});
 
+      // Record full interview autopsy into MySQL & local store
+      mysqlService.recordInterviewAutopsy({
+        sessionId: String(id || sessionPayload.id || Date.now()),
+        username: uname,
+        candidateName: uname.charAt(0).toUpperCase() + uname.slice(1),
+        targetRole: user?.targetRole || 'Software Engineer',
+        date: new Date().toISOString(),
+        durationMinutes: 30,
+        overallScore: calcScore,
+        recommendation: calcScore >= 85 ? 'STRONG_HIRE' : (calcScore >= 70 ? 'HIRE' : (calcScore >= 55 ? 'LEAN_HIRE' : 'NEEDS_PRACTICE')),
+        formulaBreakdown: mysqlService.calculateScoreBreakdown(
+          computedAssessment.correctnessScore,
+          computedAssessment.efficiencyScore,
+          computedAssessment.problemSolvingScore,
+          computedAssessment.communicationScore,
+          computedAssessment.proctoring?.penaltyPoints || 0
+        ),
+        multiFactorScores: {
+          technicalProficiency: computedAssessment.correctnessScore,
+          conceptualDepthScore: computedAssessment.efficiencyScore,
+          problemSolvingScore: computedAssessment.problemSolvingScore,
+          communicationScore: computedAssessment.communicationScore
+        },
+        categoryScores: { [topic]: calcScore },
+        keyStrengths: passedCount > 0 ? [`Proficient with ${topic} logic`, 'Passed core test assertions'] : ['Active algorithmic logic synthesis'],
+        areasForImprovement: tabSwitchCount > 0 ? [`Reduced tab switching (${tabSwitchCount} occurrences)`] : ['Check extreme boundary constraints'],
+        detailedDebrief: `Completed problem ${session?.question?.title || 'Coding Challenge'} with score ${calcScore}/100. Test cases: ${passedCount}/${totalCases} passed.`,
+        transcripts: []
+      }).catch(() => {});
+
       // Update candidate's personalized dashboard cache
       try {
         const dashKey = `kodexis_candidate_dashboard_${uname.toLowerCase()}`;
         const existingDashStr = localStorage.getItem(dashKey);
-        if (existingDashStr) {
-          const dash = JSON.parse(existingDashStr);
-          if (!dash.skills) dash.skills = {};
-          if (!dash.numericSkills) dash.numericSkills = {};
-          dash.skills[topic] = newProfLevel;
-          dash.numericSkills[topic] = calcScore;
-          
-          const numScores = Object.values(dash.numericSkills) as number[];
-          if (numScores.length > 0) {
-            dash.readinessScore = Math.round(numScores.reduce((a, b) => a + b, 0) / numScores.length);
-          }
-
-          if (!Array.isArray(dash.history)) dash.history = [];
-          dash.history.unshift({
-            sessionId: Number(id) || Date.now(),
-            topic,
-            title: session?.question?.title || 'Coding Challenge',
-            difficulty: session?.question?.difficulty || 'MEDIUM',
-            language,
-            score: calcScore,
-            date: new Date().toISOString()
-          });
-
-          localStorage.setItem(dashKey, JSON.stringify(dash));
+        const dash = existingDashStr ? JSON.parse(existingDashStr) : {
+          fullName: uname.charAt(0).toUpperCase() + uname.slice(1),
+          username: uname,
+          targetRole: user?.targetRole || 'Software Engineer',
+          targetCompanies: user?.targetCompanies || 'Top Tech Companies',
+          experienceLevel: user?.experienceLevel || 'MEDIUM',
+          preferredLanguage: language || 'PYTHON',
+          readinessScore: calcScore,
+          skills: {},
+          numericSkills: {},
+          history: []
+        };
+        if (!dash.skills) dash.skills = {};
+        if (!dash.numericSkills) dash.numericSkills = {};
+        dash.skills[topic] = newProfLevel;
+        dash.numericSkills[topic] = calcScore;
+        
+        const numScores = Object.values(dash.numericSkills) as number[];
+        if (numScores.length > 0) {
+          dash.readinessScore = Math.round(numScores.reduce((a, b) => a + b, 0) / numScores.length);
         }
+
+        if (!Array.isArray(dash.history)) dash.history = [];
+        dash.history.unshift({
+          sessionId: Number(id) || Date.now(),
+          topic,
+          title: session?.question?.title || 'Coding Challenge',
+          difficulty: session?.question?.difficulty || 'MEDIUM',
+          language,
+          score: calcScore,
+          date: new Date().toISOString()
+        });
+
+        localStorage.setItem(dashKey, JSON.stringify(dash));
       } catch (e) {
         console.warn('Error updating candidate dashboard cache:', e);
       }
 
-      // 5. Submit to backend if available
+      // 5. Submit to backend if available with full evaluated assessment and session payload
       await withFastTimeout(
-        axios.post(`/api/interviews/${id}/submit`, { code, language }),
+        axios.post(`/api/interviews/${id}/submit`, {
+          code,
+          language,
+          score: calcScore,
+          assessment: computedAssessment,
+          session: sessionPayload
+        }),
         3000,
         'Code submit'
       );

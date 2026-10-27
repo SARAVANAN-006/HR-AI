@@ -61,7 +61,7 @@ export const AdaptiveAssessmentPage: React.FC = () => {
   useEffect(() => {
     fetchTopics();
     loadKnowledgeUnits();
-    checkForSharedAssessment();
+    initializeAssessmentState();
   }, []);
 
   const loadKnowledgeUnits = () => {
@@ -90,27 +90,75 @@ export const AdaptiveAssessmentPage: React.FC = () => {
     }
   };
 
-  // Inspect URL query params for shareId
-  const checkForSharedAssessment = () => {
+  // Inspect URL query params for shareId or restore active state on page refresh
+  const initializeAssessmentState = async () => {
     try {
       const searchParams = new URLSearchParams(window.location.search);
       const shareId = searchParams.get('shareId');
       if (shareId) {
+        // 1. Try local storage first
         const saved = localStorage.getItem(`kodexis_shared_test_${shareId}`);
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed.questions) && parsed.questions.length > 0) {
             setQuestions(parsed.questions);
             setQuizStarted(true);
-            setReport(null);
-            setCurrentAnswers({});
+            setReport(parsed.report || null);
+            setCurrentAnswers(parsed.answers || {});
             setSharedBanner(`Shared Assessment Loaded: "${parsed.title || 'Peer Assessment'}" • Created from ${parsed.sourceMode === 'KNOWLEDGE_BASE' ? 'Uploaded Knowledge Base' : 'Curriculum Standards'}`);
+            return;
           }
+        }
+
+        // 2. Fetch directly from backend server (ensures share link works on any device/incognito)
+        try {
+          const res = await axios.get(`/api/assessment/share/${encodeURIComponent(shareId)}`, { timeout: 3500 });
+          if (res.data && Array.isArray(res.data.questions) && res.data.questions.length > 0) {
+            const pkg = res.data;
+            setQuestions(pkg.questions);
+            setQuizStarted(true);
+            setReport(pkg.report || null);
+            setCurrentAnswers(pkg.answers || {});
+            setSharedBanner(`Shared Assessment Loaded: "${pkg.title || 'Peer Assessment'}" • Created from ${pkg.sourceMode === 'KNOWLEDGE_BASE' ? 'Uploaded Knowledge Base' : 'Curriculum Standards'}`);
+            localStorage.setItem(`kodexis_shared_test_${shareId}`, JSON.stringify(pkg));
+            return;
+          }
+        } catch (apiErr) {
+          console.warn('Backend shared assessment fetch notice:', apiErr);
+        }
+      }
+
+      // If not viewing a shareable link, restore active quiz state so refresh keeps exact same content
+      const activeStateStr = localStorage.getItem('kodexis_active_assessment_state');
+      if (activeStateStr) {
+        const activeState = JSON.parse(activeStateStr);
+        if (Array.isArray(activeState.questions) && activeState.questions.length > 0) {
+          setQuestions(activeState.questions);
+          setCurrentAnswers(activeState.currentAnswers || {});
+          setQuizStarted(Boolean(activeState.quizStarted));
+          setReport(activeState.report || null);
+          if (activeState.sourceMode) setSourceMode(activeState.sourceMode);
+          if (activeState.selectedTopic) setSelectedTopic(activeState.selectedTopic);
+          if (activeState.selectedDifficulty) setSelectedDifficulty(activeState.selectedDifficulty);
         }
       }
     } catch (e) {
-      console.warn('Error loading shared assessment:', e);
+      console.warn('Error loading assessment state on refresh:', e);
     }
+  };
+
+  const handleResetScope = () => {
+    setQuestions([]);
+    setCurrentAnswers({});
+    setQuizStarted(false);
+    setReport(null);
+    setSharedBanner(null);
+    localStorage.removeItem('kodexis_active_assessment_state');
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('shareId');
+      window.history.replaceState({}, '', url.toString());
+    } catch {}
   };
 
   const uniqueDocuments = Array.from(new Set(knowledgeUnits.map(u => u.documentName).filter(Boolean)));
@@ -122,17 +170,15 @@ export const AdaptiveAssessmentPage: React.FC = () => {
       setCurrentAnswers({});
       setSharedBanner(null);
 
+      let generatedQuestions: QuizQuestion[] = [];
+
       if (sourceMode === 'KNOWLEDGE_BASE') {
-        // Filter knowledge units by selected document if specified
         let targetUnits = knowledgeUnits;
         if (selectedDocumentFilter !== 'ALL') {
           targetUnits = knowledgeUnits.filter(u => u.documentName === selectedDocumentFilter);
         }
-        const generated = generateQuizFromKnowledgeUnits(targetUnits, questionCount, selectedDifficulty, selectedFormat);
-        setQuestions(generated);
-        setQuizStarted(true);
+        generatedQuestions = generateQuizFromKnowledgeUnits(targetUnits, questionCount, selectedDifficulty, selectedFormat);
       } else {
-        // Try backend API generation or fallback
         try {
           const params = new URLSearchParams({
             userId: activeUserId,
@@ -144,17 +190,41 @@ export const AdaptiveAssessmentPage: React.FC = () => {
 
           const res = await axios.get(`${API_BASE}/assessment/generate?${params.toString()}`, { timeout: 2500 });
           if (res.data && res.data.length > 0) {
-            setQuestions(res.data);
-            setQuizStarted(true);
-            return;
+            generatedQuestions = res.data;
           }
         } catch {
           // Backend offline - use local curriculum generator
         }
-        const generated = generateCurriculumQuiz(selectedTopic, questionCount, selectedDifficulty, selectedFormat);
-        setQuestions(generated);
-        setQuizStarted(true);
+
+        if (generatedQuestions.length === 0) {
+          generatedQuestions = generateCurriculumQuiz(selectedTopic, questionCount, selectedDifficulty, selectedFormat);
+        }
       }
+
+      setQuestions(generatedQuestions);
+      setQuizStarted(true);
+
+      // Persist active state so refresh retains exact same content
+      localStorage.setItem('kodexis_active_assessment_state', JSON.stringify({
+        questions: generatedQuestions,
+        currentAnswers: {},
+        quizStarted: true,
+        report: null,
+        selectedTopic,
+        selectedDifficulty,
+        selectedFormat,
+        sourceMode
+      }));
+
+      // Store activity in MySQL & candidate_logs
+      mysqlService.recordCandidateLog(
+        activeUserId,
+        'INFO',
+        'ASSESSMENT_STARTED',
+        `Generated adaptive assessment with ${generatedQuestions.length} questions on ${sourceMode === 'KNOWLEDGE_BASE' ? 'Knowledge Base' : selectedTopic}.`,
+        { questionCount: generatedQuestions.length, topic: selectedTopic, difficulty: selectedDifficulty }
+      ).catch(() => {});
+
     } catch (err) {
       console.error("Quiz generation failed:", err);
     } finally {
@@ -163,7 +233,17 @@ export const AdaptiveAssessmentPage: React.FC = () => {
   };
 
   const handleSelectOption = (questionId: string, optionVal: string) => {
-    setCurrentAnswers(prev => ({ ...prev, [questionId]: optionVal }));
+    setCurrentAnswers(prev => {
+      const updated = { ...prev, [questionId]: optionVal };
+      try {
+        const existing = JSON.parse(localStorage.getItem('kodexis_active_assessment_state') || '{}');
+        localStorage.setItem('kodexis_active_assessment_state', JSON.stringify({
+          ...existing,
+          currentAnswers: updated
+        }));
+      } catch {}
+      return updated;
+    });
   };
 
   const handleSubmitQuiz = async () => {
@@ -191,6 +271,16 @@ export const AdaptiveAssessmentPage: React.FC = () => {
       }
 
       setReport(gradingReport);
+
+      // Persist active state including the diagnostic report so refresh retains exact same content
+      try {
+        const existing = JSON.parse(localStorage.getItem('kodexis_active_assessment_state') || '{}');
+        localStorage.setItem('kodexis_active_assessment_state', JSON.stringify({
+          ...existing,
+          report: gradingReport,
+          quizStarted: true
+        }));
+      } catch {}
 
       // Record live telemetry into MySQL
       mysqlService.recordCandidateLog(
@@ -230,7 +320,7 @@ export const AdaptiveAssessmentPage: React.FC = () => {
   };
 
   // Open Share Dialog
-  const handleOpenShare = () => {
+  const handleOpenShare = async () => {
     const shareId = 'kdx_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 6);
     const title = sourceMode === 'KNOWLEDGE_BASE'
       ? `Knowledge Base Exam (${selectedDocumentFilter === 'ALL' ? 'Uploaded Notes' : selectedDocumentFilter})`
@@ -243,11 +333,19 @@ export const AdaptiveAssessmentPage: React.FC = () => {
       documentName: selectedDocumentFilter,
       topicName: selectedTopic,
       questions,
+      answers: currentAnswers,
+      report,
       createdAt: new Date().toISOString(),
       creator: activeUserId
     };
 
     localStorage.setItem(`kodexis_shared_test_${shareId}`, JSON.stringify(sharePackage));
+
+    try {
+      await axios.post('/api/assessment/share', sharePackage, { timeout: 3500 });
+    } catch (e) {
+      console.warn('Backend shared test registration notice:', e);
+    }
 
     mysqlService.recordCandidateLog(
       activeUserId,
@@ -319,10 +417,7 @@ export const AdaptiveAssessmentPage: React.FC = () => {
 
           {quizStarted && !report && (
             <button
-              onClick={() => {
-                setQuizStarted(false);
-                setReport(null);
-              }}
+              onClick={handleResetScope}
               className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-zinc-800 text-zinc-300 font-mono text-xs hover:bg-zinc-700 transition border border-border"
             >
               <RotateCcw size={14} />
@@ -743,7 +838,7 @@ export const AdaptiveAssessmentPage: React.FC = () => {
           {/* ACTIONS */}
           <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4">
             <button
-              onClick={() => { setReport(null); setQuizStarted(false); }}
+              onClick={handleResetScope}
               className="w-full sm:w-auto px-6 py-3 rounded-xl bg-zinc-800 text-zinc-200 font-mono text-xs font-bold hover:bg-zinc-700 transition"
             >
               CONFIGURE NEW EXAM

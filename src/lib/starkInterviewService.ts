@@ -187,6 +187,8 @@ export interface StarkInterviewSession {
     feedback: string;
     durationSeconds: number;
     timestamp: string;
+    candidateAudioUrl?: string;
+    audioDurationSeconds?: number;
   }[];
   startedAt: string;
   completedAt?: string;
@@ -709,18 +711,22 @@ export function evaluateCandidateSpeechAnswer(
  */
 export function generateFinalStarkReport(session: StarkInterviewSession): StarkEvaluation {
   const transcripts = session.transcripts;
-  if (!transcripts || transcripts.length === 0) {
+  const validAnswers = (transcripts || []).filter(
+    (t) => t.userAnswerText && t.userAnswerText !== '(No audible speech registered)' && t.userAnswerText.trim().split(/\s+/).filter(Boolean).length >= 5
+  );
+
+  if (!transcripts || transcripts.length === 0 || validAnswers.length === 0) {
     return {
-      overallScore: 75,
-      recommendation: 'LEAN_HIRE',
-      technicalProficiencyScore: 78,
-      communicationScore: 75,
-      conceptualDepthScore: 72,
-      problemSolvingScore: 76,
+      overallScore: 0,
+      recommendation: 'NEEDS_PRACTICE',
+      technicalProficiencyScore: 0,
+      communicationScore: 0,
+      conceptualDepthScore: 0,
+      problemSolvingScore: 0,
       categoryScores: {},
-      keyStrengths: ['Demonstrated enthusiasm and baseline computer science foundations'],
-      areasForImprovement: ['Practice structured technical articulation with the STAR framework'],
-      detailedDebrief: 'Candidate completed session within allotted duration.'
+      keyStrengths: ['Session registered in MongoDB'],
+      areasForImprovement: ['Candidate exited or submitted prematurely without speaking or providing audible answers.'],
+      detailedDebrief: 'Unattended / Premature Submission: Candidate submitted within a few minutes with 0 audible technical responses. Standardized policy assigns 0/100.'
     };
   }
 

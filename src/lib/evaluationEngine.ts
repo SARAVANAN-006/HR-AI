@@ -18,6 +18,8 @@
  *   so reports remain 100% static, permanent, and never fluctuate across page reloads.
  */
 
+import { mongoService } from './mongoService';
+
 export interface TestCaseResult {
   input: string;
   expectedOutput: string;
@@ -51,6 +53,8 @@ export interface EvaluationInput {
   runCount?: number;
   errorCount?: number;
   executionTimeMs?: number;
+  timeSpentSeconds?: number;
+  startedAt?: string;
 }
 
 export interface AssessmentResult {
@@ -327,6 +331,53 @@ export function verifyCodeCorrectness(
 }
 
 /**
+ * Detects if a submission was unattended, blank, left as starter stub,
+ * or submitted prematurely within a few minutes with zero tests passed.
+ */
+export function isUnattendedSubmission(
+  code: string,
+  starterCode?: string,
+  timeSpentSeconds?: number,
+  testResults: TestCaseResult[] = []
+): boolean {
+  if (!code) return true;
+  const clean = code.trim();
+  if (clean.length === 0) return true;
+
+  // Verbatim starter code match
+  if (starterCode && clean === starterCode.trim()) return true;
+
+  // Strip comments
+  const stripped = clean
+    .replace(/\/\/.*|\/\*[\s\S]*?\*\/|#.*|"""[\s\S]*?"""/g, '')
+    .trim();
+  if (stripped.length === 0) return true;
+
+  // Filter out empty lines
+  const lines = stripped
+    .split('\n')
+    .map(l => l.trim())
+    .filter(l => l.length > 0);
+
+  // If fewer than 3 lines of actual code
+  if (lines.length <= 2) return true;
+
+  // Check if submitted within 3 minutes (180s) with 0 passed tests or no sandbox run
+  const passedCount = testResults.filter(t => t.passed).length;
+  if (typeof timeSpentSeconds === 'number' && timeSpentSeconds < 180 && passedCount === 0) {
+    return true;
+  }
+
+  // Check if lines only contain default pass/return stubs
+  const onlyStubs = lines.every(l =>
+    /^(class\s+\w+|def\s+\w+|public\s+class|function\s+\w+|var\s+|let\s+|const\s+|import\s+|from\s+|package\s+|\{|\}|\(|\)|pass|return\s*(null|0|false|\{\}|\[\]|\"\")?;?|throw\s+new\s+UnsupportedOperationException.*|TODO.*)$/i.test(l)
+  );
+  if (onlyStubs) return true;
+
+  return false;
+}
+
+/**
  * Main Evaluation Engine Entry Point.
  * Calculates legitimate multi-factor scorecard, proctoring penalties, and diagnostic autopsy.
  */
@@ -342,8 +393,54 @@ export function calculateLegitimateAssessment(params: EvaluationInput): Assessme
     testResults = [],
     runCount = 1,
     errorCount = 0,
-    executionTimeMs = 38
+    executionTimeMs = 38,
+    timeSpentSeconds
   } = params;
+
+  const tabSwitches = Math.max(0, tabSwitchCount);
+  const proctoringPenalty = Math.min(25, tabSwitches * 5);
+  const passedCompliance = tabSwitches === 0;
+
+  // Check Unattended / Premature Submission Gate
+  // If candidate didn't attend or submitted within a few minutes with 0 tests passed: score is strictly 0!
+  const isUnattended = isUnattendedSubmission(
+    code,
+    question.starterCode,
+    timeSpentSeconds,
+    testResults
+  );
+
+  if (isUnattended) {
+    return {
+      overallScore: 0,
+      correctnessScore: 0,
+      problemSolvingScore: 0,
+      efficiencyScore: 0,
+      codeQualityScore: 0,
+      debuggingScore: 0,
+      edgeCasesScore: 0,
+      communicationScore: 0,
+      detectedTimeComplexity: 'N/A (Unattended)',
+      detectedSpaceComplexity: 'N/A (Unattended)',
+      autopsySummary: 'Premature / Unattended Submission: Solution was submitted within a few minutes without substantive implementation or passed test assertions. As per standardized evaluation criteria, zero score (0/100) is awarded.',
+      whatWentWell: 'Session was registered in MongoDB.',
+      areasToImprove: 'Dedicate time to read problem specifications, design an algorithmic strategy, and implement passing test cases before submitting.',
+      interviewerFeedback: 'No score awarded (0/100). The candidate exited or submitted prematurely without attempting the question.',
+      suggestedPractice: `${question.topic}, Algorithmic Thinking, Test-Driven Implementation`,
+      proctoring: {
+        tabSwitches,
+        penaltyPoints: proctoringPenalty,
+        passedCompliance
+      },
+      metrics: {
+        testCasesPassed: 0,
+        totalTestCases: (question.testCases || []).length || 1,
+        runtimeMs: executionTimeMs,
+        linesOfCode: code.split('\n').filter(l => l.trim().length > 0).length,
+        calculatedAt: new Date().toISOString()
+      }
+    };
+  }
 
   // 1. Correctness Score (30%)
   const correctness = verifyCodeCorrectness(code, question, testResults);
@@ -385,10 +482,7 @@ export function calculateLegitimateAssessment(params: EvaluationInput): Assessme
   else communicationScore = 60;
 
   // 8. Proctoring Penalty Deductions (Anti-cheat)
-  // Each tab switch deducts 5 points (capped at 25 points maximum)
-  const tabSwitches = Math.max(0, tabSwitchCount);
-  const proctoringPenalty = Math.min(25, tabSwitches * 5);
-  const passedCompliance = tabSwitches === 0;
+  // Each tab switch deducts 5 points (capped at 25 points maximum) - already calculated above
 
   // 9. Weighted Overall Score Calculation
   // Weights: Correctness 30%, Problem Solving 20%, Efficiency 15%, Quality 10%, Edge Cases 10%, Debugging 10%, Communication 5%
@@ -491,11 +585,14 @@ export function saveLegitimateAssessment(
   assessment: AssessmentResult,
   sessionData: any
 ): void {
+  // 1. Primary: Save permanently in MongoDB
+  mongoService.saveAssessment(id, assessment, sessionData);
+
   try {
     const sessionKey = `kodexis_session_${id}`;
     const assessmentKey = `kodexis_assessment_${id}`;
 
-    // Store static assessment
+    // Store static assessment in local cache fallback
     localStorage.setItem(assessmentKey, JSON.stringify(assessment));
 
     // Store static session data

@@ -86,7 +86,7 @@ export const MultimodalSocraticHub: React.FC = () => {
     }
   ]);
   const [inputText, setInputText] = useState('');
-  const [selectedLanguage, setSelectedLanguage] = useState<'ENGLISH' | 'HINDI' | 'HINGLISH'>('ENGLISH');
+  const selectedLanguage = 'ENGLISH';
   const [isLoading, setIsLoading] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -127,7 +127,7 @@ export const MultimodalSocraticHub: React.FC = () => {
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
       recognition.interimResults = false;
-      recognition.lang = selectedLanguage === 'HINDI' ? 'hi-IN' : 'en-US';
+      recognition.lang = 'en-US';
 
       recognition.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
@@ -146,7 +146,7 @@ export const MultimodalSocraticHub: React.FC = () => {
 
       recognitionRef.current = recognition;
     }
-  }, [selectedLanguage]);
+  }, []);
 
   const toggleVoiceListening = () => {
     if (isListening) {
@@ -173,7 +173,7 @@ export const MultimodalSocraticHub: React.FC = () => {
       // Strip markdown syntax for natural voice synthesis
       const cleanText = text.replace(/[*_#`>[\]]/g, '').slice(0, 320);
       const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.lang = selectedLanguage === 'HINDI' ? 'hi-IN' : 'en-US';
+      utterance.lang = 'en-US';
       utterance.rate = 1.0;
 
       utterance.onstart = () => setIsSpeaking(true);
@@ -843,23 +843,6 @@ export const MultimodalSocraticHub: React.FC = () => {
 
               {/* Controls */}
               <div className="flex items-center space-x-2 shrink-0">
-                {/* Language Switcher */}
-                <div className="flex items-center space-x-1 bg-background-panel border border-border p-1 rounded-xl">
-                  {(['ENGLISH', 'HINDI', 'HINGLISH'] as const).map((lang) => (
-                    <button
-                      key={lang}
-                      onClick={() => setSelectedLanguage(lang)}
-                      className={`px-2 py-1 rounded-lg text-[10px] font-mono transition ${
-                        selectedLanguage === lang
-                          ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 font-bold'
-                          : 'text-zinc-400 hover:text-zinc-200'
-                      }`}
-                    >
-                      {lang === 'HINDI' ? 'हिंदी' : lang === 'HINGLISH' ? 'Hinglish' : 'EN'}
-                    </button>
-                  ))}
-                </div>
-
                 {/* Voice Mic Toggle */}
                 <button
                   onClick={toggleVoiceListening}

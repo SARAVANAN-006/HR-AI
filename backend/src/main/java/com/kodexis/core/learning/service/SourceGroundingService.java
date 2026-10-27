@@ -85,19 +85,9 @@ public class SourceGroundingService {
             result.setOutOfDomain(true);
             result.setOutsideKnowledgeFlag("UNVERIFIED_OUTSIDE_QUERY: Query is outside the ingested course curriculum scope.");
             
-            if ("HINDI".equalsIgnoreCase(preferredLanguage)) {
-                result.setAnswerMarkdown("⚠️ **अस्वीकृति सूचना (Out-of-Material Query)**:\n\n" +
-                        "यह प्रश्न हमारे वर्तमान पाठ्यक्रम (Distributed Systems, Graph Algorithms, Transformers) में शामिल नहीं है।\n\n" +
-                        "*स्रोत-आधारित शिक्षण अखंडता को बनाए रखने के लिए, सिस्टम केवल प्रमाणित अध्ययन सामग्री से उत्तर देता है।*");
-            } else if ("HINGLISH".equalsIgnoreCase(preferredLanguage)) {
-                result.setAnswerMarkdown("⚠️ **Course Scope Alert (Out of Material)**:\n\n" +
-                        "Yeh query hamare ingested syllabus/materials (Distributed Systems, Algorithms, Deep Learning) me covered nahi hai.\n\n" +
-                        "*Strict source grounding policy ke under, hum outside ya unverified knowledge hallucinate nahi karte.*");
-            } else {
-                result.setAnswerMarkdown("⚠️ **Curriculum Boundary Notice (Out-of-Material Query)**:\n\n" +
-                        "This query is not covered in the currently ingested textbooks, slides, or lecture videos (Distributed Systems, Network Flow, Transformers).\n\n" +
-                        "> **Source-Grounding Enforcement**: To guarantee academic precision and eliminate hallucinations, KODEXIS only provides source-backed answers linked to verified curriculum timestamps, slides, and page citations.");
-            }
+            result.setAnswerMarkdown("⚠️ **Curriculum Boundary Notice (Out-of-Material Query)**:\n\n" +
+                    "This query is not covered in the currently ingested textbooks, slides, or lecture videos (Distributed Systems, Network Flow, Transformers).\n\n" +
+                    "> **Source-Grounding Enforcement**: To guarantee academic precision and eliminate hallucinations, KODEXIS only provides source-backed answers linked to verified curriculum timestamps, slides, and page citations.");
             return result;
         }
 
@@ -159,18 +149,8 @@ public class SourceGroundingService {
     }
 
     private String buildDeterministicGroundedAnswer(String query, MultimodalContentUnit unit, Citation citation, String lang) {
-        String langPrefix = "";
-        if ("HINDI".equalsIgnoreCase(lang)) {
-            langPrefix = "### प्रमाणित पाठ्यक्रम व्याख्या (" + citation.getCitationLabel() + ")\n\n" +
-                    "प्रमाणित सामग्री के अनुसार:\n\n";
-        } else if ("HINGLISH".equalsIgnoreCase(lang)) {
-            langPrefix = "### Source-Grounded Explanation (" + citation.getCitationLabel() + ")\n\n" +
-                    "Direct material reference ke basis par:\n\n";
-        }
-
         StringBuilder sb = new StringBuilder();
-        sb.append(langPrefix)
-                .append("According to **").append(unit.getDocumentName()).append("** (").append(citation.getCitationLabel()).append("):\n\n")
+        sb.append("According to **").append(unit.getDocumentName()).append("** (").append(citation.getCitationLabel()).append("):\n\n")
                 .append("> \"").append(unit.getTextSnippet()).append("\"\n\n")
                 .append("### Key Theoretical Invariant:\n")
                 .append("* **Concept Core**: ").append(unit.getTitle()).append(" establishes that ")

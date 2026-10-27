@@ -54,7 +54,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cached = localStorage.getItem('kodexis_user');
     if (cached) {
       try {
-        return JSON.parse(cached);
+        const u = JSON.parse(cached);
+        if (u && typeof u === 'object' && u.username) {
+          const dnaKey = `kodexis_dna_params_${u.username.toLowerCase()}`;
+          const savedDna = localStorage.getItem(dnaKey);
+          if (savedDna) {
+            try {
+              const parsedDna = JSON.parse(savedDna);
+              return { ...u, ...parsedDna, isOnboarded: true };
+            } catch {}
+          }
+        }
+        return u;
       } catch {
         return null;
       }
@@ -88,6 +99,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const db = getUsersDb();
       db[u.username.toLowerCase()] = u;
       localStorage.setItem('kodexis_users_db', JSON.stringify(db));
+
+      // Lock DNA parameters forever if generated
+      if (u.isOnboarded && u.targetRole) {
+        const dnaKey = `kodexis_dna_params_${u.username.toLowerCase()}`;
+        localStorage.setItem(dnaKey, JSON.stringify({
+          targetRole: u.targetRole,
+          targetCompanies: u.targetCompanies,
+          experienceLevel: u.experienceLevel,
+          preferredLanguage: u.preferredLanguage,
+          isOnboarded: true
+        }));
+      }
+
       mongoService.saveStudentProfile({
         username: u.username,
         fullName: u.fullName,
@@ -114,16 +138,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response = await withFastTimeout(axios.get('/api/auth/me'), 2000, 'User profile fetch');
       const data = response.data;
-      setUser(data);
-      localStorage.setItem('kodexis_user', JSON.stringify(data));
-      saveUserToDb(data);
+      if (data && data.username) {
+        const dnaKey = `kodexis_dna_params_${data.username.toLowerCase()}`;
+        const savedDna = localStorage.getItem(dnaKey);
+        let finalUser: User = { ...data };
+        if (savedDna) {
+          try {
+            const parsedDna = JSON.parse(savedDna);
+            finalUser = { ...finalUser, ...parsedDna, isOnboarded: true };
+          } catch {}
+        } else if (data.isOnboarded && data.targetRole) {
+          localStorage.setItem(dnaKey, JSON.stringify({
+            targetRole: data.targetRole,
+            targetCompanies: data.targetCompanies,
+            experienceLevel: data.experienceLevel,
+            preferredLanguage: data.preferredLanguage,
+            isOnboarded: true
+          }));
+        }
+        setUser(finalUser);
+        localStorage.setItem('kodexis_user', JSON.stringify(finalUser));
+        saveUserToDb(finalUser);
+      }
     } catch (error) {
-      console.warn('Backend server offline or sleeping. Retaining active session:', error);
+      console.warn('Backend server offline or sleeping. Retaining active session with persistent DNA:', error);
       if (!user) {
         const cached = localStorage.getItem('kodexis_user');
         if (cached) {
           try {
-            setUser(JSON.parse(cached));
+            const u = JSON.parse(cached);
+            if (u && u.username) {
+              const dnaKey = `kodexis_dna_params_${u.username.toLowerCase()}`;
+              const savedDna = localStorage.getItem(dnaKey);
+              if (savedDna) {
+                const parsedDna = JSON.parse(savedDna);
+                setUser({ ...u, ...parsedDna, isOnboarded: true });
+                return;
+              }
+            }
+            setUser(u);
           } catch {}
         }
       }
@@ -132,6 +185,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (username: string, password: string): Promise<boolean> => {
     const cleanUsername = username.trim();
+    const dnaKey = `kodexis_dna_params_${cleanUsername.toLowerCase()}`;
+    const savedDna = localStorage.getItem(dnaKey);
+    let parsedDna: any = null;
+    if (savedDna) {
+      try { parsedDna = JSON.parse(savedDna); } catch {}
+    }
+
     try {
       const response = await withFastTimeout(
         axios.post('/api/auth/login', { username: cleanUsername, password }),
@@ -139,28 +199,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         'User authentication'
       );
       const { token: receivedToken, ...userData } = response.data;
+      let finalUserData: User = userData as User;
+      if (parsedDna) {
+        finalUserData = { ...finalUserData, ...parsedDna, isOnboarded: true };
+      }
       localStorage.setItem('kodexis_token', receivedToken);
-      localStorage.setItem('kodexis_user', JSON.stringify(userData));
-      saveUserToDb(userData as User);
+      localStorage.setItem('kodexis_user', JSON.stringify(finalUserData));
+      saveUserToDb(finalUserData);
       setToken(receivedToken);
       axios.defaults.headers.common['Authorization'] = `Bearer ${receivedToken}`;
-      setUser(userData as User);
+      setUser(finalUserData);
       return true;
     } catch (error) {
       console.warn('Backend server offline or high latency. Logging in with client session mode...');
       const db = getUsersDb();
       const existing = db[cleanUsername.toLowerCase()];
 
-      const userProfile: User = existing || {
+      const userProfile: User = existing ? { ...existing, ...(parsedDna || {}) } : {
         username: cleanUsername,
         role: cleanUsername.toLowerCase().includes('admin') ? 'ROLE_ADMIN' : 'ROLE_CANDIDATE',
         fullName: cleanUsername.charAt(0).toUpperCase() + cleanUsername.slice(1),
-        targetRole: 'Software Engineer',
-        targetCompanies: 'Top Tech Companies',
-        experienceLevel: 'MEDIUM',
-        preferredLanguage: 'PYTHON',
+        targetRole: parsedDna?.targetRole || null,
+        targetCompanies: parsedDna?.targetCompanies || null,
+        experienceLevel: parsedDna?.experienceLevel || null,
+        preferredLanguage: parsedDna?.preferredLanguage || null,
         readinessScore: 0,
-        isOnboarded: false
+        isOnboarded: !!parsedDna?.isOnboarded
       };
 
       const sessionToken = `mock_token_${cleanUsername}_${Date.now()}`;
@@ -176,6 +240,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (username: string, password: string, fullName: string): Promise<boolean> => {
     const cleanUsername = username.trim();
     const cleanFullName = (fullName && fullName.trim()) ? fullName.trim() : (cleanUsername.charAt(0).toUpperCase() + cleanUsername.slice(1));
+    const dnaKey = `kodexis_dna_params_${cleanUsername.toLowerCase()}`;
+    const savedDna = localStorage.getItem(dnaKey);
+    let parsedDna: any = null;
+    if (savedDna) {
+      try { parsedDna = JSON.parse(savedDna); } catch {}
+    }
+
     try {
       const response = await withFastTimeout(
         axios.post('/api/auth/register', { username: cleanUsername, password, fullName: cleanFullName }),
@@ -183,12 +254,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         'User registration'
       );
       const { token: receivedToken, ...userData } = response.data;
+      let finalUserData: User = userData as User;
+      if (parsedDna) {
+        finalUserData = { ...finalUserData, ...parsedDna, isOnboarded: true };
+      }
       localStorage.setItem('kodexis_token', receivedToken);
-      localStorage.setItem('kodexis_user', JSON.stringify(userData));
-      saveUserToDb(userData as User);
+      localStorage.setItem('kodexis_user', JSON.stringify(finalUserData));
+      saveUserToDb(finalUserData);
       setToken(receivedToken);
       axios.defaults.headers.common['Authorization'] = `Bearer ${receivedToken}`;
-      setUser(userData as User);
+      setUser(finalUserData);
       return true;
     } catch (error) {
       console.warn('Backend server offline or high latency. Registering with client session mode...');
@@ -196,12 +271,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         username: cleanUsername,
         role: cleanUsername.toLowerCase().includes('admin') ? 'ROLE_ADMIN' : 'ROLE_CANDIDATE',
         fullName: cleanFullName,
-        targetRole: 'Software Engineer',
-        targetCompanies: 'Top Tech Companies',
-        experienceLevel: 'MEDIUM',
-        preferredLanguage: 'PYTHON',
+        targetRole: parsedDna?.targetRole || null,
+        targetCompanies: parsedDna?.targetCompanies || null,
+        experienceLevel: parsedDna?.experienceLevel || null,
+        preferredLanguage: parsedDna?.preferredLanguage || null,
         readinessScore: 0,
-        isOnboarded: false
+        isOnboarded: !!parsedDna?.isOnboarded
       };
 
       const sessionToken = `mock_token_${cleanUsername}_${Date.now()}`;
@@ -215,24 +290,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const onboard = async (data: { targetRole: string; targetCompanies: string; experienceLevel: string; preferredLanguage: string }): Promise<boolean> => {
+    const currentUsername = user?.username || 'candidate';
+    const dnaRecord = {
+      targetRole: data.targetRole,
+      targetCompanies: data.targetCompanies,
+      experienceLevel: data.experienceLevel,
+      preferredLanguage: data.preferredLanguage,
+      isOnboarded: true
+    };
+
+    // Save DNA parameters permanently to dedicated user key and MongoDB
+    const dnaKey = `kodexis_dna_params_${currentUsername.toLowerCase()}`;
+    localStorage.setItem(dnaKey, JSON.stringify(dnaRecord));
+    mongoService.saveUserDna(currentUsername, dnaRecord);
+
+    const updated: User = {
+      ...(user || {
+        username: currentUsername,
+        role: 'ROLE_CANDIDATE',
+        fullName: currentUsername.charAt(0).toUpperCase() + currentUsername.slice(1),
+        readinessScore: 75
+      }),
+      ...dnaRecord
+    };
+
+    setUser(updated);
+    localStorage.setItem('kodexis_user', JSON.stringify(updated));
+    saveUserToDb(updated);
+
     try {
-      await withFastTimeout(axios.post('/api/auth/onboard', data), 2500, 'User onboarding');
-      await refreshUser();
-      return true;
+      await withFastTimeout(axios.post('/api/auth/onboard', { username: currentUsername, ...data }), 2500, 'User onboarding');
     } catch (error) {
-      console.warn('Backend onboarding delayed or offline, saving preferences locally:', error);
-      if (user) {
-        const updated = {
-          ...user,
-          ...data,
-          isOnboarded: true
-        };
-        setUser(updated);
-        localStorage.setItem('kodexis_user', JSON.stringify(updated));
-        saveUserToDb(updated);
-      }
-      return true;
+      console.warn('Backend onboarding delayed or offline, preferences locked permanently in local DB:', error);
     }
+    return true;
   };
 
   const logout = () => {

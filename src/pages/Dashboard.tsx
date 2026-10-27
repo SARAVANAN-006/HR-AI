@@ -40,7 +40,9 @@ import {
   TrendingUp,
   Cpu,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Mic,
+  ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getStreakData, type StreakData, STREAK_BADGES } from '../lib/streakService';
@@ -109,13 +111,8 @@ export const Dashboard: React.FC = () => {
   // Helper to generate personalized deterministic baseline for each candidate (No cloned 0% or all DEVELOPING)
   const generateCandidateBaseline = (username: string, expLevel: string) => {
     const cleanUser = username || 'candidate';
-    let hash = 0;
-    for (let i = 0; i < cleanUser.length; i++) {
-      hash = (hash << 5) - hash + cleanUser.charCodeAt(i);
-      hash |= 0;
-    }
-    const seed = Math.abs(hash % 17);
-    const base = expLevel === 'SENIOR' ? 82 : (expLevel === 'ENTRY' ? 58 : 70);
+    const isAdmin = (user?.role === 'ROLE_ADMIN') || cleanUser.toLowerCase() === 'admin';
+
     const topics = [
       "Arrays / Hashing", "Strings", "Stacks / Queues", "Sorting / Searching",
       "System Design", "Recursion", "LinkedLists", "Trees",
@@ -123,6 +120,47 @@ export const Dashboard: React.FC = () => {
     ];
     const numericMap: Record<string, number> = {};
     const skillMap: Record<string, string> = {};
+
+    if (isAdmin) {
+      const adminScores: Record<string, number> = {
+        "Arrays / Hashing": 98,
+        "Strings": 96,
+        "Stacks / Queues": 97,
+        "Sorting / Searching": 98,
+        "System Design": 99,
+        "Recursion": 94,
+        "LinkedLists": 96,
+        "Trees": 97,
+        "Dynamic Programming": 95,
+        "Graphs": 98
+      };
+      topics.forEach((t) => {
+        numericMap[t] = adminScores[t] || 97;
+        skillMap[t] = 'EXPERT';
+      });
+      const strengths = [
+        "System Architecture & Scalability (99% Mastery)",
+        "High-Throughput Concurrency (98% Mastery)",
+        "Algorithmic Asymptotics & Graph Theory (98% Mastery)"
+      ];
+      const weaknesses: WeaknessAlert[] = [
+        {
+          topic: "Dynamic Programming",
+          status: "Benchmark Reference",
+          description: "System Administrator benchmark established at 95% Expert tier for reference evaluations."
+        }
+      ];
+      return { numericMap, skillMap, strengths, weaknesses, avgScore: 98 };
+    }
+
+    let hash = 0;
+    for (let i = 0; i < cleanUser.length; i++) {
+      hash = (hash << 5) - hash + cleanUser.charCodeAt(i);
+      hash |= 0;
+    }
+    const seed = Math.abs(hash % 17);
+    const base = expLevel === 'SENIOR' ? 82 : (expLevel === 'ENTRY' ? 58 : 70);
+
     topics.forEach((t, i) => {
       const variance = ((seed * (i + 3)) % 25) - 8;
       const score = Math.max(38, Math.min(96, base + variance));
@@ -203,11 +241,6 @@ export const Dashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    if (user?.role === 'ROLE_ADMIN') {
-      navigate('/admin', { replace: true });
-      return;
-    }
-
     // Helper to purge legacy mock seeded data
     const sanitizeRealHistory = (hList: SessionHistory[]): SessionHistory[] => {
       if (!Array.isArray(hList)) return [];
@@ -241,17 +274,20 @@ export const Dashboard: React.FC = () => {
 
     // Instant local cache hydration scoped to active user
     const cached = localStorage.getItem(userStorageKey);
+    let parsedCached: DashboardData | null = null;
     if (cached) {
       try {
-        const parsed: DashboardData = JSON.parse(cached);
-        parsed.fullName = sanitizeCandidateName(user?.fullName || parsed.fullName, user?.username);
-        parsed.history = sanitizeRealHistory(parsed.history || []);
-        if (parsed.visualPreference) {
-          setVisualPreference(parsed.visualPreference);
+        parsedCached = JSON.parse(cached);
+        if (parsedCached) {
+          parsedCached.fullName = sanitizeCandidateName(user?.fullName || parsedCached.fullName, user?.username);
+          parsedCached.history = sanitizeRealHistory(parsedCached.history || []);
+          if (parsedCached.visualPreference) {
+            setVisualPreference(parsedCached.visualPreference);
+          }
+          setData(parsedCached);
+          setRadarData(computeRadar(parsedCached));
+          setLoading(false);
         }
-        setData(parsed);
-        setRadarData(computeRadar(parsed));
-        setLoading(false);
       } catch {
         // Fall through to network
       }
@@ -263,10 +299,35 @@ export const Dashboard: React.FC = () => {
     withFastTimeout(axios.get('/api/progress/dashboard'), 3000, 'Dashboard metrics fetch')
       .then((res) => {
         const backendData = res.data || {};
+        const dnaKey = `kodexis_dna_params_${username.toLowerCase()}`;
+        const savedDnaStr = localStorage.getItem(dnaKey);
+        let savedDna: any = {};
+        if (savedDnaStr) {
+          try { savedDna = JSON.parse(savedDnaStr); } catch {}
+        }
+
+        const combinedHistory = sanitizeRealHistory([
+          ...(backendData.history || []),
+          ...(parsedCached?.history || [])
+        ]);
+        const seenHistory = new Set<string>();
+        const uniqueHistory: SessionHistory[] = [];
+        for (const item of combinedHistory) {
+          const key = `${item.sessionId}_${item.title}`;
+          if (!seenHistory.has(key)) {
+            seenHistory.add(key);
+            uniqueHistory.push(item);
+          }
+        }
+
         const cleanData: DashboardData = {
           ...backendData,
+          targetRole: savedDna.targetRole || backendData.targetRole || user?.targetRole || "Software Engineer",
+          targetCompanies: savedDna.targetCompanies || backendData.targetCompanies || user?.targetCompanies || "Top Tech Companies",
+          experienceLevel: savedDna.experienceLevel || backendData.experienceLevel || user?.experienceLevel || "MEDIUM",
+          preferredLanguage: savedDna.preferredLanguage || backendData.preferredLanguage || user?.preferredLanguage || "PYTHON",
           fullName: sanitizeCandidateName(user?.fullName || backendData.fullName, user?.username),
-          history: sanitizeRealHistory(backendData.history || [])
+          history: uniqueHistory
         };
 
         if (cleanData.visualPreference) {
@@ -281,14 +342,26 @@ export const Dashboard: React.FC = () => {
       .catch(() => {
         console.warn('Backend offline or high latency. Generating personalized candidate telemetry...');
         if (!cached) {
-          const baseline = generateCandidateBaseline(username, user?.experienceLevel || 'MEDIUM');
+          const dnaKey = `kodexis_dna_params_${username.toLowerCase()}`;
+          const savedDnaStr = localStorage.getItem(dnaKey);
+          let savedDna: any = {};
+          if (savedDnaStr) {
+            try { savedDna = JSON.parse(savedDnaStr); } catch {}
+          }
+
+          const targetRole = savedDna.targetRole || user?.targetRole || "Software Engineer";
+          const targetCompanies = savedDna.targetCompanies || user?.targetCompanies || "Top Tech Companies";
+          const experienceLevel = savedDna.experienceLevel || user?.experienceLevel || "MEDIUM";
+          const preferredLanguage = savedDna.preferredLanguage || user?.preferredLanguage || "PYTHON";
+
+          const baseline = generateCandidateBaseline(username, experienceLevel);
           const freshDashboard: DashboardData = {
             fullName: sanitizeCandidateName(user?.fullName, user?.username),
             username: username,
-            targetRole: user?.targetRole || "Software Engineer",
-            targetCompanies: user?.targetCompanies || "Top Tech Companies",
-            experienceLevel: user?.experienceLevel || "MEDIUM",
-            preferredLanguage: user?.preferredLanguage || "PYTHON",
+            targetRole,
+            targetCompanies,
+            experienceLevel,
+            preferredLanguage,
             readinessScore: user?.readinessScore || baseline.avgScore,
             skills: baseline.skillMap,
             numericSkills: baseline.numericMap,
@@ -311,18 +384,34 @@ export const Dashboard: React.FC = () => {
       if (autopsies && autopsies.length > 0) {
         setData((prev) => {
           if (!prev) return prev;
-          const mysqlHistory: SessionHistory[] = autopsies.map((a, idx) => ({
-            sessionId: idx + 500,
-            topic: 'Core CS Architecture',
-            title: `Elsa AI Tech Autopsy (${a.durationMinutes}m) - ${a.recommendation.replace('_', ' ')}`,
-            difficulty: 'ADAPTIVE',
-            language: 'STT / Speech',
-            score: a.overallScore,
-            date: a.date || a.createdAt
-          }));
+          const mysqlHistory: SessionHistory[] = autopsies.map((a, idx) => {
+            let extractedTitle = 'Coding Challenge Session';
+            if (a.detailedDebrief && a.detailedDebrief.includes('Completed problem')) {
+              const m = a.detailedDebrief.match(/Completed problem (.*?) with score/i);
+              if (m && m[1]) extractedTitle = m[1];
+            } else if (a.detailedDebrief && a.detailedDebrief.includes('Completed interview on')) {
+              const m = a.detailedDebrief.match(/Completed interview on (.*?) with score/i);
+              if (m && m[1]) extractedTitle = m[1];
+            } else if (a.recommendation) {
+              extractedTitle = `Elsa AI Tech Autopsy (${a.durationMinutes || 30}m) - ${a.recommendation.replace('_', ' ')}`;
+            }
 
-          const existingTitles = new Set(prev.history.map((h) => h.title));
-          const uniqueEntries = mysqlHistory.filter((m) => !existingTitles.has(m.title));
+            const catTopic = Object.keys(a.categoryScores || {})[0];
+            const topic = catTopic || 'Arrays / Hashing';
+
+            return {
+              sessionId: typeof a.sessionId === 'number' ? a.sessionId : (Number(a.sessionId) || (idx + 500)),
+              topic,
+              title: extractedTitle,
+              difficulty: 'MEDIUM',
+              language: 'Voice / STT / IDE',
+              score: a.overallScore,
+              date: a.date || a.createdAt || new Date().toISOString()
+            };
+          });
+
+          const existingTitles = new Set(prev.history.map((h) => `${h.sessionId}_${h.title}`));
+          const uniqueEntries = mysqlHistory.filter((m) => !existingTitles.has(`${m.sessionId}_${m.title}`));
           if (uniqueEntries.length === 0) return prev;
 
           const updatedHistory = sanitizeRealHistory([...uniqueEntries, ...prev.history]);
@@ -460,9 +549,9 @@ export const Dashboard: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-border pb-6 gap-4">
         <div>
           <div className="flex items-center gap-2.5 flex-wrap">
-            <h2 className="text-xl font-bold font-mono text-zinc-100 uppercase">Technical Performance Console</h2>
+            <h2 className="text-xl font-bold font-mono text-zinc-100 uppercase">Interview Lab Dashboard (DSA Sandbox)</h2>
             <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-              MYSQL PERSISTENCE
+              MONGODB &amp; MYSQL CLUSTER
             </span>
             <button
               onClick={() => setIsSqlModalOpen(true)}
@@ -474,17 +563,24 @@ export const Dashboard: React.FC = () => {
             </button>
           </div>
           <p className="text-xs text-zinc-400 mt-1">
-            Telemetry logs for candidate <span className="text-brand-cyan font-semibold">{cleanCandidateName}</span> (Target: {data.targetRole || user?.targetRole || 'Software Engineer'})
+            Algorithmic problem-solving &amp; code telemetry for <span className="text-brand-cyan font-semibold">{cleanCandidateName}</span> (Target: {data.targetRole || user?.targetRole || 'Software Engineer'})
           </p>
         </div>
 
         <div className="flex items-center gap-2.5">
           <button
-            onClick={() => navigate('/elsa')}
-            className="flex items-center justify-center space-x-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-mono font-bold text-xs rounded-lg shadow-[0_0_15px_rgba(6,182,212,0.35)] transition"
+            onClick={() => navigate('/elsa-dashboard')}
+            className="flex items-center justify-center space-x-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-mono font-bold text-xs rounded-lg shadow-[0_0_15px_rgba(168,85,247,0.35)] transition"
           >
             <Radio size={14} className="animate-pulse" />
-            <span>Launch Elsa AI Interview (Live Video & Mic)</span>
+            <span>Elsa AI Dashboard</span>
+          </button>
+          <button
+            onClick={() => navigate('/elsa')}
+            className="flex items-center justify-center space-x-2 px-3 py-2 bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-mono font-bold text-xs rounded-lg shadow-[0_0_15px_rgba(6,182,212,0.35)] transition"
+          >
+            <Mic size={14} />
+            <span>Elsa Chamber</span>
           </button>
           <button
             onClick={() => navigate('/start-interview')}
@@ -495,6 +591,28 @@ export const Dashboard: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* ADMINISTRATOR BENCHMARK PROFILE BANNER */}
+      {user?.role === 'ROLE_ADMIN' && (
+        <div className="p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 font-mono text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[0_0_15px_rgba(245,158,11,0.15)]">
+          <div className="flex items-center gap-2.5">
+            <ShieldCheck size={18} className="text-amber-400 shrink-0" />
+            <div>
+              <span className="font-bold text-amber-200 uppercase tracking-wider">Administrator Benchmark Profile Active</span>
+              <p className="text-[11px] text-amber-300/80 font-sans mt-0.5">
+                Staff Software Architect Reference Matrix loaded (98/100 Readiness Benchmark across all 10 Computer Science domains).
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('/admin')}
+            className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 rounded text-amber-200 text-xs font-bold transition flex items-center gap-1 self-start sm:self-auto shrink-0"
+          >
+            <span>Open Admin Console</span>
+            <ArrowUpRight size={12} />
+          </button>
+        </div>
+      )}
 
       {syncNotice && (
         <div className="p-3 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 font-mono text-xs flex items-center gap-2 animate-in fade-in duration-200">

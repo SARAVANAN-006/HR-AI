@@ -10,7 +10,6 @@ import {
   ExternalLink,
   ShieldCheck,
   AlertTriangle,
-  Globe,
   Brain,
   Sparkles,
   BookOpen,
@@ -55,7 +54,7 @@ export const SocraticTutorPage: React.FC = () => {
     }
   ]);
   const [inputText, setInputText] = useState('');
-  const [selectedLanguage, setSelectedLanguage] = useState<'ENGLISH' | 'HINDI' | 'HINGLISH'>('ENGLISH');
+  const selectedLanguage = 'ENGLISH';
   const [isLoading, setIsLoading] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -77,7 +76,7 @@ export const SocraticTutorPage: React.FC = () => {
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
       recognition.interimResults = false;
-      recognition.lang = selectedLanguage === 'HINDI' ? 'hi-IN' : 'en-US';
+      recognition.lang = 'en-US';
 
       recognition.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
@@ -96,7 +95,7 @@ export const SocraticTutorPage: React.FC = () => {
 
       recognitionRef.current = recognition;
     }
-  }, [selectedLanguage]);
+  }, []);
 
   const toggleVoiceListening = () => {
     if (isListening) {
@@ -123,7 +122,7 @@ export const SocraticTutorPage: React.FC = () => {
       // Strip markdown syntax for natural voice synthesis
       const cleanText = text.replace(/[*_#`>[\]]/g, '').slice(0, 300);
       const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.lang = selectedLanguage === 'HINDI' ? 'hi-IN' : 'en-US';
+      utterance.lang = 'en-US';
       utterance.rate = 1.0;
 
       utterance.onstart = () => setIsSpeaking(true);
@@ -204,24 +203,6 @@ export const SocraticTutorPage: React.FC = () => {
           <p className="text-xs md:text-sm text-zinc-400 mt-1 max-w-2xl">
             Ask complex curriculum questions with citation tags linking directly to exact slides, pages, or video timestamps. Off-material queries are strictly declined to guarantee factual integrity.
           </p>
-        </div>
-
-        {/* Language Switcher */}
-        <div className="flex items-center space-x-2 bg-background-panel border border-border p-1.5 rounded-xl shrink-0">
-          <Globe size={16} className="text-brand-cyan ml-2" />
-          {(['ENGLISH', 'HINDI', 'HINGLISH'] as const).map(lang => (
-            <button
-              key={lang}
-              onClick={() => setSelectedLanguage(lang)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-mono transition ${
-                selectedLanguage === lang
-                  ? 'bg-brand-cyan/20 text-brand-cyan border border-brand-cyan/40 font-bold'
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
-            >
-              {lang === 'HINDI' ? 'हिंदी' : lang}
-            </button>
-          ))}
         </div>
       </div>
 
@@ -398,7 +379,7 @@ export const SocraticTutorPage: React.FC = () => {
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSendQuery()}
-              placeholder={selectedLanguage === 'HINDI' ? 'अपना प्रश्न यहाँ लिखें...' : 'Ask concept question (e.g. How does Raft break split votes?)...'}
+              placeholder="Ask concept question (e.g. How does Raft break split votes?)..."
               className="flex-1 px-4 py-3 rounded-xl bg-background border border-border text-xs text-zinc-200 placeholder-zinc-500 font-mono focus:outline-none focus:border-brand-cyan/60"
             />
 

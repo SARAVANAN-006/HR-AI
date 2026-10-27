@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Key, User, ShieldAlert, Sparkles, Activity } from 'lucide-react';
+import { Key, User, ShieldAlert, Sparkles, Activity, ShieldCheck } from 'lucide-react';
 
 const Login: React.FC = () => {
   const { login, register } = useAuth();
@@ -18,24 +18,48 @@ const Login: React.FC = () => {
     setError(null);
     setLoading(true);
 
-    if (!username || !password || (isRegister && !fullName)) {
-      setError("Please fill in all fields.");
+    if (!username.trim() || !password.trim() || (isRegister && !fullName.trim())) {
+      setError("Please fill in all required fields.");
       setLoading(false);
       return;
     }
 
     try {
       if (isRegister) {
-        await register(username, password, fullName);
+        await register(username.trim(), password.trim(), fullName.trim());
         navigate('/onboard');
       } else {
-        const success = await login(username, password);
+        const success = await login(username.trim(), password.trim());
         if (success) {
+          const rawUser = localStorage.getItem('kodexis_user');
+          let role = '';
+          try {
+            if (rawUser) role = JSON.parse(rawUser).role;
+          } catch {}
+
+          if (role === 'ROLE_ADMIN' || username.trim().toLowerCase() === 'admin') {
+            navigate('/admin');
+            return;
+          }
+
+          const cleanUname = username.trim().toLowerCase();
+          const dnaKey = `kodexis_dna_params_${cleanUname}`;
+          const hasDna = !!localStorage.getItem(dnaKey);
+          if (!hasDna) {
+            let onboarded = false;
+            try {
+              if (rawUser) onboarded = !!JSON.parse(rawUser).isOnboarded;
+            } catch {}
+            if (!onboarded) {
+              navigate('/onboard');
+              return;
+            }
+          }
           navigate('/dashboard');
         }
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || "Authentication failed. Please verify credentials.");
+      setError(err.response?.data?.error || "Authentication failed. Please verify your credentials.");
     } finally {
       setLoading(false);
     }
@@ -45,7 +69,7 @@ const Login: React.FC = () => {
     <div className="min-h-screen bg-background text-zinc-100 flex items-center justify-center grid-mesh font-sans relative px-4">
       <div className="absolute inset-0 radial-highlight pointer-events-none" />
 
-      <div className="w-full max-w-md border border-border bg-background-panel rounded-lg shadow-2xl p-8 relative z-10">
+      <div className="w-full max-w-md border border-border bg-background-panel rounded-2xl shadow-2xl p-8 relative z-10">
         
         {/* Header Title */}
         <div className="flex flex-col items-center mb-6">
@@ -71,7 +95,7 @@ const Login: React.FC = () => {
         </div>
 
         {error && (
-          <div className="mb-4 p-3 rounded border border-red-500/30 bg-red-500/10 text-red-400 text-xs font-mono flex items-center space-x-2">
+          <div className="mb-4 p-3 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 text-xs font-mono flex items-center space-x-2">
             <ShieldAlert size={14} className="shrink-0" />
             <span>{error}</span>
           </div>
@@ -85,10 +109,11 @@ const Login: React.FC = () => {
                 <User className="absolute left-3 top-3 text-zinc-500" size={16} />
                 <input
                   type="text"
+                  autoComplete="off"
                   placeholder="e.g. Alex Morgan"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full bg-background border border-border rounded pl-10 pr-4 py-2.5 text-sm font-mono text-zinc-200 focus:outline-none focus:border-brand-cyan transition"
+                  className="w-full bg-background border border-border rounded-xl pl-10 pr-4 py-2.5 text-sm font-mono text-zinc-200 focus:outline-none focus:border-brand-cyan transition"
                 />
               </div>
             </div>
@@ -100,10 +125,11 @@ const Login: React.FC = () => {
               <User className="absolute left-3 top-3 text-zinc-500" size={16} />
               <input
                 type="text"
-                placeholder="e.g. alex"
+                autoComplete="off"
+                placeholder="Enter candidate username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full bg-background border border-border rounded pl-10 pr-4 py-2.5 text-sm font-mono text-zinc-200 focus:outline-none focus:border-brand-cyan transition"
+                className="w-full bg-background border border-border rounded-xl pl-10 pr-4 py-2.5 text-sm font-mono text-zinc-200 focus:outline-none focus:border-brand-cyan transition"
               />
             </div>
           </div>
@@ -114,10 +140,11 @@ const Login: React.FC = () => {
               <Key className="absolute left-3 top-3 text-zinc-500" size={16} />
               <input
                 type="password"
+                autoComplete="off"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-background border border-border rounded pl-10 pr-4 py-2.5 text-sm font-mono text-zinc-200 focus:outline-none focus:border-brand-cyan transition"
+                className="w-full bg-background border border-border rounded-xl pl-10 pr-4 py-2.5 text-sm font-mono text-zinc-200 focus:outline-none focus:border-brand-cyan transition"
               />
             </div>
           </div>
@@ -125,21 +152,21 @@ const Login: React.FC = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded bg-brand-cyan text-background font-bold font-mono text-sm hover:bg-brand-cyan/95 transition flex items-center justify-center space-x-2"
+            className="w-full py-3 rounded-xl bg-brand-cyan text-background font-bold font-mono text-sm hover:bg-brand-cyan/95 transition flex items-center justify-center space-x-2 shadow-[0_0_15px_rgba(34,211,238,0.25)] disabled:opacity-50"
           >
             {loading ? (
               <Activity className="animate-spin" size={16} />
             ) : (
               <>
-                <span>{isRegister ? 'Register Account' : 'Authenticate Session'}</span>
+                <span>{isRegister ? 'Register Candidate Account' : 'Authenticate Session'}</span>
                 <Sparkles size={14} />
               </>
             )}
           </button>
         </form>
 
-        {/* Footer Toggle */}
-        <div className="mt-6 text-center">
+        {/* Register vs Login Toggle */}
+        <div className="mt-5 text-center">
           <button
             onClick={() => {
               setIsRegister(!isRegister);
@@ -149,8 +176,19 @@ const Login: React.FC = () => {
           >
             {isRegister
               ? 'Already registered? Authenticate here'
-              : "New candidate? Generate profile key"}
+              : "New candidate? Create profile key"}
           </button>
+        </div>
+
+        {/* Separate Link to Admin Portal */}
+        <div className="mt-6 pt-5 border-t border-border/60 text-center">
+          <Link
+            to="/admin-login"
+            className="text-xs font-mono text-zinc-500 hover:text-amber-400 transition inline-flex items-center gap-1.5"
+          >
+            <ShieldCheck size={13} className="text-amber-500" />
+            <span>Administrator Access Console &rarr;</span>
+          </Link>
         </div>
       </div>
     </div>

@@ -5,3 +5,7 @@ target/
 .idea/
 .vscode/
 *.log
+node_modules/
+.system_generated/
+.gemini/
+

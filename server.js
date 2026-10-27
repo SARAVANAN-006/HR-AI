@@ -1,6 +1,10 @@
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 
 const PORT = 8080;
+const DATA_DIR = path.join(__dirname, 'data');
+const DB_FILE = path.join(DATA_DIR, 'kodexis_db.json');
 
 function generateAiInterviewerReply(rawInput) {
   let text = String(rawInput || '').toLowerCase().trim();
@@ -53,8 +57,8 @@ function generateAiInterviewerReply(rawInput) {
   return "That is a valid engineering perspective. Before writing code in the editor, ensure you have considered the time complexity trade-offs and edge cases for your approach.";
 }
 
-// In-memory Database Store
-const database = {
+// Default initial store
+const initialDatabase = {
   users: [
     {
       username: 'candidate',
@@ -66,7 +70,8 @@ const database = {
       experienceLevel: 'MEDIUM',
       preferredLanguage: 'PYTHON',
       readinessScore: 85,
-      isOnboarded: true
+      isOnboarded: true,
+      dnaGeneratedAt: new Date().toISOString()
     }
   ],
   candidate_logs: [],
@@ -147,8 +152,71 @@ const database = {
       interviewerFeedback: 'Outstanding performance. Bypassed brute-force nested loops and wrote clean modular code.',
       suggestedPractice: 'Sliding Window, Two Pointers, HashMap Load Factor'
     }
-  }
+  },
+  shared_assessments: {}
 };
+
+function loadDatabase() {
+  try {
+    if (fs.existsSync(DB_FILE)) {
+      const content = fs.readFileSync(DB_FILE, 'utf8');
+      const loaded = JSON.parse(content);
+      return {
+        ...initialDatabase,
+        ...loaded,
+        users: Array.isArray(loaded.users) && loaded.users.length > 0 ? loaded.users : initialDatabase.users,
+        candidate_logs: loaded.candidate_logs || [],
+        interview_autopsies: loaded.interview_autopsies || [],
+        candidate_skill_telemetry: loaded.candidate_skill_telemetry || [],
+        shared_assessments: loaded.shared_assessments || {}
+      };
+    }
+  } catch (err) {
+    console.error('[KODEXIS Backend] Error reading database file:', err);
+  }
+  return JSON.parse(JSON.stringify(initialDatabase));
+}
+
+const database = loadDatabase();
+
+function saveDatabase() {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    fs.writeFileSync(DB_FILE, JSON.stringify(database, null, 2), 'utf8');
+  } catch (err) {
+    console.error('[KODEXIS Backend] Error saving database file:', err);
+  }
+}
+
+function getAuthenticatedUser(req, parsedBody) {
+  if (parsedBody && parsedBody.username) {
+    const found = database.users.find(u => u.username.toLowerCase() === parsedBody.username.toLowerCase());
+    if (found) return found;
+  }
+
+  const authHeader = req.headers['authorization'] || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  if (token) {
+    const match = token.match(/_([a-zA-Z0-9_-]+)_\d+$/);
+    if (match && match[1]) {
+      const found = database.users.find(u => u.username.toLowerCase() === match[1].toLowerCase());
+      if (found) return found;
+    }
+  }
+
+  try {
+    const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost:8080'}`);
+    const qUsername = parsedUrl.searchParams.get('username');
+    if (qUsername) {
+      const found = database.users.find(u => u.username.toLowerCase() === qUsername.toLowerCase());
+      if (found) return found;
+    }
+  } catch {}
+
+  return database.users[0] || initialDatabase.users[0];
+}
 
 const sendJson = (res, statusCode, data) => {
   res.writeHead(statusCode, {
@@ -185,64 +253,93 @@ const server = http.createServer((req, res) => {
     // --- AUTH ROUTES ---
     if (url === '/api/auth/login' && method === 'POST') {
       const username = parsedBody.username || 'candidate';
-      const existingUser = database.users.find(u => u.username.toLowerCase() === username.toLowerCase());
-      const user = existingUser || {
-        username: username,
-        role: username.toLowerCase().includes('admin') ? 'ROLE_ADMIN' : 'ROLE_CANDIDATE',
-        fullName: username.charAt(0).toUpperCase() + username.slice(1),
-        targetRole: 'Software Engineer',
-        targetCompanies: 'Top Tech Companies',
-        experienceLevel: 'MEDIUM',
-        preferredLanguage: 'PYTHON',
-        readinessScore: 85,
-        isOnboarded: true
-      };
+      let existingUser = database.users.find(u => u.username.toLowerCase() === username.toLowerCase());
+      if (!existingUser) {
+        existingUser = {
+          username: username,
+          role: username.toLowerCase().includes('admin') ? 'ROLE_ADMIN' : 'ROLE_CANDIDATE',
+          fullName: username.charAt(0).toUpperCase() + username.slice(1),
+          targetRole: 'Software Engineer',
+          targetCompanies: 'Top Tech Companies',
+          experienceLevel: 'MEDIUM',
+          preferredLanguage: 'PYTHON',
+          readinessScore: 85,
+          isOnboarded: false
+        };
+        database.users.push(existingUser);
+        saveDatabase();
+      }
       return sendJson(res, 200, {
-        token: `kodexis_jwt_session_token_${Date.now()}`,
-        ...user
+        token: `kodexis_jwt_session_token_${existingUser.username}_${Date.now()}`,
+        ...existingUser
       });
     }
 
     if (url === '/api/auth/register' && method === 'POST') {
       const username = parsedBody.username || 'candidate';
       const fullName = parsedBody.fullName || (username.charAt(0).toUpperCase() + username.slice(1));
-      const newUser = {
-        username: username,
-        role: username.toLowerCase().includes('admin') ? 'ROLE_ADMIN' : 'ROLE_CANDIDATE',
-        fullName: fullName,
-        targetRole: 'Software Engineer',
-        targetCompanies: 'Top Tech Companies',
-        experienceLevel: 'MEDIUM',
-        preferredLanguage: 'PYTHON',
-        readinessScore: 85,
-        isOnboarded: true
-      };
-      database.users.push(newUser);
+      let user = database.users.find(x => x.username.toLowerCase() === username.toLowerCase());
+      if (!user) {
+        user = {
+          username: username,
+          role: username.toLowerCase().includes('admin') ? 'ROLE_ADMIN' : 'ROLE_CANDIDATE',
+          fullName: fullName,
+          targetRole: null,
+          targetCompanies: null,
+          experienceLevel: null,
+          preferredLanguage: null,
+          readinessScore: 0,
+          isOnboarded: false
+        };
+        database.users.push(user);
+        saveDatabase();
+      }
       return sendJson(res, 200, {
-        token: `kodexis_jwt_session_token_${Date.now()}`,
-        ...newUser
+        token: `kodexis_jwt_session_token_${user.username}_${Date.now()}`,
+        ...user
       });
     }
 
-    if (url === '/api/auth/me' && method === 'GET') {
-      return sendJson(res, 200, database.users[0]);
+    if (url.startsWith('/api/auth/me') && method === 'GET') {
+      const authUser = getAuthenticatedUser(req, parsedBody);
+      return sendJson(res, 200, authUser);
     }
 
     if (url === '/api/auth/onboard' && method === 'POST') {
-      Object.assign(database.users[0], parsedBody, { isOnboarded: true });
-      return sendJson(res, 200, { message: 'Onboarding completed successfully' });
+      const targetUser = getAuthenticatedUser(req, parsedBody);
+      if (targetUser) {
+        targetUser.targetRole = parsedBody.targetRole || targetUser.targetRole || 'Software Engineer';
+        targetUser.targetCompanies = parsedBody.targetCompanies || targetUser.targetCompanies || 'Top Tech Companies';
+        targetUser.experienceLevel = parsedBody.experienceLevel || targetUser.experienceLevel || 'MEDIUM';
+        targetUser.preferredLanguage = parsedBody.preferredLanguage || targetUser.preferredLanguage || 'PYTHON';
+        targetUser.isOnboarded = true;
+        targetUser.dnaGeneratedAt = new Date().toISOString();
+        saveDatabase();
+        console.log(`[KODEXIS Backend] DNA Parameters saved forever for user ${targetUser.username}:`, {
+          targetRole: targetUser.targetRole,
+          targetCompanies: targetUser.targetCompanies,
+          experienceLevel: targetUser.experienceLevel,
+          preferredLanguage: targetUser.preferredLanguage,
+          isOnboarded: true
+        });
+        return sendJson(res, 200, {
+          message: 'DNA Parameters generated and saved permanently',
+          user: targetUser
+        });
+      }
+      return sendJson(res, 400, { error: 'User not found' });
     }
 
     // --- PROGRESS & DASHBOARD ROUTES (DYNAMIC CANDIDATE TELEMETRY ENGINE) ---
-    if (url === '/api/progress/dashboard' && method === 'GET') {
-      const u = database.users[0];
+    if (url.startsWith('/api/progress/dashboard') && method === 'GET') {
+      const u = getAuthenticatedUser(req);
       const topics = [
         "Arrays / Hashing", "Strings", "Stacks / Queues", "Sorting / Searching",
         "System Design", "Recursion", "LinkedLists", "Trees",
         "Dynamic Programming", "Graphs"
       ];
       const seed = Math.abs((u.username || 'candidate').split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 17);
-      const base = u.experienceLevel === 'SENIOR' ? 82 : (u.experienceLevel === 'ENTRY' ? 58 : 70);
+      const base = u.experienceLevel === 'SENIOR' || u.experienceLevel === 'HARD' || u.experienceLevel === 'EXPERT' ? 82 : (u.experienceLevel === 'BEGINNER' || u.experienceLevel === 'ENTRY' ? 58 : 70);
       const numericSkills = {};
       const skills = {};
       const sqlRows = [];
@@ -292,6 +389,51 @@ const server = http.createServer((req, res) => {
         }
       ];
 
+      const rawAutopsies = database.interview_autopsies || [];
+      const userAutopsies = rawAutopsies.filter(a => (a.username || '').toLowerCase() === (u.username || '').toLowerCase());
+      const autopsiesHistory = userAutopsies.map(a => ({
+        sessionId: a.sessionId || a.id,
+        topic: a.autopsy?.topic || 'Core CS Architecture',
+        title: a.autopsy?.title || `Elsa AI Tech Autopsy (${a.autopsy?.durationMinutes || 30}m) - ${a.autopsy?.recommendation || 'Evaluated'}`,
+        difficulty: a.autopsy?.difficulty || 'ADAPTIVE',
+        language: a.autopsy?.language || 'Voice / STT',
+        score: a.overallScore || a.autopsy?.overallScore || 0,
+        date: a.timestamp || a.date || new Date().toISOString()
+      }));
+
+      const rawLogs = database.candidate_logs || [];
+      const userLogs = rawLogs.filter(l => (l.username || '').toLowerCase() === (u.username || '').toLowerCase() && (l.action === 'SESSION_COMPLETED' || l.logType === 'INTERVIEW_AUTOPSY'));
+      const logsHistory = userLogs.map(l => {
+        let p = {};
+        try { p = typeof l.payload === 'string' ? JSON.parse(l.payload) : (l.payload || {}); } catch {}
+        let extractedTitle = p.title || p.questionTitle;
+        if (!extractedTitle && l.details) {
+          const match = l.details.match(/Completed interview on\s+(.*?)\s+with score/i);
+          if (match && match[1]) extractedTitle = match[1];
+        }
+        return {
+          sessionId: p.sessionId || l.id,
+          topic: p.topic || 'Arrays / Hashing',
+          title: extractedTitle || 'Coding Challenge Session',
+          difficulty: p.difficulty || 'MEDIUM',
+          language: p.language || u.preferredLanguage || 'JAVA',
+          score: typeof p.score === 'number' ? p.score : (Number(p.score) || 75),
+          date: l.timestamp || new Date().toISOString()
+        };
+      });
+
+      const combinedHistory = [...autopsiesHistory, ...logsHistory];
+      const seenSessions = new Set();
+      const dedupedHistory = [];
+      for (const item of combinedHistory) {
+        const key = `${item.sessionId}_${item.title}`;
+        if (!seenSessions.has(key)) {
+          seenSessions.add(key);
+          dedupedHistory.push(item);
+        }
+      }
+      dedupedHistory.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
       return sendJson(res, 200, {
         fullName: u.fullName,
         username: u.username,
@@ -299,7 +441,7 @@ const server = http.createServer((req, res) => {
         targetCompanies: u.targetCompanies,
         experienceLevel: u.experienceLevel,
         preferredLanguage: u.preferredLanguage,
-        readinessScore: u.readinessScore,
+        readinessScore: dedupedHistory.length > 0 ? Math.max(u.readinessScore || 70, ...dedupedHistory.map(h => h.score)) : u.readinessScore,
         skills,
         numericSkills,
         strengths,
@@ -307,19 +449,144 @@ const server = http.createServer((req, res) => {
         visualPreference: database.candidate_skill_telemetry[0]?.visualPreference || 'BAR_CHART',
         sqlTableRows: sqlRows,
         sqlTableLink: `/api/logs/table/candidate_skill_telemetry/${encodeURIComponent(u.username)}`,
-        history: database.interview_autopsies.map((a, i) => ({
-          sessionId: a.id,
-          topic: 'Core CS Architecture',
-          title: `Elsa AI Tech Autopsy (${a.autopsy?.durationMinutes || 30}m) - ${a.autopsy?.recommendation || 'Evaluated'}`,
-          difficulty: 'MEDIUM',
-          language: 'Voice / STT',
-          score: a.overallScore,
-          date: a.timestamp
-        }))
+        history: dedupedHistory
       });
     }
 
     // --- CANDIDATE LOGS & AUTOPSY MYSQL-COMPATIBLE ENDPOINTS ---
+    if (url.match(/\/api\/interviews\/[^/]+\/submit/) && method === 'POST') {
+      const sessionId = url.split('/')[3];
+      const u = getAuthenticatedUser(req, parsedBody);
+      const incomingAssessment = parsedBody.assessment || {};
+      const incomingSession = parsedBody.session || {};
+      const score = typeof parsedBody.score === 'number' ? parsedBody.score : (incomingAssessment.overallScore || 75);
+      const title = incomingSession.question?.title || parsedBody.title || 'Coding Challenge';
+      const topic = incomingSession.question?.topic || parsedBody.topic || 'Arrays / Hashing';
+
+      // 1. Persist full assessment object for report and autopsy reload
+      database.assessments = database.assessments || {};
+      database.assessments[sessionId] = {
+        overallScore: score,
+        correctnessScore: incomingAssessment.correctnessScore ?? score,
+        problemSolvingScore: incomingAssessment.problemSolvingScore ?? score,
+        efficiencyScore: incomingAssessment.efficiencyScore ?? score,
+        codeQualityScore: incomingAssessment.codeQualityScore ?? score,
+        debuggingScore: incomingAssessment.debuggingScore ?? 85,
+        edgeCasesScore: incomingAssessment.edgeCasesScore ?? 75,
+        communicationScore: incomingAssessment.communicationScore ?? 80,
+        detectedTimeComplexity: incomingAssessment.detectedTimeComplexity || 'O(n)',
+        detectedSpaceComplexity: incomingAssessment.detectedSpaceComplexity || 'O(n)',
+        autopsySummary: incomingAssessment.autopsySummary || `Completed ${title} with score ${score}/100.`,
+        whatWentWell: incomingAssessment.whatWentWell || 'Clean algorithmic structure and defensive logic.',
+        areasToImprove: incomingAssessment.areasToImprove || 'Check edge cases on null or single-element bounds.',
+        interviewerFeedback: incomingAssessment.interviewerFeedback || 'Good problem-solving demonstration.',
+        suggestedPractice: incomingAssessment.suggestedPractice || topic
+      };
+
+      // 2. Persist full session
+      database.sessions = database.sessions || {};
+      database.sessions[sessionId] = {
+        id: Number(sessionId) || sessionId,
+        question: incomingSession.question || {
+          title,
+          topic,
+          expectedTimeComplexity: 'O(n)',
+          expectedSpaceComplexity: 'O(n)'
+        },
+        language: parsedBody.language || incomingSession.language || 'PYTHON',
+        difficulty: incomingSession.difficulty || 'MEDIUM',
+        startedAt: incomingSession.startedAt || new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+        lastSubmittedCode: parsedBody.code || incomingSession.lastSubmittedCode || '',
+        telemetryLog: incomingSession.telemetryLog || JSON.stringify([
+          { time: 'Phase 1', event: 'Session initiated' },
+          { time: 'Phase 2', event: `Solution submitted and evaluated with score ${score}/100` }
+        ])
+      };
+
+      // 3. Persist interview autopsy
+      database.interview_autopsies = database.interview_autopsies || [];
+      const existingAutopsyIdx = database.interview_autopsies.findIndex(a => String(a.sessionId) === String(sessionId));
+      const autopsyRecord = {
+        id: existingAutopsyIdx >= 0 ? database.interview_autopsies[existingAutopsyIdx].id : database.interview_autopsies.length + 1,
+        sessionId,
+        username: u.username,
+        overallScore: score,
+        timestamp: new Date().toISOString(),
+        date: new Date().toISOString(),
+        autopsy: {
+          title,
+          topic,
+          difficulty: incomingSession.difficulty || 'MEDIUM',
+          language: parsedBody.language || 'PYTHON',
+          overallScore: score,
+          recommendation: score >= 85 ? 'STRONG_HIRE' : (score >= 70 ? 'HIRE' : 'LEAN_HIRE'),
+          durationMinutes: 30,
+          correctnessScore: incomingAssessment.correctnessScore ?? score,
+          problemSolvingScore: incomingAssessment.problemSolvingScore ?? score,
+          efficiencyScore: incomingAssessment.efficiencyScore ?? score,
+          codeQualityScore: incomingAssessment.codeQualityScore ?? score
+        }
+      };
+      if (existingAutopsyIdx >= 0) {
+        database.interview_autopsies[existingAutopsyIdx] = autopsyRecord;
+      } else {
+        database.interview_autopsies.push(autopsyRecord);
+      }
+
+      // 4. Record candidate log
+      const submissionLog = {
+        id: database.candidate_logs.length + 1,
+        username: u.username,
+        action: 'SESSION_COMPLETED',
+        page: '/interview',
+        logType: 'INTERVIEW_AUTOPSY',
+        details: `Completed interview on ${title} with score ${score}/100.`,
+        payload: {
+          sessionId,
+          title,
+          topic,
+          score,
+          language: parsedBody.language,
+          tabSwitches: incomingAssessment.proctoring?.tabSwitches || 0,
+          timestamp: new Date().toISOString()
+        },
+        timestamp: new Date().toISOString()
+      };
+      database.candidate_logs.push(submissionLog);
+
+      // 5. Update candidate_skill_telemetry row
+      database.candidate_skill_telemetry = database.candidate_skill_telemetry || [];
+      const existingSkill = database.candidate_skill_telemetry.find(s => s.username.toLowerCase() === u.username.toLowerCase() && s.topic.toLowerCase() === topic.toLowerCase());
+      if (existingSkill) {
+        existingSkill.proficiencyScore = score;
+        existingSkill.proficiencyLevel = score >= 85 ? 'EXPERT' : (score >= 70 ? 'STRONG' : 'INTERMEDIATE');
+        existingSkill.problemsAttempted = (existingSkill.problemsAttempted || 1) + 1;
+        existingSkill.lastUpdated = new Date().toISOString();
+      } else {
+        database.candidate_skill_telemetry.push({
+          id: database.candidate_skill_telemetry.length + 1,
+          username: u.username,
+          topic,
+          proficiencyLevel: score >= 85 ? 'EXPERT' : (score >= 70 ? 'STRONG' : 'INTERMEDIATE'),
+          proficiencyScore: score,
+          problemsAttempted: 1,
+          problemsPassed: score >= 70 ? 1 : 0,
+          accuracyPercentage: score,
+          avgExecutionTimeMs: 38,
+          aiBehaviorScore: 85,
+          identifiedStrengths: 'Optimal algorithm execution',
+          identifiedWeaknesses: 'Verify boundary edge cases',
+          aiBehaviorNotes: 'AI live telemetry updated from verified submission',
+          visualPreference: 'BAR_CHART',
+          lastUpdated: new Date().toISOString()
+        });
+      }
+
+      saveDatabase();
+      return sendJson(res, 200, { status: 'SUCCESS', message: 'Solution submitted and evaluated', sessionId, score });
+    }
+
     if (url === '/api/logs/record' && method === 'POST') {
       const logEntry = {
         id: database.candidate_logs.length + 1,
@@ -332,6 +599,7 @@ const server = http.createServer((req, res) => {
         timestamp: new Date().toISOString()
       };
       database.candidate_logs.push(logEntry);
+      saveDatabase();
       return sendJson(res, 200, { status: 'SUCCESS', logId: logEntry.id, timestamp: logEntry.timestamp });
     }
 
@@ -351,6 +619,7 @@ const server = http.createServer((req, res) => {
         timestamp: new Date().toISOString()
       };
       database.interview_autopsies.push(autopsyEntry);
+      saveDatabase();
       return sendJson(res, 200, { status: 'SUCCESS', autopsyLogId: autopsyEntry.id, timestamp: autopsyEntry.timestamp });
     }
 
@@ -365,7 +634,20 @@ const server = http.createServer((req, res) => {
           details: `Session ${a.sessionId} evaluated with score ${a.overallScore}`,
           payload: JSON.stringify(a.autopsy)
         }));
-      return sendJson(res, 200, userAutopsies);
+
+      // Also include candidate_logs for SESSION_COMPLETED
+      const userCompletedLogs = database.candidate_logs
+        .filter(l => l.username.toLowerCase() === targetUser.toLowerCase() && (l.action === 'SESSION_COMPLETED' || l.logType === 'INTERVIEW_AUTOPSY'))
+        .map(l => ({
+          id: l.id,
+          username: l.username,
+          timestamp: l.timestamp,
+          details: l.details || `Session completed`,
+          payload: typeof l.payload === 'string' ? l.payload : JSON.stringify(l.payload || {})
+        }));
+
+      const allAutopsies = [...userAutopsies, ...userCompletedLogs];
+      return sendJson(res, 200, allAutopsies);
     }
 
     // --- DEDICATED SQL TABLE: candidate_skill_telemetry ---
@@ -574,6 +856,30 @@ CREATE TABLE IF NOT EXISTS candidate_skill_telemetry (
 
       const session = database.sessions[id] || database.sessions['101'];
       return sendJson(res, 200, session);
+    }
+
+    // --- SHARED ASSESSMENTS STORAGE & DIRECT LOADING ---
+    if (url === '/api/assessment/share' && method === 'POST') {
+      database.shared_assessments = database.shared_assessments || {};
+      const shareId = parsedBody.shareId || ('kdx_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 6));
+      database.shared_assessments[shareId] = {
+        ...parsedBody,
+        shareId,
+        savedAt: new Date().toISOString()
+      };
+      saveDatabase();
+      console.log(`[KODEXIS Backend] Shared assessment registered and persisted: ${shareId}`);
+      return sendJson(res, 200, { status: 'SUCCESS', shareId, message: 'Shared assessment stored' });
+    }
+
+    if (url.startsWith('/api/assessment/share/') && method === 'GET') {
+      const shareId = url.split('/')[4];
+      database.shared_assessments = database.shared_assessments || {};
+      const pkg = database.shared_assessments[shareId];
+      if (pkg) {
+        return sendJson(res, 200, pkg);
+      }
+      return sendJson(res, 404, { error: 'Shared assessment not found' });
     }
 
     // Default Fallback

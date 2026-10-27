@@ -3,7 +3,8 @@ import axios from 'axios';
 import { withFastTimeout } from '../lib/api';
 import {
   Shield, Database, Plus, Trash2, Edit2, Code, Activity, Users,
-  Sliders, Search, Eye, RefreshCw, X, Award, Flame, BookOpen
+  Sliders, Search, Eye, RefreshCw, X, Award, Flame, BookOpen,
+  LogIn, UserCheck, Clock, Globe, Laptop
 } from 'lucide-react';
 import {
   getFeatures, toggleFeature, addFeature, removeFeature,
@@ -12,6 +13,7 @@ import {
 import type { PlatformFeature } from '../lib/featureFlags';
 import { getAuditUsers } from '../lib/auditLogs';
 import type { CandidateUsageLog, CandidateActivity } from '../lib/auditLogs';
+import { mongoService } from '../lib/mongoService';
 
 interface TestCase {
   id?: number;
@@ -35,10 +37,38 @@ interface Question {
   testCases: TestCase[];
 }
 
-type AdminTab = 'questions' | 'audit-logs' | 'features';
+interface UserLoginEvent {
+  id: string;
+  username: string;
+  fullName: string;
+  role: string;
+  timestamp: string;
+  ip: string;
+  userAgent: string;
+  status: string;
+}
+
+interface PlatformUserSummary {
+  username: string;
+  fullName: string;
+  role: string;
+  loginCount?: number;
+  lastLoginAt?: string;
+  createdAt?: string;
+  domainProficiency?: Record<string, number>;
+}
+
+type AdminTab = 'logins' | 'questions' | 'audit-logs' | 'features';
 
 const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<AdminTab>('questions');
+  const [activeTab, setActiveTab] = useState<AdminTab>('logins');
+
+  // ================= LOGINS STATE ================
+  const [userLogins, setUserLogins] = useState<UserLoginEvent[]>([]);
+  const [platformUsers, setPlatformUsers] = useState<PlatformUserSummary[]>([]);
+  const [loadingLogins, setLoadingLogins] = useState<boolean>(true);
+  const [loginSearch, setLoginSearch] = useState<string>('');
+  const [roleFilter, setRoleFilter] = useState<string>('ALL');
 
   // ================= QUESTIONS STATE =================
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -166,7 +196,16 @@ const AdminDashboard: React.FC = () => {
       });
   };
 
-  const loadAuditLogs = () => {
+  const loadAuditLogs = async () => {
+    try {
+      const overview = await mongoService.getAdminOverview();
+      if (overview && Array.isArray(overview.auditUsers) && overview.auditUsers.length > 0) {
+        setCandidateUsers(overview.auditUsers);
+        return;
+      }
+    } catch (e) {
+      console.warn('[Admin Dashboard] MongoDB overview fetch error:', e);
+    }
     const data = getAuditUsers();
     setCandidateUsers(data);
   };
@@ -175,7 +214,34 @@ const AdminDashboard: React.FC = () => {
     setFeatures(getFeatures());
   };
 
+  const loadPlatformLogins = async () => {
+    setLoadingLogins(true);
+    try {
+      const res = await withFastTimeout(axios.get('/api/admin/logins'), 2500, 'Admin logins fetch');
+      const list = Array.isArray(res.data) ? res.data : (res.data?.logins || []);
+      setUserLogins(list);
+      try { localStorage.setItem('kodexis_user_logins', JSON.stringify(list)); } catch {}
+    } catch (err) {
+      console.warn('Backend logins fetch error:', err);
+      const cached = localStorage.getItem('kodexis_user_logins');
+      if (cached) {
+        try { setUserLogins(JSON.parse(cached)); } catch {}
+      }
+    }
+
+    try {
+      const userRes = await withFastTimeout(axios.get('/api/admin/users'), 2500, 'Admin users fetch');
+      const uList = Array.isArray(userRes.data) ? userRes.data : (userRes.data?.users || []);
+      setPlatformUsers(uList);
+    } catch (err) {
+      console.warn('Backend users fetch error:', err);
+    }
+    setLoadingLogins(false);
+  };
+
+
   useEffect(() => {
+    loadPlatformLogins();
     loadQuestions();
     loadAuditLogs();
     loadFeaturesList();
@@ -391,6 +457,19 @@ const AdminDashboard: React.FC = () => {
         <div className="flex items-center gap-2 bg-zinc-950/70 p-1.5 rounded-xl border border-border/80 font-mono text-xs">
           <button
             type="button"
+            onClick={() => setActiveTab('logins')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg font-bold transition ${
+              activeTab === 'logins'
+                ? 'bg-brand-cyan text-zinc-950 shadow-[0_0_15px_rgba(6,182,212,0.3)]'
+                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+            }`}
+          >
+            <LogIn size={13} />
+            <span>Live User Logins</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab('questions')}
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg font-bold transition ${
               activeTab === 'questions'
@@ -444,6 +523,249 @@ const AdminDashboard: React.FC = () => {
           </div>
         ))}
       </div>
+
+      {/* ========================================================= */}
+      {/* TAB 0: PLATFORM LOGIN TELEMETRY & ACCESS AUDIT */}
+      {/* ========================================================= */}
+      {activeTab === 'logins' && (
+        <div className="space-y-6 animate-fade-in font-mono">
+          {/* Top Actions & Filters */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <div className="relative w-full sm:w-72">
+                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                <input
+                  type="text"
+                  placeholder="Search user or full name..."
+                  value={loginSearch}
+                  onChange={(e) => setLoginSearch(e.target.value)}
+                  className="w-full bg-background-panel border border-border rounded-xl pl-9 pr-3 py-2 text-zinc-200 focus:outline-none focus:border-brand-cyan"
+                />
+              </div>
+
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                className="bg-background-panel border border-border rounded-xl px-3 py-2 text-zinc-300 focus:outline-none focus:border-brand-cyan"
+              >
+                <option value="ALL">All Roles</option>
+                <option value="ROLE_CANDIDATE">Candidates Only</option>
+                <option value="ROLE_ADMIN">Admins Only</option>
+              </select>
+            </div>
+
+            <button
+              onClick={loadPlatformLogins}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 border border-border hover:border-brand-cyan/50 text-zinc-300 hover:text-brand-cyan transition shrink-0"
+              title="Refresh login logs"
+            >
+              <RefreshCw size={13} className={loadingLogins ? 'animate-spin' : ''} />
+              <span>Refresh Logins</span>
+            </button>
+          </div>
+
+          {/* Quick Metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+            <div className="p-4 bg-zinc-950/60 border border-brand-cyan/30 rounded-xl space-y-1">
+              <span className="text-[10px] text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
+                <LogIn size={12} className="text-brand-cyan" />
+                <span>Total Logins Recorded</span>
+              </span>
+              <span className="text-xl font-bold text-zinc-100">{userLogins.length}</span>
+              <span className="text-[10px] text-zinc-400">Authenticated login sessions</span>
+            </div>
+
+            <div className="p-4 bg-zinc-950/60 border border-brand-violet/30 rounded-xl space-y-1">
+              <span className="text-[10px] text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
+                <Users size={12} className="text-brand-violet" />
+                <span>Registered Accounts</span>
+              </span>
+              <span className="text-xl font-bold text-zinc-100">{platformUsers.length || 'Active'}</span>
+              <span className="text-[10px] text-zinc-400">In platform database</span>
+            </div>
+
+            <div className="p-4 bg-zinc-950/60 border border-emerald-500/30 rounded-xl space-y-1">
+              <span className="text-[10px] text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
+                <Clock size={12} className="text-emerald-400" />
+                <span>Latest Login</span>
+              </span>
+              <span className="text-sm font-bold text-emerald-400 truncate block">
+                {userLogins.length > 0 ? `${userLogins[0].fullName || userLogins[0].username}` : 'None yet'}
+              </span>
+              <span className="text-[10px] text-zinc-400 truncate block">
+                {userLogins.length > 0 ? new Date(userLogins[0].timestamp).toLocaleString() : 'No activity recorded'}
+              </span>
+            </div>
+
+            <div className="p-4 bg-zinc-950/60 border border-amber-500/30 rounded-xl space-y-1">
+              <span className="text-[10px] text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
+                <UserCheck size={12} className="text-amber-400" />
+                <span>Role Distribution</span>
+              </span>
+              <div className="flex items-center gap-3 pt-1">
+                <span className="text-xs text-brand-cyan font-bold">
+                  {userLogins.filter(l => l.role === 'ROLE_CANDIDATE').length} Candidates
+                </span>
+                <span className="text-xs text-red-400 font-bold">
+                  {userLogins.filter(l => l.role === 'ROLE_ADMIN').length} Admins
+                </span>
+              </div>
+              <span className="text-[10px] text-zinc-400">Across all recorded logins</span>
+            </div>
+          </div>
+
+          {/* Table: Real-Time Login Telemetry */}
+          <div className="border border-border bg-background-panel rounded-2xl overflow-hidden shadow-lg">
+            <div className="p-4 border-b border-border flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <h3 className="text-xs font-bold uppercase text-zinc-200">
+                  Real-Time Login Telemetry & Sessions ({userLogins.length})
+                </h3>
+              </div>
+              <span className="text-[10px] text-zinc-500 uppercase">Live Socket / HTTP Feed</span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs font-mono">
+                <thead className="bg-zinc-900/80 text-zinc-400 uppercase text-[10px] border-b border-border">
+                  <tr>
+                    <th className="p-3">User / Identity</th>
+                    <th className="p-3">Role</th>
+                    <th className="p-3">Login Timestamp</th>
+                    <th className="p-3">Client IP</th>
+                    <th className="p-3">Browser / Platform</th>
+                    <th className="p-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/40 text-zinc-300">
+                  {userLogins
+                    .filter((l) => {
+                      const matchesSearch =
+                        (l.username || '').toLowerCase().includes(loginSearch.toLowerCase()) ||
+                        (l.fullName || '').toLowerCase().includes(loginSearch.toLowerCase());
+                      const matchesRole = roleFilter === 'ALL' || l.role === roleFilter;
+                      return matchesSearch && matchesRole;
+                    })
+                    .map((item, idx) => {
+                      const isCandidate = item.role === 'ROLE_CANDIDATE';
+                      const formattedTime = new Date(item.timestamp).toLocaleString();
+                      return (
+                        <tr key={item.id || idx} className="hover:bg-zinc-900/40 transition">
+                          <td className="p-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs ${
+                                isCandidate ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30' : 'bg-red-500/10 text-red-400 border border-red-500/30'
+                              }`}>
+                                {(item.fullName || item.username || 'U').charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <p className="font-semibold text-zinc-100">{item.fullName || item.username}</p>
+                                <p className="text-[10px] text-zinc-500">@{item.username}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                              isCandidate
+                                ? 'bg-brand-cyan/10 border border-brand-cyan/30 text-brand-cyan'
+                                : 'bg-red-500/10 border border-red-500/30 text-red-400'
+                            }`}>
+                              {item.role.replace('ROLE_', '')}
+                            </span>
+                          </td>
+                          <td className="p-3 text-zinc-400">
+                            <div className="flex items-center gap-1.5">
+                              <Clock size={12} className="text-zinc-500" />
+                              <span>{formattedTime}</span>
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            <div className="flex items-center gap-1.5 text-zinc-400">
+                              <Globe size={12} className="text-zinc-500" />
+                              <span>{item.ip || '127.0.0.1'}</span>
+                            </div>
+                          </td>
+                          <td className="p-3 text-zinc-400 max-w-xs truncate" title={item.userAgent}>
+                            <div className="flex items-center gap-1.5">
+                              <Laptop size={12} className="text-zinc-500 shrink-0" />
+                              <span className="truncate">
+                                {item.userAgent ? (
+                                  item.userAgent.includes('Edg') ? 'Edge / Browser' :
+                                  item.userAgent.includes('Chrome') ? 'Chrome / Browser' :
+                                  item.userAgent.includes('Firefox') ? 'Firefox' :
+                                  item.userAgent.includes('Safari') ? 'Safari' : 'Web Client'
+                                ) : 'Direct Web Client'}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center gap-1 w-fit">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                              {item.status || 'AUTHENTICATED'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  {userLogins.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="p-8 text-center text-zinc-500">
+                        <Users className="mx-auto text-zinc-600 mb-2" size={24} />
+                        <p>No login events recorded yet. Logins will appear live as users sign in.</p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Registered Users Table */}
+          {platformUsers.length > 0 && (
+            <div className="border border-border bg-background-panel rounded-2xl overflow-hidden shadow-lg">
+              <div className="p-4 border-b border-border flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase text-zinc-200 flex items-center gap-2">
+                  <UserCheck size={14} className="text-brand-cyan" />
+                  <span>Platform Registered Accounts & Login Statistics ({platformUsers.length})</span>
+                </h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs font-mono">
+                  <thead className="bg-zinc-900/80 text-zinc-400 uppercase text-[10px] border-b border-border">
+                    <tr>
+                      <th className="p-3">Username</th>
+                      <th className="p-3">Full Name</th>
+                      <th className="p-3">Role</th>
+                      <th className="p-3">Total Logins</th>
+                      <th className="p-3">Last Active</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/40 text-zinc-300">
+                    {platformUsers.map((u, i) => (
+                      <tr key={i} className="hover:bg-zinc-900/40 transition">
+                        <td className="p-3 font-bold text-zinc-200">@{u.username}</td>
+                        <td className="p-3 text-zinc-300">{u.fullName || '—'}</td>
+                        <td className="p-3">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                            u.role === 'ROLE_ADMIN' ? 'text-red-400 bg-red-500/10' : 'text-brand-cyan bg-cyan-500/10'
+                          }`}>
+                            {u.role.replace('ROLE_', '')}
+                          </span>
+                        </td>
+                        <td className="p-3 font-bold text-zinc-200">{u.loginCount || 1}</td>
+                        <td className="p-3 text-zinc-400">
+                          {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : 'Recent'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ========================================================= */}
       {/* TAB 1: QUESTIONS REPOSITORY */}
@@ -830,18 +1152,21 @@ const AdminDashboard: React.FC = () => {
                       </tr>
                     ) : (
                       filteredCandidates.map((c) => {
-                        const latestAction = c.recentActivities[0];
+                        const regularity = c.regularity || { tier: 'Newcomer', sessionsCount: 0, streakDays: 0, lastActive: 'Live in MongoDB', hoursPracticed: 0 };
+                        const level = c.level || { badgeColor: 'text-brand-cyan bg-brand-cyan/10 border-brand-cyan/30', title: 'Level 2: Junior Developer', readinessScore: 75, xp: 1125 };
+                        const activities = Array.isArray(c.recentActivities) ? c.recentActivities : [];
+                        const latestAction = activities[0];
                         return (
                         <tr key={c.id} className="hover:bg-zinc-900/50 transition">
                           {/* Name & Target */}
                           <td className="py-3.5 px-4">
                             <div className="flex items-center gap-2.5">
                               <div className="w-8 h-8 rounded-full bg-brand-violet/20 border border-brand-violet/40 text-brand-violet font-bold flex items-center justify-center text-xs">
-                                {c.username.substring(0, 2).toUpperCase()}
+                                {(c.username || 'C').substring(0, 2).toUpperCase()}
                               </div>
                               <div>
-                                <span className="font-bold text-zinc-100 block">{c.fullName}</span>
-                                <span className="text-[10px] text-zinc-500">@{c.username} • {c.targetRole}</span>
+                                <span className="font-bold text-zinc-100 block">{c.fullName || c.username}</span>
+                                <span className="text-[10px] text-zinc-500">@{c.username} • {c.targetRole || 'Software Engineer'}</span>
                               </div>
                             </div>
                           </td>
@@ -850,16 +1175,16 @@ const AdminDashboard: React.FC = () => {
                           <td className="py-3.5 px-4">
                             <div className="space-y-1">
                               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border ${
-                                c.regularity.tier === 'Daily Active' ? 'text-brand-emerald bg-brand-emerald/10 border-brand-emerald/30' :
-                                c.regularity.tier === 'Frequent' ? 'text-brand-cyan bg-brand-cyan/10 border-brand-cyan/30' :
-                                c.regularity.tier === 'Occasional' ? 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30' :
+                                regularity.tier === 'Daily Active' ? 'text-brand-emerald bg-brand-emerald/10 border-brand-emerald/30' :
+                                regularity.tier === 'Frequent' ? 'text-brand-cyan bg-brand-cyan/10 border-brand-cyan/30' :
+                                regularity.tier === 'Occasional' ? 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30' :
                                 'text-zinc-400 bg-zinc-800 border-zinc-700'
                               }`}>
-                                {c.regularity.tier === 'Daily Active' && <Flame size={10} className="text-amber-400" />}
-                                <span>{c.regularity.tier}</span>
+                                {regularity.tier === 'Daily Active' && <Flame size={10} className="text-amber-400" />}
+                                <span>{regularity.tier}</span>
                               </span>
                               <div className="text-[10px] text-zinc-400">
-                                {c.regularity.sessionsCount} sessions • {c.regularity.streakDays}d streak • Last active {c.regularity.lastActive}
+                                {regularity.sessionsCount} sessions • {regularity.streakDays}d streak • Last active {regularity.lastActive}
                               </div>
                             </div>
                           </td>
@@ -867,12 +1192,12 @@ const AdminDashboard: React.FC = () => {
                           {/* Level */}
                           <td className="py-3.5 px-4">
                             <div className="space-y-1">
-                              <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${c.level.badgeColor}`}>
-                                {c.level.title}
+                              <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${level.badgeColor}`}>
+                                {level.title}
                               </span>
                               <div className="text-[10px] text-zinc-400 flex items-center gap-2">
-                                <span>Readiness: <strong className="text-zinc-200">{c.level.readinessScore}%</strong></span>
-                                <span>XP: <strong className="text-zinc-200">{c.level.xp}</strong></span>
+                                <span>Readiness: <strong className="text-zinc-200">{level.readinessScore}%</strong></span>
+                                <span>XP: <strong className="text-zinc-200">{level.xp}</strong></span>
                               </div>
                             </div>
                           </td>
@@ -1025,13 +1350,13 @@ const AdminDashboard: React.FC = () => {
                 {/* Regularity and Skills Chips */}
                 <div className="p-3 bg-zinc-950/70 border border-border/60 rounded-xl space-y-2 shrink-0 text-xs">
                   <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
-                    <span>Regularity Tier: <strong className="text-brand-emerald">{selectedUserForLogs.regularity.tier}</strong></span>
-                    <span>Practice Streak: <strong className="text-amber-400">{selectedUserForLogs.regularity.streakDays} Days</strong></span>
-                    <span>Total Sessions: <strong className="text-zinc-200">{selectedUserForLogs.regularity.sessionsCount}</strong></span>
-                    <span>Hours Practiced: <strong className="text-brand-cyan">{selectedUserForLogs.regularity.hoursPracticed}h</strong></span>
+                    <span>Regularity Tier: <strong className="text-brand-emerald">{selectedUserForLogs.regularity?.tier || 'Newcomer'}</strong></span>
+                    <span>Practice Streak: <strong className="text-amber-400">{selectedUserForLogs.regularity?.streakDays || 0} Days</strong></span>
+                    <span>Total Sessions: <strong className="text-zinc-200">{selectedUserForLogs.regularity?.sessionsCount || 0}</strong></span>
+                    <span>Hours Practiced: <strong className="text-brand-cyan">{selectedUserForLogs.regularity?.hoursPracticed || 0}h</strong></span>
                   </div>
                   <div className="pt-2 border-t border-zinc-900 flex flex-wrap gap-1.5">
-                    {selectedUserForLogs.skills.map((s, idx) => (
+                    {(selectedUserForLogs.skills || []).map((s, idx) => (
                       <span key={idx} className="px-2 py-0.5 rounded text-[9px] bg-zinc-900 border border-zinc-800 text-zinc-300">
                         {s.domain}: <strong className="text-brand-cyan">{s.proficiency}</strong>
                       </span>
@@ -1044,7 +1369,7 @@ const AdminDashboard: React.FC = () => {
                   <span className="text-[10px] text-zinc-500 uppercase tracking-wider block font-bold">
                     Chronological Action & Session Timeline
                   </span>
-                  {selectedUserForLogs.recentActivities.length === 0 ? (
+                  {(!selectedUserForLogs.recentActivities || selectedUserForLogs.recentActivities.length === 0) ? (
                     <div className="text-center py-8 text-zinc-500 text-xs">No logged sessions recorded yet for this candidate.</div>
                   ) : (
                     selectedUserForLogs.recentActivities.map((act) => (

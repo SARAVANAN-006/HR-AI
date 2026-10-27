@@ -19,7 +19,7 @@ public class MultilingualTutoringService {
 
     public static class SocraticVoiceExchange {
         private String studentQuery;
-        private String language; // "ENGLISH", "HINDI", "HINGLISH"
+        private String language; // "ENGLISH"
         private String tutorResponseText;
         private String speechSynthesisText; // Clean spoken text without markdown for audio playback
         private boolean isGrounded;
@@ -68,26 +68,12 @@ public class MultilingualTutoringService {
             return exchange;
         }
 
-        // Multilingual Formulations (Requirement 6d)
-        if ("HINDI".equalsIgnoreCase(lang)) {
-            String cleanText = "यह अवधारणा आपकी संदर्भ सामग्री " + (grounded.getCitations().isEmpty() ? "" : grounded.getCitations().get(0).getCitationLabel()) +
-                    " पर आधारित है। चलिए इसे समझते हैं। " + grounded.getMatchedUnits().get(0).getTextSnippet().split("\\.")[0] + "।";
-            exchange.setTutorResponseText(grounded.getAnswerMarkdown());
-            exchange.setSpeechSynthesisText(cleanText);
-            exchange.setSocraticPromptFollowup("क्या आप बता सकते हैं कि इस स्थिति में सिस्टम की सुरक्षा कैसे सुनिश्चित होती है?");
-        } else if ("HINGLISH".equalsIgnoreCase(lang)) {
-            String cleanText = "Iss concept ka direct reference hai " + (grounded.getCitations().isEmpty() ? "" : grounded.getCitations().get(0).getCitationLabel()) +
-                    ". " + grounded.getMatchedUnits().get(0).getTextSnippet().split("\\.")[0] + ".";
-            exchange.setTutorResponseText(grounded.getAnswerMarkdown());
-            exchange.setSpeechSynthesisText(cleanText);
-            exchange.setSocraticPromptFollowup("Think about this: Agar election timeout fix ho jaye, toh split vote problem kaise solve hogi?");
-        } else {
-            String cleanText = "Based on " + (grounded.getCitations().isEmpty() ? "your curriculum" : grounded.getCitations().get(0).getCitationLabel()) +
-                    ", " + grounded.getMatchedUnits().get(0).getTextSnippet().split("\\.")[0] + ".";
-            exchange.setTutorResponseText(grounded.getAnswerMarkdown());
-            exchange.setSpeechSynthesisText(cleanText);
-            exchange.setSocraticPromptFollowup("Now, consider this Socratic question: What happens to the cluster if two nodes timeout at the exact same millisecond?");
-        }
+        // Professional Academic English Formulations
+        String cleanText = "Based on " + (grounded.getCitations().isEmpty() ? "your curriculum" : grounded.getCitations().get(0).getCitationLabel()) +
+                ", " + grounded.getMatchedUnits().get(0).getTextSnippet().split("\\.")[0] + ".";
+        exchange.setTutorResponseText(grounded.getAnswerMarkdown());
+        exchange.setSpeechSynthesisText(cleanText);
+        exchange.setSocraticPromptFollowup("Now, consider this Socratic question: What happens to the cluster if two nodes timeout at the exact same millisecond?");
 
         return exchange;
     }

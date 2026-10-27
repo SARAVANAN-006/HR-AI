@@ -359,19 +359,22 @@ export async function generateElsaAiFinalReport(
   session: StarkInterviewSession
 ): Promise<StarkEvaluation> {
   const transcripts = session.transcripts;
+  const validAnswers = (transcripts || []).filter(
+    (t) => t.userAnswerText && t.userAnswerText !== '(No audible speech registered)' && t.userAnswerText.trim().split(/\s+/).filter(Boolean).length >= 5
+  );
 
-  if (!transcripts || transcripts.length === 0) {
+  if (!transcripts || transcripts.length === 0 || validAnswers.length === 0) {
     return {
-      overallScore: 70,
-      recommendation: 'LEAN_HIRE',
-      technicalProficiencyScore: 72,
-      communicationScore: 70,
-      conceptualDepthScore: 68,
-      problemSolvingScore: 70,
+      overallScore: 0,
+      recommendation: 'NEEDS_PRACTICE',
+      technicalProficiencyScore: 0,
+      communicationScore: 0,
+      conceptualDepthScore: 0,
+      problemSolvingScore: 0,
       categoryScores: {},
-      keyStrengths: ['Demonstrated foundational engineering motivation'],
-      areasForImprovement: ['Practice structured technical communication under timed constraints'],
-      detailedDebrief: `Elsa AI Tech Lead Autopsy: Candidate completed the ${session.durationMinutes}-minute session.`
+      keyStrengths: ['Session registered in MongoDB'],
+      areasForImprovement: ['Candidate exited prematurely or did not provide audible answers to interview challenges.'],
+      detailedDebrief: `Unattended / Premature Submission: ${session.candidateName || 'Candidate'} concluded the session within a few minutes with 0 audible technical responses. Standardized testing policy assigns 0/100 for unattended evaluations.`
     };
   }
 

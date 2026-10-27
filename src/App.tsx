@@ -14,6 +14,7 @@ import VoicePoweredOrbDemo from './pages/VoicePoweredOrbDemo';
 import InterviewRoom from './pages/InterviewRoom';
 import Report from './pages/Report';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminLogin from './pages/AdminLogin';
 import AssessmentDashboardPage from './pages/AssessmentDashboardPage';
 import { MultimodalSocraticHub } from './pages/MultimodalSocraticHub';
 import { AdaptiveAssessmentPage } from './pages/AdaptiveAssessmentPage';
@@ -22,6 +23,7 @@ import { RevisionStudioPage } from './pages/RevisionStudioPage';
 import { StudyCalendarPage } from './pages/StudyCalendarPage';
 import { SystemEvaluationPage } from './pages/SystemEvaluationPage';
 import { StarkInterviewPage } from './pages/StarkInterviewPage';
+import ElsaDashboardPage from './pages/ElsaDashboardPage';
 import {
   LayoutDashboard,
   Play,
@@ -51,16 +53,28 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; requireAdmin?: boole
     );
   }
 
+  const isAssessmentShare = typeof window !== 'undefined' && 
+    (window.location.pathname.startsWith('/assessment') && window.location.search.includes('shareId='));
+
   if (!token || !user) {
+    if (isAssessmentShare) {
+      return <>{children}</>;
+    }
+    if (requireAdmin) {
+      return <Navigate to="/admin-login" replace />;
+    }
     return <Navigate to="/login" replace />;
   }
 
-  if (user && user.role === 'ROLE_CANDIDATE' && !user.isOnboarded && window.location.pathname !== '/onboard') {
-    return <Navigate to="/onboard" replace />;
+  if (requireAdmin && user.role !== 'ROLE_ADMIN') {
+    return <Navigate to="/admin-login" replace />;
   }
 
-  if (requireAdmin && user.role !== 'ROLE_ADMIN') {
-    return <Navigate to="/dashboard" replace />;
+  if (user && user.role === 'ROLE_CANDIDATE' && !user.isOnboarded && window.location.pathname !== '/onboard') {
+    if (isAssessmentShare) {
+      return <>{children}</>;
+    }
+    return <Navigate to="/onboard" replace />;
   }
 
   return <>{children}</>;
@@ -78,19 +92,19 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
     navigate('/login');
   };
 
-  const navItems = user?.role === 'ROLE_ADMIN'
-    ? [{ name: 'Admin Console', path: '/admin', icon: ShieldAlert }]
-    : [
-        { name: 'Dashboard Console', path: '/dashboard', icon: LayoutDashboard },
-        { name: 'Elsa AI Interview', path: '/elsa', icon: Radio },
-        { name: 'Knowledge & Socratic AI (RAG)', path: '/knowledge', icon: BookOpen },
-        { name: 'Adaptive Assessment', path: '/assessment', icon: GraduationCap },
-        { name: 'Learner Model & DAG', path: '/learner-model', icon: GitBranch },
-        { name: 'Targeted Revision', path: '/revision', icon: RotateCw },
-        { name: 'Study Calendar', path: '/calendar', icon: CalendarIcon },
-        { name: 'RAGAS & Cohort Eval', path: '/system-eval', icon: Target },
-        { name: 'Interview Lab', path: '/start-interview', icon: Play },
-      ];
+  const navItems = [
+    { name: 'Interview Lab Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { name: 'Elsa AI Dashboard', path: '/elsa-dashboard', icon: Radio },
+    ...(user?.role === 'ROLE_ADMIN' ? [{ name: 'Admin Console & Logs', path: '/admin', icon: ShieldAlert }] : []),
+    { name: 'Elsa AI Live Chamber', path: '/elsa', icon: Radio },
+    { name: 'Interview Lab Chamber', path: '/start-interview', icon: Play },
+    { name: 'Adaptive Assessment', path: '/assessment', icon: GraduationCap },
+    { name: 'Knowledge & Socratic AI (RAG)', path: '/knowledge', icon: BookOpen },
+    { name: 'Learner Model & DAG', path: '/learner-model', icon: GitBranch },
+    { name: 'Targeted Revision', path: '/revision', icon: RotateCw },
+    { name: 'Study Calendar', path: '/calendar', icon: CalendarIcon },
+    { name: 'RAGAS & Cohort Eval', path: '/system-eval', icon: Target },
+  ];
 
   return (
     <div className="min-h-screen bg-background text-zinc-100 flex flex-col md:flex-row font-sans">
@@ -201,8 +215,8 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
             <div className="flex justify-between items-center pt-2 border-t border-border/50">
               <div className="truncate pr-2">
-                <p className="text-xs font-semibold text-zinc-300 truncate">{user?.fullName}</p>
-                <p className="text-[9px] font-mono text-zinc-500 truncate uppercase">{user?.role.replace('ROLE_', '')}</p>
+                <p className="text-xs font-semibold text-zinc-300 truncate">{user?.fullName || 'Guest Candidate'}</p>
+                <p className="text-[9px] font-mono text-zinc-500 truncate uppercase">{(user?.role || 'ROLE_CANDIDATE').replace('ROLE_', '')}</p>
               </div>
               <button
                 onClick={handleLogout}
@@ -233,6 +247,8 @@ const App: React.FC = () => {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/admin-login" element={<AdminLogin />} />
+        <Route path="/admin/login" element={<Navigate to="/admin-login" replace />} />
         
         {/* Onboarding Guard */}
         <Route
@@ -261,6 +277,16 @@ const App: React.FC = () => {
             <ProtectedRoute>
               <DashboardLayout>
                 <AssessmentDashboardPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/elsa-dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <ElsaDashboardPage />
               </DashboardLayout>
             </ProtectedRoute>
           }

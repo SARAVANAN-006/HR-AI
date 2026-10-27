@@ -1,15 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Target, Building2, Sparkles, Activity } from 'lucide-react';
 
 const Onboarding: React.FC = () => {
-  const { onboard } = useAuth();
+  const { onboard, user } = useAuth();
   const navigate = useNavigate();
-  const [targetRole, setTargetRole] = useState<string>('Software Engineer');
-  const [targetCompanies, setTargetCompanies] = useState<string>('NVIDIA, Google');
-  const [experienceLevel, setExperienceLevel] = useState<string>('MEDIUM');
-  const [preferredLanguage, setPreferredLanguage] = useState<string>('PYTHON');
+
+  // If user has already generated DNA parameters, never prompt again; route directly to dashboard
+  useEffect(() => {
+    const username = (user?.username || '').toLowerCase();
+    const hasDna = !!localStorage.getItem(`kodexis_dna_params_${username}`);
+    if (user?.isOnboarded || hasDna) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, navigate]);
+
+  const [targetRole, setTargetRole] = useState<string>(user?.targetRole || 'Software Engineer');
+  const [targetCompanies, setTargetCompanies] = useState<string>(user?.targetCompanies || 'NVIDIA, Google');
+  const [experienceLevel, setExperienceLevel] = useState<string>(user?.experienceLevel || 'MEDIUM');
+  const [preferredLanguage, setPreferredLanguage] = useState<string>(user?.preferredLanguage || 'PYTHON');
   const [loading, setLoading] = useState<boolean>(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -22,7 +32,7 @@ const Onboarding: React.FC = () => {
       preferredLanguage
     });
     if (success) {
-      navigate('/dashboard');
+      navigate('/dashboard', { replace: true });
     } else {
       alert("Failed to initialize profile. Please retry.");
       setLoading(false);

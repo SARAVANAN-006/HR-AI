@@ -93,6 +93,8 @@ export interface MongoInterviewAutopsy {
     feedback: string;
     durationSeconds: number;
     timestamp: string;
+    candidateAudioUrl?: string;
+    audioDurationSeconds?: number;
   }>;
   createdAt: string;
 }
@@ -536,6 +538,192 @@ class MongoService {
     } catch (e) {
       console.warn('[MongoDB Cluster] Cleanup notice:', e);
     }
+  }
+
+  /**
+   * Fetch Real MongoDB Admin Overview with zero dummy logs
+   */
+  async getAdminOverview(): Promise<{
+    database: string;
+    totalUsers: number;
+    totalLogs: number;
+    totalAutopsies: number;
+    auditUsers: any[];
+    recentLogs: any[];
+  }> {
+    try {
+      const res = await fetch(`${this.apiEndpoint}/admin/overview`);
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn('[MongoDB Cluster] Overview fetch error:', e);
+    }
+    return {
+      database: 'MongoDB',
+      totalUsers: 1,
+      totalLogs: 0,
+      totalAutopsies: 0,
+      auditUsers: [],
+      recentLogs: []
+    };
+  }
+
+  /**
+   * Save Active Adaptive Assessment State in MongoDB
+   */
+  async saveAssessmentState(state: any, username?: string): Promise<void> {
+    const cleanUser = (username || this.getActiveUsername()).toLowerCase().trim();
+    try {
+      await fetch(`${this.apiEndpoint}/assessment-state`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: cleanUser, ...state })
+      });
+    } catch (e) {
+      console.warn('[MongoDB Cluster] Assessment state write error:', e);
+    }
+  }
+
+  /**
+   * Get Active Adaptive Assessment State from MongoDB
+   */
+  async getAssessmentState(username?: string): Promise<any | null> {
+    const cleanUser = (username || this.getActiveUsername()).toLowerCase().trim();
+    try {
+      const res = await fetch(`${this.apiEndpoint}/assessment-state/${encodeURIComponent(cleanUser)}`);
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn('[MongoDB Cluster] Assessment state fetch error:', e);
+    }
+    return null;
+  }
+
+  /**
+   * Save Active Interview Code in MongoDB
+   */
+  async saveInterviewCode(sessionId: string | number, language: string, code: string): Promise<void> {
+    try {
+      await fetch(`${this.apiEndpoint}/interview-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: String(sessionId), language, code })
+      });
+    } catch (e) {
+      console.warn('[MongoDB Cluster] Code write error:', e);
+    }
+  }
+
+  /**
+   * Get Active Interview Code from MongoDB
+   */
+  async getInterviewCode(sessionId: string | number, language: string): Promise<string | null> {
+    try {
+      const res = await fetch(`${this.apiEndpoint}/interview-code/${encodeURIComponent(String(sessionId))}/${encodeURIComponent(language)}`);
+      if (res.ok) {
+        const data = await res.json();
+        return data?.code || null;
+      }
+    } catch (e) {
+      console.warn('[MongoDB Cluster] Code fetch error:', e);
+    }
+    return null;
+  }
+
+  /**
+   * Save Interview Chat Messages in MongoDB
+   */
+  async saveInterviewMessages(sessionId: string | number, messages: any[]): Promise<void> {
+    try {
+      await fetch(`${this.apiEndpoint}/interview-messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: String(sessionId), messages })
+      });
+    } catch (e) {
+      console.warn('[MongoDB Cluster] Messages write error:', e);
+    }
+  }
+
+  /**
+   * Get Interview Chat Messages from MongoDB
+   */
+  async getInterviewMessages(sessionId: string | number): Promise<any[]> {
+    try {
+      const res = await fetch(`${this.apiEndpoint}/interview-messages/${encodeURIComponent(String(sessionId))}`);
+      if (res.ok) {
+        const data = await res.json();
+        return Array.isArray(data) ? data : [];
+      }
+    } catch (e) {
+      console.warn('[MongoDB Cluster] Messages fetch error:', e);
+    }
+    return [];
+  }
+
+  /**
+   * Save Assessment and Session directly into MongoDB
+   */
+  async saveAssessment(sessionId: string | number, assessment: any, session: any): Promise<void> {
+    try {
+      await fetch(`${this.apiEndpoint}/assessment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: String(sessionId), assessment, session })
+      });
+    } catch (e) {
+      console.warn('[MongoDB Cluster] Assessment save error:', e);
+    }
+  }
+
+  /**
+   * Get Assessment and Session directly from MongoDB
+   */
+  async getAssessment(sessionId: string | number): Promise<{ assessment: any | null; session: any | null }> {
+    try {
+      const res = await fetch(`${this.apiEndpoint}/assessment/${encodeURIComponent(String(sessionId))}`);
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn('[MongoDB Cluster] Assessment get error:', e);
+    }
+    return { assessment: null, session: null };
+  }
+
+  /**
+   * Save Candidate DNA parameters permanently in MongoDB
+   */
+  async saveUserDna(username: string, dna: any): Promise<void> {
+    const cleanUser = (username || this.getActiveUsername()).toLowerCase().trim();
+    try {
+      await fetch(`${this.apiEndpoint}/dna`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: cleanUser, dna })
+      });
+    } catch (e) {
+      console.warn('[MongoDB Cluster] DNA save error:', e);
+    }
+  }
+
+  /**
+   * Get Candidate DNA parameters directly from MongoDB
+   */
+  async getUserDna(username?: string): Promise<any | null> {
+    const cleanUser = (username || this.getActiveUsername()).toLowerCase().trim();
+    try {
+      const res = await fetch(`${this.apiEndpoint}/dna/${encodeURIComponent(cleanUser)}`);
+      if (res.ok) {
+        const data = await res.json();
+        return data?.dna || null;
+      }
+    } catch (e) {
+      console.warn('[MongoDB Cluster] DNA get error:', e);
+    }
+    return null;
   }
 
   /**

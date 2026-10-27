@@ -286,7 +286,7 @@ class RagService {
    */
   async askSocraticRag(
     userQuery: string,
-    language: 'ENGLISH' | 'HINDI' | 'HINGLISH' = 'ENGLISH',
+    language: 'ENGLISH' = 'ENGLISH',
     chatHistory: Array<{ sender: string; text: string }> = []
   ): Promise<RagAnswerResponse> {
     let relevant = this.retrieveRelevantChunks(userQuery, 3);
@@ -345,12 +345,7 @@ class RagService {
       )
       .join('\n\n---\n\n');
 
-    const languageInstruction =
-      language === 'HINDI'
-        ? 'Answer in pure Hindi using clean Devanagari script.'
-        : language === 'HINGLISH'
-        ? 'Answer conversationally in Hinglish (blend of Hindi and English written in Latin script), widely used in Indian tech teams.'
-        : 'Answer in professional, lucid English.';
+    const languageInstruction = 'Answer in professional, clear, and high-precision technical English.';
 
     const systemPrompt = `You are the KODEXIS Socratic AI Tutor & Knowledge Retrieval Engine.
 Your goal is to guide students and software engineers through deep computer science and engineering concepts.
@@ -456,7 +451,7 @@ Provide a grounded Socratic explanation citing sources, followed by your Socrati
   private generateFallbackSocraticInsight(
     query: string,
     unit?: KnowledgeUnit,
-    _language: 'ENGLISH' | 'HINDI' | 'HINGLISH' = 'ENGLISH'
+    _language: string = 'ENGLISH'
   ): { answerText: string; socraticFollowup: string } {
     const qLower = query.toLowerCase();
     const docName = unit?.documentName || 'Course Material';

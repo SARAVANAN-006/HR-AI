@@ -54,8 +54,11 @@ import {
   AlertTriangle,
   Calculator,
   Hash,
-  UserCheck,
-  LogOut
+  LogOut,
+  Play,
+  Pause,
+  Trash2,
+  UserCheck
 } from 'lucide-react';
 import {
   mongoService,
@@ -122,6 +125,17 @@ export const StarkInterviewPage: React.FC = () => {
 
   // Evaluation Report
   const [finalReport, setFinalReport] = useState<StarkEvaluation | null>(null);
+
+  // WhatsApp-Style Voice Note Reply States
+  const [responseMode, setResponseMode] = useState<'voice' | 'text'>('voice');
+  const [isVoiceNoteRecording, setIsVoiceNoteRecording] = useState<boolean>(false);
+  const [voiceNoteDuration, setVoiceNoteDuration] = useState<number>(0);
+  const [isElsaListeningVoiceNote, setIsElsaListeningVoiceNote] = useState<boolean>(false);
+  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const voiceNoteChunksRef = useRef<Blob[]>([]);
+  const voiceNoteTimerRef = useRef<any>(null);
+  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
 
   // Refs for Speech Engine & Audio Analyzers
   const recognitionInstanceRef = useRef<any>(null);
@@ -915,7 +929,7 @@ export const StarkInterviewPage: React.FC = () => {
   // ----------------------------------------------------
   // SUBMIT CANDIDATE ANSWER & THINK IN REAL TIME (POWERED BY REAL AI)
   // ----------------------------------------------------
-  const handleSubmitAnswer = async () => {
+  const handleSubmitAnswer = async (candidateAudioUrl?: string, audioDuration?: number) => {
     if (!session) return;
 
     stopCandidateSpeechRecognition();
@@ -940,11 +954,13 @@ export const StarkInterviewPage: React.FC = () => {
       questionText: currentQ.questionText,
       category: currentQ.categoryName || 'General Engineering',
       phase: currentQ.phase,
-      userAnswerText: fullAnswer || '(No audible speech registered)',
+      userAnswerText: fullAnswer || (candidateAudioUrl ? '(Voice Note Response Recorded)' : '(No audible speech registered)'),
       score: evalResult.score,
       feedback: evalResult.feedback,
-      durationSeconds: session.totalTimeSeconds - remainingSeconds,
-      timestamp: new Date().toISOString()
+      durationSeconds: audioDuration || (session.totalTimeSeconds - remainingSeconds),
+      timestamp: new Date().toISOString(),
+      candidateAudioUrl,
+      audioDurationSeconds: audioDuration
     };
 
     const updatedTranscripts = [...session.transcripts, transcriptItem];
@@ -1069,11 +1085,155 @@ export const StarkInterviewPage: React.FC = () => {
     return `${mins.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
+  // ----------------------------------------------------
+  // WHATSAPP-STYLE VOICE NOTE REPLY ENGINE
+  // ----------------------------------------------------
+  const formatVoiceDuration = (sec: number) => {
+    const mins = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${mins}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const handleStartVoiceNoteRecording = async () => {
+    try {
+      window.speechSynthesis?.cancel();
+      setIsStarkSpeaking(false);
+      isStarkSpeakingRef.current = false;
+
+      let streamToUse = activeMediaStream;
+      if (!streamToUse || streamToUse.getAudioTracks().length === 0) {
+        streamToUse = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        });
+        setActiveMediaStream(streamToUse);
+      }
+
+      voiceNoteChunksRef.current = [];
+      setVoiceNoteDuration(0);
+
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : '';
+
+      const recorder = mimeType ? new MediaRecorder(streamToUse, { mimeType }) : new MediaRecorder(streamToUse);
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          voiceNoteChunksRef.current.push(e.data);
+        }
+      };
+
+      recorder.start(200);
+      mediaRecorderRef.current = recorder;
+      setIsVoiceNoteRecording(true);
+
+      // Concurrently run speech recognition to transcribe candidate speech for AI reasoning
+      startCandidateSpeechRecognition(true);
+
+      if (voiceNoteTimerRef.current) clearInterval(voiceNoteTimerRef.current);
+      voiceNoteTimerRef.current = setInterval(() => {
+        setVoiceNoteDuration((prev) => prev + 1);
+      }, 1000);
+    } catch (err) {
+      console.warn('Voice note recorder initialization error:', err);
+    }
+  };
+
+  const handleDiscardVoiceNote = () => {
+    if (voiceNoteTimerRef.current) clearInterval(voiceNoteTimerRef.current);
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try {
+        mediaRecorderRef.current.stop();
+      } catch {}
+    }
+    mediaRecorderRef.current = null;
+    voiceNoteChunksRef.current = [];
+    setIsVoiceNoteRecording(false);
+    setVoiceNoteDuration(0);
+    stopCandidateSpeechRecognition();
+    setSpeechTranscript('');
+    setInterimTranscript('');
+  };
+
+  const handleSendVoiceNote = () => {
+    if (voiceNoteTimerRef.current) clearInterval(voiceNoteTimerRef.current);
+    const recordedDuration = voiceNoteDuration;
+
+    if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') {
+      handleSubmitAnswer(undefined, recordedDuration);
+      return;
+    }
+
+    const recorder = mediaRecorderRef.current;
+    recorder.onstop = () => {
+      const audioBlob = new Blob(voiceNoteChunksRef.current, {
+        type: recorder.mimeType || 'audio/webm'
+      });
+      const candidateAudioUrl = URL.createObjectURL(audioBlob);
+      voiceNoteChunksRef.current = [];
+      setIsVoiceNoteRecording(false);
+      setVoiceNoteDuration(0);
+
+      // WhatsApp listening flow: Elsa listens to the audio note first!
+      setIsElsaListeningVoiceNote(true);
+      stopCandidateSpeechRecognition();
+
+      setTimeout(() => {
+        setIsElsaListeningVoiceNote(false);
+        handleSubmitAnswer(candidateAudioUrl, recordedDuration);
+      }, 1600);
+    };
+
+    try {
+      recorder.stop();
+    } catch {
+      setIsVoiceNoteRecording(false);
+      handleSubmitAnswer();
+    }
+    mediaRecorderRef.current = null;
+  };
+
+  const handleTogglePlayAudio = (id: string, audioUrl: string) => {
+    if (playingAudioId === id) {
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+      }
+      setPlayingAudioId(null);
+    } else {
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+      }
+      const audio = new Audio(audioUrl);
+      audioPlayerRef.current = audio;
+      setPlayingAudioId(id);
+      audio.play().catch(() => {});
+      audio.onended = () => {
+        setPlayingAudioId(null);
+      };
+    }
+  };
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       window.speechSynthesis?.cancel();
       if (wordStreamTimerRef.current) clearInterval(wordStreamTimerRef.current);
+      if (voiceNoteTimerRef.current) clearInterval(voiceNoteTimerRef.current);
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        try {
+          mediaRecorderRef.current.stop();
+        } catch {}
+      }
+      if (audioPlayerRef.current) {
+        try {
+          audioPlayerRef.current.pause();
+        } catch {}
+      }
       if (recognitionInstanceRef.current) {
         try {
           recognitionInstanceRef.current.stop();
@@ -1611,94 +1771,249 @@ export const StarkInterviewPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Speech Recognition Box */}
+            {/* Candidate Voice / Dictation Studio */}
             <div className="border border-border bg-zinc-950/90 rounded-2xl p-5 flex-1 flex flex-col justify-between space-y-3 shadow-xl">
               <div>
-                <div className="flex items-center justify-between border-b border-zinc-800 pb-2 mb-3">
-                  <div className="flex items-center space-x-2">
-                    <Mic size={16} className={isCandidateListening ? 'text-emerald-400 animate-pulse' : 'text-zinc-500'} />
-                    <h4 className="text-xs font-mono font-bold text-zinc-200 uppercase tracking-wider">
-                      Speech-To-Text Dictation
-                    </h4>
-                  </div>
-
-                  <span
-                    className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full border transition ${
-                      isCandidateListening
-                        ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
-                        : 'bg-zinc-800 border-zinc-700 text-zinc-400'
+                {/* Mode Selector: WhatsApp Voice Reply vs Text / Dictation */}
+                <div className="flex items-center gap-1.5 p-1 bg-zinc-900 border border-zinc-800 rounded-xl mb-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setResponseMode('voice');
+                      if (isCandidateListening) stopCandidateSpeechRecognition();
+                    }}
+                    className={`flex-1 py-1.5 px-3 rounded-lg text-[11px] font-mono font-bold flex items-center justify-center gap-1.5 transition ${
+                      responseMode === 'voice'
+                        ? 'bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
+                        : 'text-zinc-400 hover:text-zinc-200'
                     }`}
                   >
-                    {isCandidateListening ? '● CONVERTING SPEECH TO TEXT' : 'MIC PAUSED'}
-                  </span>
+                    <Mic size={13} className={responseMode === 'voice' ? 'text-emerald-400' : 'text-zinc-500'} />
+                    <span>WhatsApp Voice Reply</span>
+                    <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-500/30 text-emerald-300">AUDIO</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setResponseMode('text');
+                      if (isVoiceNoteRecording) handleDiscardVoiceNote();
+                    }}
+                    className={`flex-1 py-1.5 px-3 rounded-lg text-[11px] font-mono font-bold flex items-center justify-center gap-1.5 transition ${
+                      responseMode === 'text'
+                        ? 'bg-cyan-500/20 border border-cyan-500/50 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.2)]'
+                        : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    <FileText size={13} className={responseMode === 'text' ? 'text-cyan-400' : 'text-zinc-500'} />
+                    <span>Text / Dictation</span>
+                  </button>
                 </div>
 
-                {/* Live Speech Interim Preview Banner */}
-                {interimTranscript && (
-                  <div className="mb-2 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center gap-2 text-xs font-mono text-emerald-300 animate-pulse">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
-                    <span className="truncate">Hearing: &ldquo;{interimTranscript}&rdquo;</span>
+                {/* MODE 1: WHATSAPP VOICE REPLY */}
+                {responseMode === 'voice' && (
+                  <div className="space-y-3">
+                    {!isVoiceNoteRecording && !isElsaListeningVoiceNote && (
+                      <div className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 flex flex-col items-center justify-center text-center space-y-3 py-6">
+                        <div className="space-y-1">
+                          <h4 className="text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider flex items-center justify-center gap-1.5">
+                            <Mic size={14} />
+                            <span>WhatsApp Voice Note to Elsa</span>
+                          </h4>
+                          <p className="text-[11px] font-mono text-zinc-400 max-w-sm">
+                            Record and send your audio response. Elsa listens to your voice note and answers back out loud.
+                          </p>
+                        </div>
+
+                        {/* WhatsApp Record Button */}
+                        <div className="py-2">
+                          <button
+                            type="button"
+                            onClick={handleStartVoiceNoteRecording}
+                            disabled={isStarkThinking}
+                            className="w-20 h-20 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white flex flex-col items-center justify-center shadow-[0_0_25px_rgba(16,185,129,0.4)] transition transform hover:scale-105 active:scale-95 disabled:opacity-50"
+                          >
+                            <Mic size={30} />
+                            <span className="text-[9px] font-mono font-bold mt-1 tracking-wider">RECORD</span>
+                          </button>
+                        </div>
+
+                        <span className="text-[10px] font-mono text-zinc-500">
+                          Tap Record • Explain your architecture • Send to Elsa
+                        </span>
+                      </div>
+                    )}
+
+                    {/* ACTIVE RECORDING CONTAINER */}
+                    {isVoiceNoteRecording && (
+                      <div className="p-4 rounded-2xl bg-zinc-900/90 border border-emerald-500/50 space-y-4 shadow-[0_0_25px_rgba(16,185,129,0.2)]">
+                        <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
+                            <span className="text-xs font-mono font-bold text-red-400 uppercase tracking-wider">
+                              RECORDING VOICE NOTE
+                            </span>
+                          </div>
+                          <div className="font-mono text-sm font-bold text-emerald-300 px-2.5 py-0.5 rounded-lg bg-zinc-800 border border-zinc-700">
+                            {formatVoiceDuration(voiceNoteDuration)}
+                          </div>
+                        </div>
+
+                        {/* Animated Equalizer Waveform */}
+                        <div className="flex items-center justify-center gap-1.5 h-12 px-2 bg-black/40 rounded-xl border border-zinc-800/80">
+                          {[...Array(20)].map((_, i) => {
+                            const dynamicH = Math.min(
+                              38,
+                              Math.max(6, Math.sin((i + voiceNoteDuration * 3)) * 14 + (micAudioLevel / 100) * 28 + (i % 3) * 4)
+                            );
+                            return (
+                              <div
+                                key={i}
+                                className="w-1.5 rounded-full bg-gradient-to-t from-emerald-500 to-teal-400 transition-all duration-75"
+                                style={{ height: `${dynamicH}px` }}
+                              />
+                            );
+                          })}
+                        </div>
+
+                        {/* Live Transcription Preview */}
+                        {speechTranscript && (
+                          <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-[11px] font-mono text-zinc-300 max-h-20 overflow-y-auto">
+                            <span className="text-zinc-500 block text-[9px] uppercase font-bold">Transcribing Live:</span>
+                            &ldquo;{speechTranscript}&rdquo;
+                          </div>
+                        )}
+
+                        {/* Action buttons: Discard vs Send */}
+                        <div className="flex items-center gap-3 pt-1">
+                          <button
+                            type="button"
+                            onClick={handleDiscardVoiceNote}
+                            className="flex-1 py-3 px-3 rounded-xl border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition"
+                          >
+                            <Trash2 size={15} />
+                            <span>Discard</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={handleSendVoiceNote}
+                            className="flex-[2] py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-zinc-950 text-xs font-mono font-bold flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.4)] transition"
+                          >
+                            <Send size={15} />
+                            <span>Send Voice Note to Elsa</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Elsa Listening State Banner */}
+                    {isElsaListeningVoiceNote && (
+                      <div className="p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 flex items-center gap-3 animate-pulse shadow-[0_0_20px_rgba(16,185,129,0.25)]">
+                        <div className="w-10 h-10 rounded-full bg-emerald-500/30 flex items-center justify-center text-emerald-300 shrink-0">
+                          <Radio size={20} className="animate-spin" />
+                        </div>
+                        <div className="font-mono text-xs space-y-0.5">
+                          <p className="font-bold text-emerald-200">Elsa is listening to your voice note...</p>
+                          <p className="text-[10px] text-emerald-400/80">Analyzing candidate vocal articulation and technical depth</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                <textarea
-                  value={speechTranscript + (interimTranscript ? ` ${interimTranscript}` : '')}
-                  onChange={(e) => {
-                    setSpeechTranscript(e.target.value);
-                    setInterimTranscript('');
-                  }}
-                  placeholder="Speak into your microphone — your speech converts directly to text here in real-time. Elsa listens to your answers and adapts follow-ups automatically..."
-                  rows={6}
-                  className="w-full p-3.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-200 focus:outline-none focus:border-cyan-500 transition resize-none leading-relaxed"
-                />
+                {/* MODE 2: TEXT & SPEECH-TO-TEXT DICTATION */}
+                {responseMode === 'text' && (
+                  <div>
+                    <div className="flex items-center justify-between border-b border-zinc-800 pb-2 mb-3">
+                      <div className="flex items-center space-x-2">
+                        <Mic size={16} className={isCandidateListening ? 'text-emerald-400 animate-pulse' : 'text-zinc-500'} />
+                        <h4 className="text-xs font-mono font-bold text-zinc-200 uppercase tracking-wider">
+                          Speech-To-Text Dictation
+                        </h4>
+                      </div>
 
-                <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 mt-1.5">
-                  <span>
-                    {isCandidateListening
-                      ? 'Microphone active • Speech transcribed automatically'
-                      : 'Dictation paused • Click Start Dictation below'}
-                  </span>
-                  <span>
-                    {speechTranscript
-                      ? `${speechTranscript.split(/\s+/).filter(Boolean).length} words`
-                      : '0 words'}
-                  </span>
-                </div>
+                      <span
+                        className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full border transition ${
+                          isCandidateListening
+                            ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                            : 'bg-zinc-800 border-zinc-700 text-zinc-400'
+                        }`}
+                      >
+                        {isCandidateListening ? '● CONVERTING SPEECH TO TEXT' : 'MIC PAUSED'}
+                      </span>
+                    </div>
+
+                    {/* Live Speech Interim Preview Banner */}
+                    {interimTranscript && (
+                      <div className="mb-2 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center gap-2 text-xs font-mono text-emerald-300 animate-pulse">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
+                        <span className="truncate">Hearing: &ldquo;{interimTranscript}&rdquo;</span>
+                      </div>
+                    )}
+
+                    <textarea
+                      value={speechTranscript + (interimTranscript ? ` ${interimTranscript}` : '')}
+                      onChange={(e) => {
+                        setSpeechTranscript(e.target.value);
+                        setInterimTranscript('');
+                      }}
+                      placeholder="Speak into your microphone or type here in real-time. Elsa listens to your answers and adapts follow-ups automatically..."
+                      rows={5}
+                      className="w-full p-3.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-200 focus:outline-none focus:border-cyan-500 transition resize-none leading-relaxed"
+                    />
+
+                    <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 mt-1.5">
+                      <span>
+                        {isCandidateListening
+                          ? 'Microphone active • Speech transcribed automatically'
+                          : 'Dictation paused • Click Start Dictation below'}
+                      </span>
+                      <span>
+                        {speechTranscript
+                          ? `${speechTranscript.split(/\s+/).filter(Boolean).length} words`
+                          : '0 words'}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Action Buttons */}
               <div className="space-y-2 pt-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (isCandidateListening) {
-                        stopCandidateSpeechRecognition();
-                      } else {
-                        startCandidateSpeechRecognition(true);
-                      }
-                    }}
-                    className={`py-2 px-3 rounded-xl border text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition ${
-                      isCandidateListening
-                        ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-300 shadow-[0_0_12px_rgba(160,185,129,0.2)]'
-                        : 'bg-zinc-800 hover:bg-zinc-700 border-zinc-700 text-zinc-200'
-                    }`}
-                  >
-                    {isCandidateListening ? <MicOff size={14} /> : <Mic size={14} />}
-                    <span>{isCandidateListening ? 'Pause Dictation' : 'Start Dictation'}</span>
-                  </button>
+                {responseMode === 'text' && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isCandidateListening) {
+                          stopCandidateSpeechRecognition();
+                        } else {
+                          startCandidateSpeechRecognition(true);
+                        }
+                      }}
+                      className={`py-2 px-3 rounded-xl border text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition ${
+                        isCandidateListening
+                          ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-300 shadow-[0_0_12px_rgba(160,185,129,0.2)]'
+                          : 'bg-zinc-800 hover:bg-zinc-700 border-zinc-700 text-zinc-200'
+                      }`}
+                    >
+                      {isCandidateListening ? <MicOff size={14} /> : <Mic size={14} />}
+                      <span>{isCandidateListening ? 'Pause Dictation' : 'Start Dictation'}</span>
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSpeechTranscript('');
-                      setInterimTranscript('');
-                    }}
-                    className="py-2 px-3 rounded-xl border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 text-xs font-mono transition"
-                  >
-                    Clear Text
-                  </button>
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSpeechTranscript('');
+                        setInterimTranscript('');
+                      }}
+                      className="py-2 px-3 rounded-xl border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 text-xs font-mono transition"
+                    >
+                      Clear Text
+                    </button>
+                  </div>
+                )}
 
                 {/* AI Thinking Feedback Banner */}
                 {isStarkThinking && (
@@ -1708,21 +2023,23 @@ export const StarkInterviewPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Submit to Elsa Button */}
-                <button
-                  onClick={handleSubmitAnswer}
-                  disabled={isStarkThinking}
-                  className="w-full py-3.5 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-mono text-xs font-bold shadow-[0_0_20px_rgba(6,182,212,0.4)] transition flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  <Send size={14} />
-                  <span>
-                    {isStarkThinking
-                      ? 'Elsa is Thinking & Synthesizing...'
-                      : remainingSeconds > 60
-                      ? 'Submit Answer & Proceed'
-                      : 'Submit Final Answer & Conclude Session'}
-                  </span>
-                </button>
+                {/* Submit to Elsa Button (when in text mode or after recording) */}
+                {responseMode === 'text' && (
+                  <button
+                    onClick={() => handleSubmitAnswer()}
+                    disabled={isStarkThinking}
+                    className="w-full py-3.5 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-mono text-xs font-bold shadow-[0_0_20px_rgba(6,182,212,0.4)] transition flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <Send size={14} />
+                    <span>
+                      {isStarkThinking
+                        ? 'Elsa is Thinking & Synthesizing...'
+                        : remainingSeconds > 60
+                        ? 'Submit Answer & Proceed'
+                        : 'Submit Final Answer & Conclude Session'}
+                    </span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -2013,9 +2330,56 @@ export const StarkInterviewPage: React.FC = () => {
                   {item.questionText}
                 </div>
 
-                <div className="text-xs text-zinc-300 bg-cyan-950/10 p-3 rounded-xl border border-cyan-500/20">
-                  <strong className="text-cyan-400 block mb-1">CANDIDATE ANSWER (SPEECH RECOGNITION):</strong>
-                  {item.userAnswerText}
+                <div className="text-xs text-zinc-300 bg-cyan-950/10 p-3 rounded-xl border border-cyan-500/20 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <strong className="text-cyan-400 block">
+                      {item.candidateAudioUrl ? 'CANDIDATE WHATSAPP VOICE REPLY:' : 'CANDIDATE ANSWER (SPEECH RECOGNITION):'}
+                    </strong>
+                    {item.candidateAudioUrl && (
+                      <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
+                        <Mic size={11} />
+                        <span>AUDIO NOTE</span>
+                      </span>
+                    )}
+                  </div>
+
+                  {/* WhatsApp Voice Note Audio Bubble */}
+                  {item.candidateAudioUrl && (
+                    <div className="p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/40 flex items-center justify-between gap-3 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => handleTogglePlayAudio(`voice-${idx}`, item.candidateAudioUrl!)}
+                          className="w-10 h-10 rounded-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 flex items-center justify-center shadow-[0_0_12px_rgba(16,185,129,0.4)] transition shrink-0"
+                          title="Play candidate voice recording"
+                        >
+                          {playingAudioId === `voice-${idx}` ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
+                        </button>
+                        <div>
+                          <div className="flex items-center gap-1.5 font-mono text-[10px] text-emerald-400 font-bold uppercase">
+                            <span>Candidate Voice Note</span>
+                          </div>
+                          <div className="flex items-center gap-1 mt-1">
+                            {[4, 12, 8, 16, 20, 14, 8, 18, 12, 6, 14, 10, 16, 8, 4, 12, 6].map((h, i) => (
+                              <div
+                                key={i}
+                                className={`w-1 rounded-full transition-all ${
+                                  playingAudioId === `voice-${idx}` ? 'bg-emerald-400 animate-pulse' : 'bg-emerald-600/70'
+                                }`}
+                                style={{ height: `${h}px` }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right font-mono text-[10px] text-zinc-400 shrink-0">
+                        <span>{formatVoiceDuration(item.audioDurationSeconds || item.durationSeconds || 0)}</span>
+                        <span className="text-cyan-400 ml-2 font-bold">✓✓</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <p className="text-zinc-200 leading-relaxed">{item.userAnswerText}</p>
                 </div>
 
                 <div className="text-[11px] text-zinc-400 bg-background p-2.5 rounded-lg border border-border">
@@ -2046,10 +2410,17 @@ export const StarkInterviewPage: React.FC = () => {
               Start New Interview
             </button>
             <button
+              onClick={() => navigate('/elsa-dashboard')}
+              className="flex-1 sm:flex-none px-5 py-2.5 rounded-2xl border border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 font-mono text-xs font-bold transition flex items-center justify-center gap-2"
+            >
+              <span>Elsa AI Dashboard</span>
+              <ChevronRight size={14} />
+            </button>
+            <button
               onClick={() => navigate('/dashboard')}
               className="flex-1 sm:flex-none px-6 py-2.5 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-mono text-xs font-bold transition flex items-center justify-center gap-2"
             >
-              <span>Back to Dashboard</span>
+              <span>Interview Lab</span>
               <ChevronRight size={14} />
             </button>
           </div>

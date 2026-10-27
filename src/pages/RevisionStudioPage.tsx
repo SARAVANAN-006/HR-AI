@@ -82,8 +82,7 @@ interface StudySchedule {
   }>;
 }
 
-// Built-in High-Yield Quick Revision Master Sheets
-const QUICK_REVISION_SHEETS: Record<string, {
+export interface RevisionSheet {
   title: string;
   category: string;
   summary: string;
@@ -92,7 +91,455 @@ const QUICK_REVISION_SHEETS: Record<string, {
   edgeCasesAndTraps: string[];
   codeTemplate: string;
   markdownDoc: string;
-}> = {
+}
+
+// Built-in High-Yield Quick Revision Master Sheets
+export const QUICK_REVISION_SHEETS: Record<string, RevisionSheet> = {
+  'computer-networks': {
+    title: 'Computer Networks: OSI/TCP-IP, QUIC, Congestion Control & DNS',
+    category: 'Computer Networks (CN)',
+    summary: 'Comprehensive networking architecture covering the 7-Layer OSI and 4-Layer TCP/IP models, TCP 3-way handshake, Tahoe/Reno congestion control, UDP vs TCP, HTTP/1.1 vs HTTP/2 vs HTTP/3 (QUIC), DNS hierarchical resolution, WebSockets, and TLS 1.3 security.',
+    coreFormulas: [
+      'Bandwidth-Delay Product (BDP) = Bandwidth (bps) * RTT (sec) (Buffer capacity needed to prevent pipeline stalls)',
+      "Little's Law: L = lambda * W (Average packets in flight = Arrival rate * Average latency)",
+      'TCP Throughput (Mathis Equation): Rate <= (MSS / RTT) * (1 / sqrt(p)) where p is packet loss rate',
+      'DNS Resolution Flow: Client -> Local Resolver -> Root Server (.) -> TLD (.com) -> Authoritative Nameserver'
+    ],
+    complexityTable: [
+      { operation: 'TCP 3-Way Handshake', time: '1.5 RTT', space: 'O(1)', notes: 'SYN -> SYN-ACK -> ACK connection establishment' },
+      { operation: 'TLS 1.3 Handshake', time: '1 RTT (0-RTT resumption)', space: 'O(1)', notes: 'ECDH key exchange bundled in ClientHello' },
+      { operation: 'HTTP/2 Multiplexing', time: 'Single TCP Conn', space: 'O(Streams)', notes: 'Stream interleaving; subject to TCP HOL blocking' },
+      { operation: 'HTTP/3 QUIC Transfer', time: '0-1 RTT over UDP', space: 'O(Streams)', notes: 'Independent streams eliminate head-of-line blocking' }
+    ],
+    edgeCasesAndTraps: [
+      'SYN Flood Attack: Backlog queue exhaustion mitigated by SYN Cookies (encoding connection state in initial sequence number).',
+      'TIME_WAIT State: Enforces 2*MSL (Maximum Segment Lifetime, 60-120s) to absorb delayed duplicate packets before port reuse.',
+      'Head-of-Line (HoL) Blocking: In HTTP/2, a single dropped TCP segment stalls all multiplexed streams; HTTP/3 QUIC over UDP resolves this.',
+      'DNS Stale Caching & NXDOMAIN: Resolvers cache both positive (A/AAAA) and negative responses (NXDOMAIN via SOA minimum TTL).'
+    ],
+    codeTemplate: `// High-Throughput HTTP/2 Multiplexing Server (Node.js)
+const http2 = require('http2');
+const fs = require('fs');
+
+const server = http2.createSecureServer({
+  key: fs.readFileSync('server-key.pem'),
+  cert: fs.readFileSync('server-cert.pem')
+});
+
+server.on('stream', (stream, headers) => {
+  // Streams are multiplexed concurrently over a single TCP connection
+  stream.respond({ ':status': 200, 'content-type': 'application/json' });
+  stream.end(JSON.stringify({ protocol: 'HTTP/2', multiplexed: true }));
+});
+
+server.listen(8443);`,
+    markdownDoc: `# KODEXIS QUICK REVISION NOTES
+## Topic: Computer Networks (OSI, TCP/IP, QUIC, Congestion & DNS)
+**Category:** Computer Networks (CN)  
+**Audience:** High-Frequency Tech Interview & Exam Revision
+
+---
+
+### 1. Executive Summary & Architecture
+Computer networks rely on layered abstractions to ensure reliable, ordered, and secure data delivery across heterogeneous global hardware.
+- **OSI 7-Layer Model:** Physical -> Data Link -> Network (IP) -> Transport (TCP/UDP) -> Session -> Presentation -> Application.
+- **TCP/IP 4-Layer Model:** Network Access -> Internet (IP) -> Transport (TCP/UDP) -> Application (HTTP, DNS, SSH).
+
+### 2. Core Mathematical Formulas & Invariants
+- **Bandwidth-Delay Product (BDP):** $\\text{BDP} = \\text{Bandwidth (bps)} \\times \\text{RTT (sec)}$  
+  *Rule:* If the TCP Receive Window (rwnd) is smaller than BDP, the connection underutilizes available link capacity.
+- **Mathis Formula for TCP Throughput:**  
+  $\\text{Throughput} \\le \\frac{\\text{MSS}}{\\text{RTT}} \\times \\frac{1}{\\sqrt{p}}$  
+  *(where $p$ is packet loss probability, MSS is Maximum Segment Size).*
+
+### 3. Protocol Evolution: HTTP/1.1 vs HTTP/2 vs HTTP/3
+| Protocol | Transport | Multiplexing | Head-of-Line Blocking | Handshake Latency |
+| :--- | :--- | :--- | :--- | :--- |
+| **HTTP/1.1** | TCP | No (Pipeline fragile) | Severe (at HTTP layer) | 1 RTT TCP + 1-2 RTT TLS |
+| **HTTP/2** | TCP | Yes (Binary frames) | Partial (at TCP layer on packet loss) | 1 RTT TCP + 1 RTT TLS |
+| **HTTP/3** | UDP (QUIC) | Yes (Native stream IDs) | **Zero (Streams independent)** | **0-1 RTT (Combined Crypto + Transport)** |
+
+### 4. Edge Cases & Interview Traps
+1. **TCP Fast Open (TFO):** Embeds crypto cookie in initial SYN payload to send application data on the first RTT.
+2. **SYN Flood Protection:** Traditional socket servers allocate a TCB (Transmission Control Block) on SYN. With SYN Cookies, no server memory is allocated until client ACK arrives.
+3. **WebSockets vs SSE vs Long Polling:** WebSockets provide full-duplex bi-directional communication over a single TCP connection after an HTTP 101 Switching Protocols upgrade.
+
+---
+*Generated by KODEXIS Targeted Revision Studio • Grounded Knowledge Engine*`
+  },
+  'artificial-intelligence': {
+    title: 'Artificial Intelligence: Search, Attention, Transformers, RAG & Agents',
+    category: 'Artificial Intelligence (AI)',
+    summary: 'Modern AI architecture spanning classical heuristic search (A*, Minimax, Alpha-Beta pruning) to state-of-the-art Transformer foundations, Scaled Dot-Product Attention, Large Language Models (LLMs), RAG systems, and Autonomous Agents (ReAct).',
+    coreFormulas: [
+      'A* Heuristic Evaluation: f(n) = g(n) + h(n) where h(n) is admissible (h(n) <= h*(n)) and monotonic',
+      'Scaled Dot-Product Attention: Attention(Q, K, V) = softmax((Q * K^T) / sqrt(d_k)) * V',
+      'Multi-Head Attention: MHA(Q,K,V) = Concat(head_1, ..., head_h) * W^O where head_i = Attention(Q*W_i^Q, K*W_i^K, V*W_i^V)',
+      'RAG Semantic Similarity: cos(theta) = (u . v) / (||u|| * ||v||) for dense vector embeddings'
+    ],
+    complexityTable: [
+      { operation: 'A* Search (Optimal Heuristic)', time: 'O(b * d)', space: 'O(b^d)', notes: 'b = branching factor, d = goal depth' },
+      { operation: 'Minimax with Alpha-Beta', time: 'O(b^(d/2))', space: 'O(d)', notes: 'Prunes redundant branches when moves ordered well' },
+      { operation: 'Standard Self-Attention', time: 'O(N^2 * d)', space: 'O(N^2)', notes: 'N = token length; quadratic memory cost' },
+      { operation: 'HNSW Vector ANN Query', time: 'O(log N)', space: 'O(N * M)', notes: 'Hierarchical Navigable Small World vector search' }
+    ],
+    edgeCasesAndTraps: [
+      'Attention Memory Quadratic Wall: Long contexts (32k/128k) cause massive KV-cache RAM usage; require FlashAttention-2 tiling or PagedAttention.',
+      'Inadmissible Heuristic in A*: Overestimating remaining path cost sacrifices guaranteed shortest-path optimality.',
+      'LLM Hallucination vs Grounded RAG: Language models generate statistically probable tokens without intrinsic truth checks. Remediate with grounded citations and chunk reranking.',
+      'Temperature vs Top-P: Temperature scales logits before softmax (T=0 is greedy argmax); Top-P (nucleus sampling) restricts sampling to the cumulative probability mass.'
+    ],
+    codeTemplate: `# Scaled Dot-Product Attention in Python (NumPy / Conceptual)
+import numpy as np
+
+def scaled_dot_product_attention(Q, K, V, mask=None):
+    """
+    Q, K, V shapes: (seq_len, d_k)
+    """
+    d_k = Q.shape[-1]
+    scores = np.matmul(Q, K.T) / np.sqrt(d_k)
+    
+    if mask is not None:
+        scores = np.where(mask == 0, -1e9, scores)
+        
+    weights = np.exp(scores - np.max(scores, axis=-1, keepdims=True))
+    weights /= np.sum(weights, axis=-1, keepdims=True)  # Softmax
+    
+    return np.matmul(weights, V), weights`,
+    markdownDoc: `# KODEXIS QUICK REVISION NOTES
+## Topic: Artificial Intelligence (Search, Transformers, Attention & RAG)
+**Category:** Artificial Intelligence (AI)  
+**Audience:** High-Frequency Tech Interview & Exam Revision
+
+---
+
+### 1. Executive Summary & Mental Model
+Modern AI encompasses both deterministic problem-solving search algorithms (A*, Minimax) and probabilistic representation learning (Transformers, LLMs, RAG).
+
+### 2. Core Theoretical Equations
+- **A* Search Formula:** $f(n) = g(n) + h(n)$  
+  - $g(n)$: Exact path cost from start node to current node $n$.
+  - $h(n)$: Estimated cost from $n$ to goal. Must satisfy $h(n) \\le h^*(n)$ (Admissibility).
+- **Scaled Dot-Product Attention:**  
+  $\\text{Attention}(Q, K, V) = \\text{softmax}\\left(\\frac{QK^T}{\\sqrt{d_k}}\\right) V$  
+  *Division by $\\sqrt{d_k}$ prevents dot products from growing excessively large, avoiding vanishing gradients in softmax.*
+
+### 3. Modern AI Architecture Comparison
+| Architecture | Best Used For | Time Complexity | Bottleneck / Trap |
+| :--- | :--- | :--- | :--- |
+| **A* Graph Search** | Route planning, games | $O(b^d)$ worst-case | High RAM usage in open set |
+| **Transformer Decoder** | Autoregressive text generation | $O(N^2 \\cdot d)$ per layer | KV-cache growth with long sequences |
+| **Dense RAG Pipeline** | Factually grounded Q&A | $O(\\log N)$ vector retrieval | Chunking boundary information loss |
+| **ReAct AI Agent** | Multi-step tool orchestration | $O(\\text{turns} \\times \\text{LLM Call})$ | Tool hallucination and infinite loops |
+
+---
+*Generated by KODEXIS Targeted Revision Studio • Grounded Knowledge Engine*`
+  },
+  'machine-learning': {
+    title: 'Machine Learning: Bias-Variance, Loss Functions, Regularization & Ensembles',
+    category: 'Machine Learning (ML)',
+    summary: 'Core machine learning theory covering Supervised vs Unsupervised learning, Bias-Variance tradeoff, Cost functions (MSE, Cross-Entropy), Regularization (L1 Lasso for feature selection vs L2 Ridge for weight shrinkage), Optimization (SGD, Adam), Ensemble methods (Random Forest bagging vs XGBoost boosting), and Evaluation metrics (Precision, Recall, F1, ROC-AUC).',
+    coreFormulas: [
+      'Bias-Variance Decomposition: Expected Error = Bias^2 + Variance + Irreducible Noise (sigma^2)',
+      'L1 Regularization (Lasso): Loss = Loss_0 + lambda * sum(|w_i|) (Drives non-informative weights to strictly zero)',
+      'L2 Regularization (Ridge): Loss = Loss_0 + (lambda / 2) * sum(w_i^2) (Shrinks weights smoothly toward zero)',
+      'Binary Cross-Entropy: L = -(1/N) * sum(y * log(p) + (1 - y) * log(1 - p))',
+      'F1-Score: 2 * (Precision * Recall) / (Precision + Recall) where Precision = TP / (TP + FP), Recall = TP / (TP + FN)'
+    ],
+    complexityTable: [
+      { operation: 'Linear / Logistic Regression', time: 'O(N * d)', space: 'O(d)', notes: 'Gradient descent update per epoch' },
+      { operation: 'Random Forest Training', time: 'O(M * N * d * log N)', space: 'O(M * Nodes)', notes: 'M parallel bagged decision trees' },
+      { operation: 'XGBoost Gradient Boosting', time: 'O(M * d * N * log N)', space: 'O(Trees)', notes: 'Sequential fitting on loss pseudo-residuals' },
+      { operation: 'K-Means Clustering', time: 'O(I * K * N * d)', space: 'O(K * d)', notes: 'I iterations until centroid convergence' }
+    ],
+    edgeCasesAndTraps: [
+      'Data Leakage: Normalizing, imputing, or vectorizing before the train/test split leaks test set parameters into training.',
+      'Class Imbalance Trap: Accuracy on highly skewed distributions (e.g. 99% negative) is completely deceptive; evaluate using PR-AUC and F1-score.',
+      'Vanishing / Exploding Gradients: Deep non-linear architectures without LayerNorm or residual skip connections suffer exponential gradient decay.',
+      'Overfitting Remediations: Increase training data, apply Dropout (0.2-0.5), introduce L2 weight decay, or prune decision trees.'
+    ],
+    codeTemplate: `# Logistic Regression Gradient Descent Step with L2 Regularization
+import numpy as np
+
+def train_step_l2(X, y, weights, bias, lr=0.01, l2_lambda=0.1):
+    N = len(y)
+    z = np.dot(X, weights) + bias
+    p = 1 / (1 + np.exp(-np.clip(z, -250, 250)))  # Sigmoid
+    
+    # Gradients with L2 Ridge penalty
+    dw = (1 / N) * np.dot(X.T, (p - y)) + (l2_lambda / N) * weights
+    db = (1 / N) * np.sum(p - y)
+    
+    weights -= lr * dw
+    bias -= lr * db
+    return weights, bias`,
+    markdownDoc: `# KODEXIS QUICK REVISION NOTES
+## Topic: Machine Learning Foundations & Evaluation Metrics
+**Category:** Machine Learning (ML)  
+**Audience:** High-Frequency Tech Interview & Exam Revision
+
+---
+
+### 1. Executive Summary & Bias-Variance Tradeoff
+$\\text{Total Expected Error} = \\text{Bias}^2 + \\text{Variance} + \\sigma^2$
+- **High Bias (Underfitting):** Model is too simplistic (e.g. fitting linear line to polynomial data). Solution: Increase complexity, add polynomial features, reduce regularization.
+- **High Variance (Overfitting):** Model memorizes training noise. Solution: Add regularization ($L_1/L_2$), collect more training samples, apply bagging.
+
+### 2. Regularization Framework
+- **$L_1$ Lasso Regularization:** Adds $\\lambda \\sum |w_i|$ penalty. Produces **sparse weight vectors**, functioning as automatic feature selection.
+- **$L_2$ Ridge Regularization:** Adds $\\frac{\\lambda}{2} \\sum w_i^2$ penalty. Prevents individual weights from exploding without zeroing them out completely.
+
+### 3. Classification Evaluation Matrix
+- **Precision:** $\\frac{TP}{TP + FP}$ *(When model predicts positive, how often is it right? Critical for spam filters)*
+- **Recall (Sensitivity):** $\\frac{TP}{TP + FN}$ *(What percentage of actual positives did we capture? Critical for disease screening)*
+- **ROC-AUC vs PR-AUC:** Use ROC-AUC for balanced classes; use Precision-Recall AUC (PR-AUC) when classes are severely skewed.
+
+---
+*Generated by KODEXIS Targeted Revision Studio • Grounded Knowledge Engine*`
+  },
+  'oops-design-patterns': {
+    title: 'OOP & Design Patterns: 4 Pillars, SOLID Principles & Gang of Four',
+    category: 'Object-Oriented Programming (OOPS)',
+    summary: 'Object-oriented engineering fundamentals: 4 Pillars (Encapsulation, Abstraction, Inheritance, Polymorphism), SOLID principles (Single Responsibility, Open/Closed, Liskov Substitution, Interface Segregation, Dependency Inversion), and canonical Gang of Four (GoF) patterns (Singleton, Factory, Observer, Strategy, Adapter, Decorator).',
+    coreFormulas: [
+      'Single Responsibility Principle (SRP): A class should have one, and only one, reason to change.',
+      'Open/Closed Principle (OCP): Software entities should be open for extension, but closed for modification.',
+      'Liskov Substitution Principle (LSP): Subtypes must be substitutable for their base types without altering correctness.',
+      'Interface Segregation (ISP): Clients should never be forced to depend on interfaces they do not use.',
+      'Dependency Inversion (DIP): Depend upon abstractions (interfaces), not concrete implementations.'
+    ],
+    complexityTable: [
+      { operation: 'Virtual Method Dispatch (vtable)', time: 'O(1)', space: '1 pointer / obj', notes: 'Constant-time array offset dereference' },
+      { operation: 'Double-Checked Locking Singleton', time: 'O(1)', space: 'O(1)', notes: 'Volatile variable prevents CPU instruction reordering' },
+      { operation: 'Observer Event Notification', time: 'O(N)', space: 'O(N)', notes: 'Linear broadcast to N registered subscribers' },
+      { operation: 'Strategy Pattern Delegation', time: 'O(1)', space: 'O(1)', notes: 'Runtime algorithm swap via polymorphic interface' }
+    ],
+    edgeCasesAndTraps: [
+      'Composition Over Inheritance: Deep inheritance chains (>3 levels) cause fragile base class bugs. Favor composition with interfaces.',
+      'Broken Singleton in Multithreading: Naive singletons create duplicate instances if two threads enter simultaneously. Requires volatile and double-checked locking.',
+      'LSP Violation: Throwing UnsupportedOperationException in a derived subclass method violates Liskov substitution.',
+      'Tight Coupling: Instantiating concrete dependencies directly with `new` violates Dependency Inversion (DIP); use dependency injection.'
+    ],
+    codeTemplate: `// Thread-Safe Singleton & Strategy Pattern (TypeScript)
+class DatabaseConnection {
+  private static instance: DatabaseConnection | null = null;
+  private constructor() {}
+
+  public static getInstance(): DatabaseConnection {
+    if (!DatabaseConnection.instance) {
+      DatabaseConnection.instance = new DatabaseConnection();
+    }
+    return DatabaseConnection.instance;
+  }
+}
+
+// Strategy Pattern Interface
+interface PaymentStrategy {
+  pay(amount: number): boolean;
+}
+
+class StripeStrategy implements PaymentStrategy {
+  pay(amount: number) { console.log(\`Charged $\${amount} via Stripe\`); return true; }
+}
+
+class PayPalStrategy implements PaymentStrategy {
+  pay(amount: number) { console.log(\`Charged $\${amount} via PayPal\`); return true; }
+}`,
+    markdownDoc: `# KODEXIS QUICK REVISION NOTES
+## Topic: Object-Oriented Programming (SOLID & GoF Patterns)
+**Category:** Object-Oriented Programming (OOPS)  
+**Audience:** High-Frequency Tech Interview & Exam Revision
+
+---
+
+### 1. The Four Pillars of OOP
+1. **Encapsulation:** Bundling data and methods that operate on that data inside a class while restricting direct access to internal state.
+2. **Abstraction:** Hiding complex implementation details and exposing only essential interfaces.
+3. **Inheritance:** Enabling classes to acquire properties and behaviors of existing classes.
+4. **Polymorphism:** Allowing objects of different types to be treated through a unified interface (via method overriding / dynamic dispatch).
+
+### 2. SOLID Architectural Principles
+- **S - Single Responsibility:** A class should have only one reason to change.
+- **O - Open/Closed:** Open for extension, closed for modification (extend via inheritance/interfaces, avoid modifying tested production classes).
+- **L - Liskov Substitution:** Derived classes must remain interchangeable with base classes without breaking correctness.
+- **I - Interface Segregation:** Prefer multiple small, client-specific interfaces over one bulky monolithic interface.
+- **D - Dependency Inversion:** High-level policy modules should not depend on low-level detail modules; both must depend on abstractions.
+
+### 3. Canonical Gang of Four (GoF) Design Patterns
+| Pattern | Type | Primary Intent |
+| :--- | :--- | :--- |
+| **Singleton** | Creational | Ensure exactly one instance exists with a global point of access. |
+| **Factory Method** | Creational | Delegate instantiation logic to specialized subclasses. |
+| **Observer** | Behavioral | One-to-many dependency where state changes automatically notify subscribers. |
+| **Strategy** | Behavioral | Encapsulate interchangeable algorithms inside separate classes. |
+| **Adapter** | Structural | Convert the interface of a class into another interface expected by clients. |
+| **Decorator** | Structural | Attach additional responsibilities to an object dynamically without subclassing. |
+
+---
+*Generated by KODEXIS Targeted Revision Studio • Grounded Knowledge Engine*`
+  },
+  'data-structures': {
+    title: 'Data Structures: Arrays, Trees, Heaps, Tries, Graphs & DSU',
+    category: 'Data Structures (DS)',
+    summary: 'Comprehensive algorithmic data structures reference: Dynamic Arrays, Singly/Doubly Linked Lists, Monotonic Stacks, Hash Tables & Collision Resolution, BST, Self-Balancing Trees (AVL, Red-Black), Binary Min/Max Heaps, Tries, Disjoint Set Union (DSU / Union-Find), and Graph traversals (BFS, DFS, Dijkstra).',
+    coreFormulas: [
+      'Amortized Array Doubling: Geometric resizing from N to 2N guarantees O(1) amortized insertion cost.',
+      'Heap Indexing (0-indexed): Left Child = 2*i + 1, Right Child = 2*i + 2, Parent = floor((i - 1) / 2)',
+      'DSU Inverse Ackermann Bound: alpha(N) <= 4 for all practical universe sizes N < 10^80; effectively O(1).',
+      'Tree Edge Invariant: A connected undirected tree with V vertices contains exactly V - 1 edges and no cycles.'
+    ],
+    complexityTable: [
+      { operation: 'Hash Table (Average)', time: 'O(1)', space: 'O(N)', notes: 'Worst-case O(N) if collisions degenerate to a linked list' },
+      { operation: 'Red-Black / AVL Tree', time: 'O(log N)', space: 'O(N)', notes: 'Guaranteed balanced worst-case height' },
+      { operation: 'Binary Heap Min/Max', time: 'O(log N)', space: 'O(N)', notes: 'O(1) peek, O(log N) insert/extract, O(N) build heap' },
+      { operation: 'Trie Prefix Search (Word len L)', time: 'O(L)', space: 'O(SIGMA * L * N)', notes: 'Lookup time is independent of dictionary size' },
+      { operation: 'Disjoint Set Union (DSU)', time: 'O(alpha(N)) ~ O(1)', space: 'O(N)', notes: 'Path compression + union-by-rank' },
+      { operation: 'Dijkstra (with Min-Heap)', time: 'O((V + E) log V)', space: 'O(V + E)', notes: 'Shortest path on non-negative edge graphs' }
+    ],
+    edgeCasesAndTraps: [
+      'Hash Collision Degradation: High collision rates without balanced bucket trees degrade O(1) lookups to O(N).',
+      'BST Degeneration: Inserting pre-sorted items into an unaugmented BST results in an O(N) linked list.',
+      'Integer Overflow in Binary Search: Always compute mid = low + (high - low) // 2 to prevent 32-bit integer overflow.',
+      'Monotonic Stack Boundary Flush: In Histogram problems, push a sentinel 0 at the end to flush remaining elements.'
+    ],
+    codeTemplate: `# Disjoint Set Union (Union-Find) with Path Compression & Rank (Python)
+class DSU:
+    def __init__(self, n):
+        self.parent = list(range(n))
+        self.rank = [0] * n
+
+    def find(self, x):
+        if self.parent[x] != x:
+            self.parent[x] = self.find(self.parent[x])  # Path compression
+        return self.parent[x]
+
+    def union(self, x, y):
+        root_x, root_y = self.find(x), self.find(y)
+        if root_x == root_y:
+            return False  # Already in same set
+        if self.rank[root_x] < self.rank[root_y]:
+            self.parent[root_x] = root_y
+        elif self.rank[root_x] > self.rank[root_y]:
+            self.parent[root_y] = root_x
+        else:
+            self.parent[root_y] = root_x
+            self.rank[root_x] += 1
+        return True`,
+    markdownDoc: `# KODEXIS QUICK REVISION NOTES
+## Topic: Essential Data Structures & Complexity Bounds
+**Category:** Data Structures (DS)  
+**Audience:** High-Frequency Tech Interview & Exam Revision
+
+---
+
+### 1. Algorithmic Complexity Cheatsheet
+| Data Structure | Access | Search | Insertion | Deletion | Space |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Dynamic Array** | $O(1)$ | $O(N)$ | $O(1)$ amortized | $O(N)$ | $O(N)$ |
+| **Hash Table** | N/A | $O(1)$ avg / $O(N)$ worst | $O(1)$ avg / $O(N)$ worst | $O(1)$ avg / $O(N)$ worst | $O(N)$ |
+| **Balanced BST (AVL/Red-Black)** | $O(\\log N)$ | $O(\\log N)$ | $O(\\log N)$ | $O(\\log N)$ | $O(N)$ |
+| **Binary Heap (Priority Queue)** | $O(1)$ peek | $O(N)$ | $O(\\log N)$ | $O(\\log N)$ extract | $O(N)$ |
+| **Trie (Prefix Tree)** | N/A | $O(L)$ prefix | $O(L)$ word | $O(L)$ word | $O(\\Sigma \\cdot L \\cdot N)$ |
+| **Disjoint Set Union (DSU)** | N/A | $O(\\alpha(N)) \\approx O(1)$ | $O(\\alpha(N)) \\approx O(1)$ | N/A | $O(N)$ |
+
+### 2. Monotonic Stack & Queue Patterns
+- **Next Greater Element:** Traverse from right to left, maintaining a strictly decreasing stack.
+- **Sliding Window Maximum:** Maintain a monotonic decreasing deque storing array indices.
+- **Largest Rectangle in Histogram:** Stack of increasing bar heights; pop and calculate area when current bar is shorter.
+
+---
+*Generated by KODEXIS Targeted Revision Studio • Grounded Knowledge Engine*`
+  },
+  'system-design': {
+    title: 'System Design: Scalability, Caching, Sharding, Message Queues & Rate Limiting',
+    category: 'System Design',
+    summary: 'End-to-end distributed systems design principles: Horizontal vs Vertical scaling, Load Balancers (L4 vs L7, Consistent Hashing), Caching layers (Cache-Aside, Write-Through, Write-Back, Eviction policies: LRU, LFU), Database Sharding & Partitioning, Replication & CAP/PACELC trade-offs, Asynchronous Message Queues (Kafka partitioned logs vs RabbitMQ), Rate Limiting algorithms (Token Bucket, Leaky Bucket, Sliding Window Counter), and Global Unique ID generation (Twitter Snowflake).',
+    coreFormulas: [
+      'Consistent Hashing: Keys and nodes hash to a ring of 2^32 slots; virtual nodes prevent hot spots on node addition/removal.',
+      'Token Bucket Rate Limiter: Tokens fill at rate r tokens/sec up to capacity B; incoming request consumes 1 token or is dropped (429).',
+      'Twitter Snowflake ID (64-bit): 1-bit sign | 41-bit timestamp (ms) | 10-bit machine ID | 12-bit sequence (4096 IDs/ms/node)',
+      'High Availability Nines: 99.9% (Three Nines) = 8.76 hrs downtime/yr; 99.99% (Four Nines) = 52.6 mins downtime/yr'
+    ],
+    complexityTable: [
+      { operation: 'LRU Cache (HashMap + DLL)', time: 'O(1) get & put', space: 'O(Capacity)', notes: 'Constant-time node promotion and eviction' },
+      { operation: 'Consistent Hash Lookup', time: 'O(log V)', space: 'O(V)', notes: 'Binary search over virtual nodes on ring' },
+      { operation: 'Token Bucket Rate Check', time: 'O(1)', space: 'O(1) / client', notes: 'Single atomic Redis transaction or in-memory map' },
+      { operation: 'Kafka Partition Append', time: 'O(1) sequential I/O', space: 'O(Retention)', notes: 'Zero-copy sendfile directly to network socket' }
+    ],
+    edgeCasesAndTraps: [
+      'Cache Stampede (Thundering Herd): Concurrent cache miss causes hundreds of DB queries. Solved by Mutex lock or probabilistic early refresh (XFetch).',
+      'Sharding Key Skew: Sharding by company_id or date causes hot shards. Use compound hash keys.',
+      'Distributed Idempotency: Network retries cause duplicate payments/orders. Enforce an Idempotency-Key header stored in Redis with unique transaction status.',
+      'Split-Brain in Distributed Clusters: Heartbeat loss between regions leads to two active masters writing conflicting data. Prevent via Quorum requirements (N/2 + 1).'
+    ],
+    codeTemplate: `# Complete LRU Cache with HashMap + Doubly Linked List (Python)
+class Node:
+    def __init__(self, key, val):
+        self.key, self.val = key, val
+        self.prev = self.next = None
+
+class LRUCache:
+    def __init__(self, capacity: int):
+        self.cap = capacity
+        self.cache = {}  # key -> Node
+        self.head, self.tail = Node(0, 0), Node(0, 0)
+        self.head.next, self.tail.prev = self.tail, self.head
+
+    def _remove(self, node):
+        node.prev.next = node.next
+        node.next.prev = node.prev
+
+    def _insert(self, node):
+        node.next = self.head.next
+        node.prev = self.head
+        self.head.next.prev = node
+        self.head.next = node
+
+    def get(self, key: int) -> int:
+        if key in self.cache:
+            node = self.cache[key]
+            self._remove(node)
+            self._insert(node)
+            return node.val
+        return -1
+
+    def put(self, key: int, val: int) -> None:
+        if key in self.cache:
+            self._remove(self.cache[key])
+        node = Node(key, val)
+        self.cache[key] = node
+        self._insert(node)
+        if len(self.cache) > self.cap:
+            lru = self.tail.prev
+            self._remove(lru)
+            del self.cache[lru.key]`,
+    markdownDoc: `# KODEXIS QUICK REVISION NOTES
+## Topic: System Design & Distributed Architecture
+**Category:** System Design  
+**Audience:** High-Frequency Tech Interview & Exam Revision
+
+---
+
+### 1. Scalability Dimensions & Invariants
+- **Horizontal vs Vertical:** Vertical scaling (bigger instance) hits hardware/cost ceilings; Horizontal scaling (adding machines) requires stateless services and distributed coordination.
+- **CAP Theorem:** Under a network partition ($P$), a distributed data store must choose between Consistency ($C$) or Availability ($A$).
+- **PACELC Theorem:** If Partition ($P$) choose ($A$ or $C$); Else ($E$) choose Latency ($L$) or Consistency ($C$).
+
+### 2. Caching Strategies
+1. **Cache-Aside (Lazy Loading):** Application queries cache; on miss, queries DB and populates cache. Resilience against cache failures.
+2. **Write-Through:** Application writes to cache, which synchronously writes to DB before returning. High data consistency, higher write latency.
+3. **Write-Back (Write-Behind):** Application writes to cache, which asynchronously flushes to DB in batches. Extreme write throughput, risk of data loss on cache crash.
+
+### 3. Distributed Coordination & Messaging
+| Technology | Architecture | Ordering Guarantees | Best Used For |
+| :--- | :--- | :--- | :--- |
+| **Apache Kafka** | Append-only partitioned commit log | Strict per-partition ordering | Event streaming, high-throughput audit replay |
+| **RabbitMQ** | Smart broker, dumb consumer (AMQP) | FIFO queue ordering | Complex routing, task work queues |
+| **Redis** | In-memory key-value | Single-threaded atomic ops | Fast caching, rate limiters, distributed locks |
+
+---
+*Generated by KODEXIS Targeted Revision Studio • Grounded Knowledge Engine*`
+  },
   'distributed-systems': {
     title: 'Distributed Consensus & Fault Tolerance (Paxos, Raft, 2PC)',
     category: 'Distributed Systems',
@@ -297,6 +744,121 @@ Virtual memory decouples the programmer's view of memory from physical RAM. The 
   }
 };
 
+
+const DEFAULT_REVISION_FLASHCARDS: Flashcard[] = [
+  {
+    id: 'fc-cn-1',
+    topicName: 'Computer Networks (CN)',
+    conceptName: 'TCP 3-Way Handshake vs HTTP/3 QUIC',
+    frontPrompt: 'Why does HTTP/3 switch to UDP (QUIC) and eliminate TCP Head-of-Line blocking?',
+    backExplanation: 'In TCP (HTTP/2), all multiplexed streams share a single byte stream. If one packet drops, the OS halts all streams until retransmission. HTTP/3 over QUIC implements stream framing natively on UDP, meaning packet loss on stream A never blocks stream B.',
+    keyFormulaOrCode: 'TCP 3-Way: SYN -> SYN-ACK -> ACK (1.5 RTT) | QUIC: 0-1 RTT connection & TLS 1.3 handshake',
+    sourceCitation: 'RFC 9000 (QUIC) / Computer Networking Top-Down',
+    intervalDays: 1
+  },
+  {
+    id: 'fc-ai-1',
+    topicName: 'Artificial Intelligence (AI)',
+    conceptName: 'Scaled Dot-Product Attention Mechanism',
+    frontPrompt: 'What is the mathematical formulation of Self-Attention, and why is the scaling factor sqrt(d_k) critical?',
+    backExplanation: 'Attention calculates softmax(Q*K^T / sqrt(d_k)) * V. The scaling factor sqrt(d_k) prevents large dot-product values from pushing softmax into regions with vanishingly small gradients.',
+    keyFormulaOrCode: 'Attention(Q, K, V) = softmax((Q * K^T) / sqrt(d_k)) * V',
+    sourceCitation: 'Vaswani et al. (Attention Is All You Need)',
+    intervalDays: 2
+  },
+  {
+    id: 'fc-ml-1',
+    topicName: 'Machine Learning (ML)',
+    conceptName: 'L1 Lasso vs L2 Ridge Regularization',
+    frontPrompt: 'Why does L1 regularization drive weights strictly to zero while L2 regularization only shrinks them?',
+    backExplanation: 'L1 has a diamond-shaped constraint with sharp corners on the coordinate axes where optimal level curves intersect. L2 has a circular/spherical constraint with smooth boundaries, shrinking weights quadratically without setting them strictly to zero.',
+    keyFormulaOrCode: 'L1: Loss + lambda * sum(|w_i|) | L2: Loss + (lambda/2) * sum(w_i^2)',
+    sourceCitation: 'Elements of Statistical Learning (Hastie et al.)',
+    intervalDays: 3
+  },
+  {
+    id: 'fc-oops-1',
+    topicName: 'OOPS & Design Patterns',
+    conceptName: 'Liskov Substitution Principle (LSP)',
+    frontPrompt: 'State the Liskov Substitution Principle and give a classic violation example.',
+    backExplanation: 'Subtypes must be substitutable for their base types without altering program correctness. Classic violation: Square inheriting from Rectangle. If setWidth(w) changes height to maintain square symmetry, client code expecting independent width and height fails.',
+    keyFormulaOrCode: 'If S is a subtype of T, objects of type T may be replaced with objects of type S without breaking contracts.',
+    sourceCitation: 'Clean Architecture (Robert C. Martin)',
+    intervalDays: 2
+  },
+  {
+    id: 'fc-ds-1',
+    topicName: 'Data Structures (DS)',
+    conceptName: 'Disjoint Set Union (DSU) Ackermann Complexity',
+    frontPrompt: 'What makes Disjoint Set Union (DSU) with Path Compression and Union by Rank run in near constant time?',
+    backExplanation: 'Path compression flattens the tree during find(), pointing nodes directly to root. Union by rank always attaches the shorter tree to the taller tree. Together, any sequence of M operations runs in O(M * alpha(N)) where alpha(N) is the inverse Ackermann function (<= 4 for all universe sizes).',
+    keyFormulaOrCode: 'Time: O(alpha(N)) ~ O(1) per find/union operation',
+    sourceCitation: 'Introduction to Algorithms (CLRS)',
+    intervalDays: 4
+  },
+  {
+    id: 'fc-sys-1',
+    topicName: 'System Design',
+    conceptName: 'Consistent Hashing with Virtual Nodes',
+    frontPrompt: 'How does Consistent Hashing prevent massive cache reshuffling when adding or removing nodes?',
+    backExplanation: 'Both nodes and keys hash to a circular integer ring [0, 2^32 - 1]. A key is assigned to the next clockwise node. When a node is added or removed, only keys in the adjacent interval are remapped (k/N keys on average). Virtual nodes ensure even load distribution across physical machines.',
+    keyFormulaOrCode: 'Key remapping on node change: O(k / N) keys moved instead of O(k) with hash(key) % N',
+    sourceCitation: 'Designing Data-Intensive Applications (Kleppmann)',
+    intervalDays: 1
+  }
+];
+
+const DEFAULT_AUDIO_BRIEFS: AudioBrief[] = [
+  {
+    id: 'ab-cn-1',
+    topicName: 'Computer Networks (CN)',
+    title: 'OSI 7-Layer, TCP 3-Way Handshake & QUIC Protocol',
+    durationFormatted: '3 min 20 sec',
+    transcript: 'Welcome to your Computer Networks audio brief. Today we review the core internet protocols. The 7-layer OSI model categorizes communication into Physical, Data Link, Network, Transport, Session, Presentation, and Application layers. In the transport layer, TCP provides reliable, ordered data delivery using a 3-way handshake: SYN, SYN-ACK, and ACK. Meanwhile, HTTP/3 replaces TCP with QUIC over UDP, completely eliminating Head of Line blocking and achieving zero-RTT connection resumption with integrated TLS 1.3 encryption.',
+    sourceCitation: 'Kodexis Audio Syllabus • Computer Networks'
+  },
+  {
+    id: 'ab-ai-1',
+    topicName: 'Artificial Intelligence (AI)',
+    title: 'Transformer Attention Mechanism & Retrieval-Augmented Generation',
+    durationFormatted: '4 min 15 sec',
+    transcript: 'Welcome to your Artificial Intelligence audio brief. In modern AI, the Transformer architecture replaced sequential RNNs by processing tokens in parallel. The scaled dot-product attention computes query-key matrix multiplication divided by the square root of key dimensions, followed by softmax and value multiplication. In Retrieval-Augmented Generation, vector embeddings allow dense semantic similarity search in vector databases like HNSW, grounding LLM outputs to eliminate hallucinations.',
+    sourceCitation: 'Kodexis Audio Syllabus • Artificial Intelligence'
+  },
+  {
+    id: 'ab-ml-1',
+    topicName: 'Machine Learning (ML)',
+    title: 'Regularization, Bias-Variance Tradeoff & Evaluation Metrics',
+    durationFormatted: '3 min 45 sec',
+    transcript: 'Welcome to your Machine Learning audio brief. Generalization error is governed by the bias-variance tradeoff. High bias causes underfitting, while high variance causes overfitting. Regularization stabilizes model weights: L1 Lasso adds an absolute weight penalty to enforce sparsity, while L2 Ridge adds a squared weight penalty to shrink weights smoothly. When evaluating imbalanced datasets, always prefer Precision-Recall AUC over deceptive raw accuracy.',
+    sourceCitation: 'Kodexis Audio Syllabus • Machine Learning'
+  },
+  {
+    id: 'ab-oops-1',
+    topicName: 'OOPS & Design Patterns',
+    title: 'SOLID Principles & Gang of Four Design Patterns',
+    durationFormatted: '4 min 00 sec',
+    transcript: 'Welcome to your Object-Oriented Programming audio brief. SOLID principles ensure scalable software design. Single Responsibility ensures classes have one reason to change. Open-Closed requires classes to be open for extension but closed for modification. Liskov Substitution mandates that derived classes safely substitute base classes. In design patterns, Singleton guarantees a single instance, Observer broadcasts state changes, and Strategy dynamically swaps algorithms at runtime.',
+    sourceCitation: 'Kodexis Audio Syllabus • OOPS & Patterns'
+  },
+  {
+    id: 'ab-ds-1',
+    topicName: 'Data Structures (DS)',
+    title: 'Trees, Heaps, Disjoint Set Union & Monotonic Stacks',
+    durationFormatted: '3 min 50 sec',
+    transcript: 'Welcome to your Data Structures audio brief. Efficient algorithmic performance depends on choosing the optimal data structure. Priority queues utilize binary min or max heaps to provide logarithmic insertion and extraction with O of 1 peek. Disjoint Set Union utilizes path compression and union by rank to achieve near constant amortized time. Monotonic stacks maintain strictly sorted order to solve next-greater element and histogram problems in linear time.',
+    sourceCitation: 'Kodexis Audio Syllabus • Data Structures'
+  },
+  {
+    id: 'ab-sys-1',
+    topicName: 'System Design',
+    title: 'High-Availability Architecture, Caching & Consistent Hashing',
+    durationFormatted: '4 min 30 sec',
+    transcript: 'Welcome to your System Design audio brief. High-scale distributed systems require fault tolerance and graceful degradation. Consistent hashing distributes traffic across a circular hash ring of 2 to the 32 slots using virtual nodes to prevent hot spots. Caching strategies like Cache-Aside, Write-Through, and Write-Back balance latency against consistency. To prevent cache stampedes, employ mutex locks and probabilistic early expiration.',
+    sourceCitation: 'Kodexis Audio Syllabus • System Design'
+  }
+];
+
 export const RevisionStudioPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'QUICK_NOTES' | 'FLASHCARDS' | 'AUDIO_BRIEFS' | 'SLIDE_SUMMARIES' | 'STUDY_SCHEDULE'>('QUICK_NOTES');
   
@@ -305,11 +867,11 @@ export const RevisionStudioPage: React.FC = () => {
   const [copiedNotice, setCopiedNotice] = useState<boolean>(false);
   const [knowledgeUnitsCount, setKnowledgeUnitsCount] = useState<number>(0);
 
-  const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
+  const [flashcards, setFlashcards] = useState<Flashcard[]>(DEFAULT_REVISION_FLASHCARDS);
   const [currentCardIdx, setCurrentCardIdx] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
 
-  const [audioBriefs, setAudioBriefs] = useState<AudioBrief[]>([]);
+  const [audioBriefs, setAudioBriefs] = useState<AudioBrief[]>(DEFAULT_AUDIO_BRIEFS);
   const [activeAudioIdx, setActiveAudioIdx] = useState(0);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
 
@@ -337,8 +899,8 @@ export const RevisionStudioPage: React.FC = () => {
       ]);
 
       if (revRes.status === 'fulfilled' && revRes.value.data) {
-        setFlashcards(revRes.value.data.flashcards || []);
-        setAudioBriefs(revRes.value.data.audioBriefs || []);
+        setFlashcards((revRes.value.data.flashcards && revRes.value.data.flashcards.length > 0) ? revRes.value.data.flashcards : DEFAULT_REVISION_FLASHCARDS);
+        setAudioBriefs((revRes.value.data.audioBriefs && revRes.value.data.audioBriefs.length > 0) ? revRes.value.data.audioBriefs : DEFAULT_AUDIO_BRIEFS);
         setSlideSummaries(revRes.value.data.slideSummaries || []);
       }
       if (schedRes.status === 'fulfilled' && schedRes.value.data) {
@@ -508,10 +1070,20 @@ export const RevisionStudioPage: React.FC = () => {
                 onChange={(e) => setSelectedTopicKey(e.target.value)}
                 className="p-2.5 rounded-xl bg-zinc-900 border border-border text-cyan-300 text-xs font-bold focus:outline-none focus:border-cyan-500"
               >
-                <option value="distributed-systems">Distributed Systems (Paxos, Raft, 2PC, Quorums)</option>
-                <option value="databases">Database Internals (MVCC, B+ Trees, WAL, ACID)</option>
-                <option value="dynamic-programming">Dynamic Programming (Patterns, Memoization, State Space)</option>
-                <option value="operating-systems">Operating Systems (Virtual Memory, Paging, TLB, COW)</option>
+                <optgroup label="Requested Core Concepts">
+                  <option value="computer-networks">Computer Networks (CN: OSI, TCP/IP, QUIC, DNS)</option>
+                  <option value="artificial-intelligence">Artificial Intelligence (AI: Search, Transformers, RAG)</option>
+                  <option value="machine-learning">Machine Learning (ML: Regularization, Ensembles, Metrics)</option>
+                  <option value="oops-design-patterns">OOPS & Design Patterns (SOLID, 4 Pillars, GoF)</option>
+                  <option value="data-structures">Data Structures (DS: Heaps, Tries, Graphs, DSU)</option>
+                  <option value="system-design">System Design (Scalability, Caching, Kafka, Rate Limiting)</option>
+                </optgroup>
+                <optgroup label="Deep-Dive Systems & Algorithms">
+                  <option value="distributed-systems">Distributed Systems (Paxos, Raft, 2PC, Quorums)</option>
+                  <option value="databases">Database Internals (MVCC, B+ Trees, WAL, ACID)</option>
+                  <option value="dynamic-programming">Dynamic Programming (Patterns, Memoization, State Space)</option>
+                  <option value="operating-systems">Operating Systems (Virtual Memory, Paging, TLB, COW)</option>
+                </optgroup>
               </select>
             </div>
 

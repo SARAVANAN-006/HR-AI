@@ -235,17 +235,19 @@ class MySQLStorageService {
   async getUserAutopsies(username?: string): Promise<MySQLInterviewAutopsy[]> {
     if (!username) return [];
 
+    const autopsies: MySQLInterviewAutopsy[] = [];
+
     try {
       const res = await axios.get(`/api/logs/autopsy/${encodeURIComponent(username)}`, { timeout: 3000 });
       if (Array.isArray(res.data) && res.data.length > 0) {
-        return res.data.map((item: any) => {
+        res.data.forEach((item: any) => {
           let parsedPayload: any = {};
           try {
             parsedPayload = typeof item.payload === 'string' ? JSON.parse(item.payload) : (item.payload || {});
           } catch {
             parsedPayload = {};
           }
-          return {
+          autopsies.push({
             id: item.id,
             sessionId: parsedPayload.sessionId || `sess_${item.id}`,
             username: item.username,
@@ -268,16 +270,64 @@ class MySQLStorageService {
             detailedDebrief: parsedPayload.detailedDebrief || item.details || '',
             transcripts: parsedPayload.transcripts || [],
             createdAt: item.timestamp
-          };
+          });
         });
       }
     } catch {
       // Fallback
     }
 
+    // Also fetch from candidate_logs for SESSION_COMPLETED events
+    try {
+      const logsRes = await axios.get(`/api/logs/user/${encodeURIComponent(username)}`, { timeout: 3000 });
+      if (Array.isArray(logsRes.data)) {
+        logsRes.data
+          .filter((l: any) => l.action === 'SESSION_COMPLETED' || l.logType === 'INTERVIEW_AUTOPSY')
+          .forEach((l: any) => {
+            let p: any = {};
+            try { p = typeof l.payload === 'string' ? JSON.parse(l.payload) : (l.payload || {}); } catch {}
+            const existingId = autopsies.some(a => String(a.sessionId) === String(p.sessionId || l.id));
+            if (!existingId) {
+              const score = typeof p.score === 'number' ? p.score : (Number(p.score) || 70);
+              autopsies.push({
+                id: l.id,
+                sessionId: String(p.sessionId || l.id),
+                username: l.username,
+                candidateName: l.username,
+                targetRole: p.targetRole || 'Software Engineer',
+                date: l.timestamp,
+                durationMinutes: p.durationMinutes || 30,
+                overallScore: score,
+                recommendation: score >= 85 ? 'STRONG_HIRE' : (score >= 70 ? 'HIRE' : 'LEAN_HIRE'),
+                formulaBreakdown: this.calculateDefaultBreakdown(score),
+                multiFactorScores: {
+                  technicalProficiency: score,
+                  communicationScore: score,
+                  conceptualDepthScore: score,
+                  problemSolvingScore: score
+                },
+                categoryScores: { [p.topic || 'Arrays / Hashing']: score },
+                keyStrengths: ['Completed live session evaluation'],
+                areasForImprovement: [],
+                detailedDebrief: l.details || 'Interview session completed',
+                transcripts: [],
+                createdAt: l.timestamp
+              });
+            }
+          });
+      }
+    } catch {}
+
     // Check fallback store
     const key = `autopsies_${username}`;
-    return this.fallbackStore.get(key) || [];
+    const fallbackList = this.fallbackStore.get(key) || [];
+    fallbackList.forEach((fb: any) => {
+      if (!autopsies.some(a => String(a.sessionId) === String(fb.sessionId))) {
+        autopsies.push(fb);
+      }
+    });
+
+    return autopsies;
   }
 
   /**
@@ -317,7 +367,7 @@ class MySQLStorageService {
     };
   }
 
-  private calculateDefaultBreakdown(score: number): FormulaBreakdown {
+  calculateDefaultBreakdown(score: number): FormulaBreakdown {
     return this.calculateScoreBreakdown(score, score, score, score, 0);
   }
 

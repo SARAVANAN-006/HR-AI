@@ -52,3 +52,6 @@ Thumbs.db
 Desktop.ini
 .vercel
 .env*
+
+# Scratch scripts
+scratch/
