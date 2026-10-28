@@ -126,44 +126,6 @@ const StartInterview: React.FC = () => {
                     {d.substring(0, 3)}
                   </button>
                 ))}
-
-                {/* Mode 3: 2-Min Rapid Sprint (Fast Coding) */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode('2-Min Rapid Sprint');
-                    setDuration(2);
-                    setDifficulty('EASY');
-                  }}
-                  className={`p-4 border rounded-xl text-left transition relative overflow-hidden ${
-                    mode === '2-Min Rapid Sprint' || duration === 2
-                      ? 'bg-amber-500/10 border-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.2)] ring-1 ring-amber-500/50'
-                      : 'border-border bg-background/50 hover:bg-zinc-900/60'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400">
-                        <Zap size={15} />
-                      </div>
-                      <span className="text-sm font-semibold text-zinc-100">2-Min Rapid Sprint</span>
-                    </div>
-                    <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-400 font-mono font-bold">
-                      120s • 5-Line Code
-                    </span>
-                  </div>
-                  <p className="text-xs text-zinc-300 leading-relaxed mb-3">
-                    <strong className="text-amber-400 font-semibold">Fast Coding Challenge:</strong> High-speed 120-second sprint featuring concise, easy ~5-line problems (Reverse String, Palindrome, Find Max, Count Vowels). Editor is unlocked immediately for rapid typing and test execution.
-                  </p>
-                  <div className="flex flex-wrap gap-2 text-xs text-zinc-400">
-                    <span className="flex items-center gap-1.5 bg-zinc-950/70 px-2.5 py-1 rounded-md border border-zinc-800 text-[11px] font-medium text-zinc-300">
-                      <Clock size={12} className="text-amber-400" /> 2-Minute Timer
-                    </span>
-                    <span className="flex items-center gap-1.5 bg-zinc-950/70 px-2.5 py-1 rounded-md border border-zinc-800 text-[11px] font-medium text-zinc-300">
-                      <Code2 size={12} className="text-emerald-400" /> 5-Line Concise Solutions
-                    </span>
-                  </div>
-                </button>
               </div>
             </div>
 
@@ -208,7 +170,45 @@ const StartInterview: React.FC = () => {
               </div>
               
               <div className="grid grid-cols-1 gap-3">
-                {/* Mode 1: AI Interview */}
+                {/* Mode 1: 2-Min Rapid Sprint (Fast Coding) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('2-Min Rapid Sprint');
+                    setDuration(2);
+                    setDifficulty('EASY');
+                  }}
+                  className={`p-4 border rounded-xl text-left transition relative overflow-hidden ${
+                    mode === '2-Min Rapid Sprint' || duration === 2
+                      ? 'bg-amber-500/10 border-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.2)] ring-1 ring-amber-500/50'
+                      : 'border-border bg-background/50 hover:bg-zinc-900/60'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400">
+                        <Zap size={15} />
+                      </div>
+                      <span className="text-sm font-semibold text-zinc-100">2-Min Rapid Sprint</span>
+                    </div>
+                    <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-400 font-mono font-bold">
+                      120s • 5-Line Code
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-300 leading-relaxed mb-3">
+                    <strong className="text-amber-400 font-semibold">Fast Coding Challenge:</strong> High-speed 120-second sprint featuring concise, easy ~5-line problems (Reverse String, Palindrome, Find Max, Count Vowels). Editor is unlocked immediately for rapid typing and test execution.
+                  </p>
+                  <div className="flex flex-wrap gap-2 text-xs text-zinc-400">
+                    <span className="flex items-center gap-1.5 bg-zinc-950/70 px-2.5 py-1 rounded-md border border-zinc-800 text-[11px] font-medium text-zinc-300">
+                      <Clock size={12} className="text-amber-400" /> 2-Minute Timer
+                    </span>
+                    <span className="flex items-center gap-1.5 bg-zinc-950/70 px-2.5 py-1 rounded-md border border-zinc-800 text-[11px] font-medium text-zinc-300">
+                      <Code2 size={12} className="text-emerald-400" /> 5-Line Concise Solutions
+                    </span>
+                  </div>
+                </button>
+
+                {/* Mode 2: AI Interview */}
                 <button
                   type="button"
                   onClick={() => setMode('AI Interview')}
