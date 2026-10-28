@@ -194,6 +194,70 @@ export async function executeInSandbox(
     };
   } catch (err: any) {
     const duration = Math.max(1, Date.now() - start);
+    // Primary Judge0 timed out or had issue, failover to Piston Sandbox API
+    try {
+      const PISTON_LANG_MAP: Record<string, string> = {
+        PYTHON: 'python',
+        PYTHON3: 'python',
+        JAVASCRIPT: 'javascript',
+        NODE: 'javascript',
+        JAVA: 'java',
+        CPP: 'c++',
+        C: 'c',
+        CSHARP: 'csharp',
+        GO: 'go'
+      };
+      const PISTON_FILE_MAP: Record<string, string> = {
+        PYTHON: 'main.py',
+        PYTHON3: 'main.py',
+        JAVASCRIPT: 'index.js',
+        NODE: 'index.js',
+        JAVA: 'Main.java',
+        CPP: 'main.cpp',
+        C: 'main.c',
+        CSHARP: 'Program.cs',
+        GO: 'main.go'
+      };
+      const pLang = PISTON_LANG_MAP[normLang] || 'python';
+      const pFile = PISTON_FILE_MAP[normLang] || 'solution.txt';
+      const pRes = await fetch('https://emkc.org/api/v2/piston/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          language: pLang,
+          version: '*',
+          files: [{ name: pFile, content: code }],
+          stdin: stdin || ''
+        })
+      });
+      if (pRes.ok) {
+        const pData = await pRes.json();
+        const pDuration = Math.max(1, Date.now() - start);
+        if (pData.compile && pData.compile.code !== 0) {
+          const compErr = pData.compile.stderr || pData.compile.output || 'Compilation error';
+          return {
+            stdout: '',
+            stderr: compErr,
+            compileError: compErr,
+            status: 'COMPILE_ERROR',
+            executionTimeMs: pDuration
+          };
+        }
+        if (pData.run) {
+          const run = pData.run;
+          const isErr = run.code !== 0 && run.stderr;
+          return {
+            stdout: (run.stdout || run.output || '').trim(),
+            stderr: (run.stderr || '').trim(),
+            status: isErr ? 'RUNTIME_ERROR' : 'SUCCESS',
+            executionTimeMs: pDuration
+          };
+        }
+      }
+    } catch (pistonErr) {
+      console.warn('Piston failover also encountered network issue:', pistonErr);
+    }
+
     return {
       stdout: '',
       stderr: err.name === 'AbortError' ? 'Execution timed out (sandbox 6.5s)' : (err.message || 'Sandbox connection issue'),

@@ -14,9 +14,12 @@ RUN mvn dependency:go-offline -B || true
 COPY src ./src
 RUN mvn clean package -DskipTests -B
 
-# 2. Runtime Stage
-FROM eclipse-temurin:21-jre-alpine
+# 2. Runtime Stage with full JDK (javac) and all native compilers
+FROM eclipse-temurin:21-jdk-alpine
 WORKDIR /app
+
+# Install all compilers & runtimes: gcc, g++, musl-dev (C/C++), python3, nodejs, npm, go
+RUN apk add --no-cache gcc g++ musl-dev python3 nodejs npm go
 
 # Run as non-root user for security
 RUN addgroup -S kodexis && adduser -S kodexis -G kodexis

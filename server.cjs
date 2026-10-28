@@ -174,8 +174,8 @@ async function executeCodeInSandbox(code, language, stdin = '') {
     }
   }
 
-  // Tier 2: Judge0 CE Fallback
-  const judge0Map = { PYTHON: 71, PYTHON3: 71, JAVASCRIPT: 63, JAVA: 62, CPP: 54, C: 50 };
+  // Tier 2: Judge0 CE Cloud Runner (Pre-installed JDK, GCC, Node, Python, Go, Mono)
+  const judge0Map = { PYTHON: 71, PYTHON3: 71, JAVASCRIPT: 63, JAVA: 62, CPP: 54, C: 50, CSHARP: 51, GO: 60 };
   const langId = judge0Map[normLang] || 71;
   try {
     const start = Date.now();
@@ -184,7 +184,7 @@ async function executeCodeInSandbox(code, language, stdin = '') {
       const req = https.request('https://ce.judge0.com/submissions?wait=true', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
-        timeout: 4500
+        timeout: 5500
       }, (res) => {
         let data = '';
         res.on('data', c => data += c);
@@ -199,29 +199,78 @@ async function executeCodeInSandbox(code, language, stdin = '') {
     });
 
     const executionTimeMs = Math.max(1, Date.now() - start);
-    if (result.compile_output) {
+    if (result && result.compile_output) {
       return { stdout: '', stderr: result.compile_output, status: 'COMPILE_ERROR', executionTimeMs };
     }
-    if (result.status && result.status.id === 5) {
-      return { stdout: '', stderr: 'Time Limit Exceeded (4.5s)', status: 'TIMEOUT', executionTimeMs: 4500 };
+    if (result && result.status && result.status.id === 5) {
+      return { stdout: '', stderr: 'Time Limit Exceeded (5.0s)', status: 'TIMEOUT', executionTimeMs: 5000 };
     }
-    if (result.stderr && result.status && result.status.id !== 3) {
+    if (result && result.stderr && result.status && result.status.id !== 3) {
       return { stdout: result.stdout || '', stderr: result.stderr, status: 'RUNTIME_ERROR', executionTimeMs };
     }
-    return {
-      stdout: (result.stdout || result.output || '').trim(),
-      stderr: (result.stderr || '').trim(),
-      status: 'SUCCESS',
-      executionTimeMs
-    };
+    if (result && (result.stdout !== undefined || result.output !== undefined)) {
+      return {
+        stdout: (result.stdout || result.output || '').trim(),
+        stderr: (result.stderr || '').trim(),
+        status: 'SUCCESS',
+        executionTimeMs
+      };
+    }
   } catch (err) {
-    return {
-      stdout: '',
-      stderr: err.message || 'Execution unavailable',
-      status: 'ERROR',
-      executionTimeMs: 10
-    };
+    console.warn('[KODEXIS Backend] Judge0 API attempt exception, trying Piston fallback:', err.message);
   }
+
+  // Tier 3: Piston Cloud Runner Fallback
+  try {
+    const pistonLangMap = { PYTHON: 'python', PYTHON3: 'python', JAVASCRIPT: 'javascript', JAVA: 'java', CPP: 'c++', C: 'c', CSHARP: 'csharp', GO: 'go' };
+    const pLang = pistonLangMap[normLang] || 'python';
+    const pFile = normLang === 'JAVA' ? 'Main.java' : (normLang.includes('CPP') ? 'main.cpp' : (normLang.includes('JS') ? 'index.js' : 'solution.py'));
+    const pPayload = JSON.stringify({
+      language: pLang,
+      version: '*',
+      files: [{ name: pFile, content: code }],
+      stdin: stdin || ''
+    });
+    const pResult = await new Promise((resolve, reject) => {
+      const pReq = https.request('https://emkc.org/api/v2/piston/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(pPayload), 'User-Agent': 'KODEXIS' },
+        timeout: 5500
+      }, (res) => {
+        let d = '';
+        res.on('data', c => d += c);
+        res.on('end', () => {
+          try { resolve(JSON.parse(d)); } catch (e) { resolve({ raw: d }); }
+        });
+      });
+      pReq.on('error', reject);
+      pReq.on('timeout', () => { pReq.destroy(); resolve(null); });
+      pReq.write(pPayload);
+      pReq.end();
+    });
+    if (pResult && pResult.compile && pResult.compile.code !== 0) {
+      const compErr = pResult.compile.stderr || pResult.compile.output || 'Compilation error';
+      return { stdout: '', stderr: compErr, status: 'COMPILE_ERROR', executionTimeMs: 120 };
+    }
+    if (pResult && pResult.run) {
+      const isErr = pResult.run.code !== 0 && pResult.run.stderr;
+      return {
+        stdout: (pResult.run.stdout || pResult.run.output || '').trim(),
+        stderr: (pResult.run.stderr || '').trim(),
+        status: isErr ? 'RUNTIME_ERROR' : 'SUCCESS',
+        executionTimeMs: 120
+      };
+    }
+  } catch (pe) {
+    console.warn('[KODEXIS Backend] Piston API attempt exception:', pe.message);
+  }
+
+  return {
+    stdout: '',
+    stderr: 'Execution sandbox temporarily unavailable. Please retry in a few moments.',
+    status: 'ERROR',
+    executionTimeMs: 10
+  };
 }
 
 function generateAiInterviewerReply(rawInput) {

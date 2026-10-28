@@ -255,12 +255,17 @@ public class ExecutionService {
         } catch (java.io.IOException | InterruptedException e) {
             cleanupDirectory(dir);
             long duration = System.currentTimeMillis() - start;
+            System.out.println("[KODEXIS Sandbox] Local compiler unavailable (" + e.getMessage() + "), automatically executing via cloud sandbox API...");
+            ExecutionOutcome pistonRes = executeViaPiston(code, language, testCase);
+            if (pistonRes != null) {
+                return pistonRes;
+            }
             return new ExecutionOutcome(
                 Enums.ExecutionResultStatus.RUNTIME_ERROR,
                 0,
                 1,
                 duration,
-                "Local Runtime Missing: " + e.getMessage() + "\nMake sure the local runtime (e.g. node, python, javac, csc, or go) is installed and available in system PATH."
+                "Execution error: " + e.getMessage() + "\nRemote sandbox fallback temporarily unavailable."
             );
         }
     }
@@ -347,6 +352,9 @@ public class ExecutionService {
         @JsonProperty("language") private String language;
         @JsonProperty("version") private String version;
         @JsonProperty("run") private PistonRunResult run;
+        @JsonProperty("compile") private PistonRunResult compile;
+
+        public PistonRunResult getCompile() { return compile; }
 
         public String getLanguage() { return language; }
         public String getVersion() { return version; }

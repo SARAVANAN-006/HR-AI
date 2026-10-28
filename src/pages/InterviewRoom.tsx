@@ -14,7 +14,7 @@ import { recordStreakActivity } from '../lib/streakService';
 import { getRandomQuestion, getQuestionById, getAllQuestions } from '../lib/questionBank';
 import { mysqlService } from '../lib/mysqlService';
 import { useAuth } from '../context/AuthContext';
-import { runTestSuiteWithSandbox } from '../lib/pistonService';
+import { runTestSuiteWithSandbox, executeInSandbox } from '../lib/pistonService';
 
 interface TestCase {
   id: number;
@@ -1390,7 +1390,18 @@ const InterviewRoom: React.FC = () => {
         6500,
         'Code run sandbox'
       );
-      const outcome = response.data;
+      let outcome = response.data;
+
+      // Automatic client-side sandbox failover if backend reports missing compiler (e.g. javac/g++/gcc missing on host)
+      if (outcome && (
+        outcome.consoleOutput?.includes('Local Runtime Missing') ||
+        outcome.consoleOutput?.includes('Cannot run program') ||
+        outcome.consoleOutput?.includes('Exec failed, error: 2') ||
+        outcome.consoleOutput?.includes('No such file or directory')
+      )) {
+        console.warn('Backend host reported missing compiler/runtime, transparently executing via client sandbox runner');
+        outcome = await runTestSuiteWithSandbox(code, language, testCasesToSend as any);
+      }
 
       const isTle = outcome.status === 'TIMEOUT';
       const isCompileOrRuntime = outcome.status === 'COMPILE_ERROR' || outcome.status === 'RUNTIME_ERROR';
@@ -1757,7 +1768,24 @@ const InterviewRoom: React.FC = () => {
         3500,
         'Custom input run'
       );
-      const outcome = response.data;
+      let outcome = response.data;
+
+      if (outcome && (
+        outcome.consoleOutput?.includes('Local Runtime Missing') ||
+        outcome.consoleOutput?.includes('Cannot run program') ||
+        outcome.consoleOutput?.includes('Exec failed, error: 2') ||
+        outcome.consoleOutput?.includes('No such file or directory')
+      )) {
+        console.warn('Backend host missing compiler for custom run, executing via client sandbox');
+        const single = await executeInSandbox(code, language, customInput.trim());
+        outcome = {
+          status: single.status,
+          consoleOutput: single.stdout || single.stderr || '(empty output)',
+          executionTimeMs: single.executionTimeMs,
+          passedCases: single.status === 'SUCCESS' ? 1 : 0,
+          totalCases: 1
+        };
+      }
 
       let logText = '';
       if (outcome.status === 'TIMEOUT') {
