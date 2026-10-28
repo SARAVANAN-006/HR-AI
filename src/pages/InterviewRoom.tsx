@@ -1061,6 +1061,9 @@ const InterviewRoom: React.FC = () => {
     withFastTimeout(axios.get(`/api/interviews/${id}`), 2500, 'Interview session loading')
       .then((res) => {
         const sData = res.data as Session;
+        if (sData.durationMinutes === 2 || (sData.interviewMode || "").toLowerCase().includes("sprint")) {
+          sData.state = "CODING";
+        }
         setSession(sData);
         setLanguage(sData.language);
         setTimeRemaining(sData.durationMinutes * 60);
@@ -1140,7 +1143,8 @@ const InterviewRoom: React.FC = () => {
           chosenQuestion = getRandomQuestion(prefDifficulty) as unknown as Question;
         }
 
-        const isSim = (prefMode || '').toLowerCase().includes('simulation') || (prefMode || '').toLowerCase().includes('full');
+        const isSprint = (prefMode || '').toLowerCase().includes('sprint') || prefDuration === 2;
+        const isSim = isSprint || (prefMode || '').toLowerCase().includes('simulation') || (prefMode || '').toLowerCase().includes('full');
 
         const offlineSession: Session = {
           id: chosenQuestion.id,
@@ -1172,7 +1176,9 @@ const InterviewRoom: React.FC = () => {
           setCode(template);
         }
 
-        const welcomeContent = isSim
+        const welcomeContent = isSprint
+          ? `⚡ **2-MIN RAPID SPRINT INITIALIZED!**\n\nProblem: **${chosenQuestion.title}**\n\nYou have strictly **120 seconds** to write a concise ~5-line solution and execute against test suites. The code editor is unlocked immediately. Type fast and submit!`
+          : isSim
           ? `Welcome to your KODEXIS Full Simulation for **${chosenQuestion.title}**!\n\nIn this mode, the code editor is completely unlocked and accessible from the start. You have ${prefDuration} minutes to code, dry-run test cases, optimize Big-O complexity, and execute your solution.`
           : `Welcome to your KODEXIS Technical Interview for **${chosenQuestion.title}**!\n\nI am your AI Interviewer. In this session, you must first explain and defend your conceptual algorithm in the chat (or via the **Fast Check** button).\n\n**To unlock the code editor, specify:**\n- Which data structure(s) you will use\n- How your algorithm handles edge cases\n- Expected Big-O time and space complexity\n\nOnce approved, the code editor unlocks automatically.`;
 

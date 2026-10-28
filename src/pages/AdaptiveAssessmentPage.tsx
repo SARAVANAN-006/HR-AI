@@ -355,7 +355,7 @@ export const AdaptiveAssessmentPage: React.FC = () => {
       { shareId, questionCount: questions.length }
     ).catch(() => {});
 
-    const fullUrl = `${window.location.origin}/assessment?shareId=${shareId}`;
+    const fullUrl = `${window.location.origin}/share/${shareId}`;
     setShareUrl(fullUrl);
     setIsCopied(false);
     setIsShareModalOpen(true);

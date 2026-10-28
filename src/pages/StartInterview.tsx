@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { withFastTimeout } from '../lib/api';
 import { getRandomQuestion } from '../lib/questionBank';
-import { Play, Settings, BrainCircuit, Lock, Unlock, Sparkles, Code2, Radio, ArrowUpRight } from 'lucide-react';
+import { Play, Settings, BrainCircuit, Lock, Unlock, Sparkles, Code2, Radio, ArrowUpRight, Zap, Clock } from 'lucide-react';
 
 const StartInterview: React.FC = () => {
   const navigate = useNavigate();
@@ -15,14 +15,17 @@ const StartInterview: React.FC = () => {
 
   const handleStart = async () => {
     setLoading(true);
-    const randomQ = getRandomQuestion(difficulty);
+    const isSprint = duration === 2 || mode.includes("2-Min") || mode.includes("Sprint");
+    const randomQ = isSprint ? getRandomQuestion("EASY", undefined, true) : getRandomQuestion(difficulty);
     try {
       const response = await withFastTimeout(
         axios.post('/api/interviews', {
           difficulty,
           language,
           durationMinutes: duration,
-          interviewMode: mode
+          interviewMode: mode,
+          isRapidSprint: isSprint,
+          questionId: randomQ.id
         }),
         2500,
         'Interview initialization'
@@ -33,7 +36,7 @@ const StartInterview: React.FC = () => {
       console.warn('Backend server offline or high latency. Launching dynamic interview session...');
       sessionStorage.setItem(
         'kodexis_offline_pref',
-        JSON.stringify({ difficulty, language, duration, mode, questionId: randomQ.id })
+        JSON.stringify({ difficulty: isSprint ? "EASY" : difficulty, language, duration: isSprint ? 2 : duration, mode, isRapidSprint: isSprint, questionId: randomQ.id })
       );
       navigate(`/interview/${randomQ.id}`);
     } finally {
@@ -123,6 +126,44 @@ const StartInterview: React.FC = () => {
                     {d.substring(0, 3)}
                   </button>
                 ))}
+
+                {/* Mode 3: 2-Min Rapid Sprint (Fast Coding) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('2-Min Rapid Sprint');
+                    setDuration(2);
+                    setDifficulty('EASY');
+                  }}
+                  className={`p-4 border rounded-xl text-left transition relative overflow-hidden ${
+                    mode === '2-Min Rapid Sprint' || duration === 2
+                      ? 'bg-amber-500/10 border-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.2)] ring-1 ring-amber-500/50'
+                      : 'border-border bg-background/50 hover:bg-zinc-900/60'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400">
+                        <Zap size={15} />
+                      </div>
+                      <span className="text-sm font-semibold text-zinc-100">2-Min Rapid Sprint</span>
+                    </div>
+                    <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-400 font-mono font-bold">
+                      120s • 5-Line Code
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-300 leading-relaxed mb-3">
+                    <strong className="text-amber-400 font-semibold">Fast Coding Challenge:</strong> High-speed 120-second sprint featuring concise, easy ~5-line problems (Reverse String, Palindrome, Find Max, Count Vowels). Editor is unlocked immediately for rapid typing and test execution.
+                  </p>
+                  <div className="flex flex-wrap gap-2 text-xs text-zinc-400">
+                    <span className="flex items-center gap-1.5 bg-zinc-950/70 px-2.5 py-1 rounded-md border border-zinc-800 text-[11px] font-medium text-zinc-300">
+                      <Clock size={12} className="text-amber-400" /> 2-Minute Timer
+                    </span>
+                    <span className="flex items-center gap-1.5 bg-zinc-950/70 px-2.5 py-1 rounded-md border border-zinc-800 text-[11px] font-medium text-zinc-300">
+                      <Code2 size={12} className="text-emerald-400" /> 5-Line Concise Solutions
+                    </span>
+                  </div>
+                </button>
               </div>
             </div>
 
@@ -151,6 +192,7 @@ const StartInterview: React.FC = () => {
                   onChange={(e) => setDuration(parseInt(e.target.value))}
                   className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs font-medium text-zinc-200 focus:outline-none focus:border-brand-cyan transition"
                 >
+                  <option value={2}>2 Min (Rapid Fast Coding Sprint)</option>
                   <option value={15}>15 Min (Speed Check)</option>
                   <option value={30}>30 Min (Standard)</option>
                   <option value={45}>45 Min (Standard L3+)</option>

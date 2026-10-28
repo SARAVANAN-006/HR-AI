@@ -24,6 +24,7 @@ import { StudyCalendarPage } from './pages/StudyCalendarPage';
 import { SystemEvaluationPage } from './pages/SystemEvaluationPage';
 import { StarkInterviewPage } from './pages/StarkInterviewPage';
 import ElsaDashboardPage from './pages/ElsaDashboardPage';
+import { StandaloneSharedAssessment } from './pages/StandaloneSharedAssessment';
 import {
   LayoutDashboard,
   Play,
@@ -70,12 +71,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; requireAdmin?: boole
     return <Navigate to="/admin-login" replace />;
   }
 
-  if (user && user.role === 'ROLE_CANDIDATE' && !user.isOnboarded && window.location.pathname !== '/onboard') {
-    if (isAssessmentShare) {
-      return <>{children}</>;
-    }
-    return <Navigate to="/onboard" replace />;
-  }
+  // Onboarding popup removed - candidate routes directly to dashboard
 
   return <>{children}</>;
 };
@@ -245,6 +241,9 @@ const App: React.FC = () => {
   return (
     <Router>
       <Routes>
+        <Route path="/share/:shareId" element={<StandaloneSharedAssessment />} />
+        <Route path="/shared-assessment/:shareId" element={<StandaloneSharedAssessment />} />
+        <Route path="/share" element={<StandaloneSharedAssessment />} />
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/admin-login" element={<AdminLogin />} />

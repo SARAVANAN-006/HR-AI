@@ -55,9 +55,6 @@ import {
   Calculator,
   Hash,
   LogOut,
-  Play,
-  Pause,
-  Trash2,
   UserCheck
 } from 'lucide-react';
 import {
@@ -126,16 +123,6 @@ export const StarkInterviewPage: React.FC = () => {
   // Evaluation Report
   const [finalReport, setFinalReport] = useState<StarkEvaluation | null>(null);
 
-  // WhatsApp-Style Voice Note Reply States
-  const [responseMode, setResponseMode] = useState<'voice' | 'text'>('voice');
-  const [isVoiceNoteRecording, setIsVoiceNoteRecording] = useState<boolean>(false);
-  const [voiceNoteDuration, setVoiceNoteDuration] = useState<number>(0);
-  const [isElsaListeningVoiceNote, setIsElsaListeningVoiceNote] = useState<boolean>(false);
-  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const voiceNoteChunksRef = useRef<Blob[]>([]);
-  const voiceNoteTimerRef = useRef<any>(null);
-  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
 
   // Refs for Speech Engine & Audio Analyzers
   const recognitionInstanceRef = useRef<any>(null);
@@ -1085,155 +1072,11 @@ export const StarkInterviewPage: React.FC = () => {
     return `${mins.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  // ----------------------------------------------------
-  // WHATSAPP-STYLE VOICE NOTE REPLY ENGINE
-  // ----------------------------------------------------
-  const formatVoiceDuration = (sec: number) => {
-    const mins = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${mins}:${s.toString().padStart(2, '0')}`;
-  };
-
-  const handleStartVoiceNoteRecording = async () => {
-    try {
-      window.speechSynthesis?.cancel();
-      setIsStarkSpeaking(false);
-      isStarkSpeakingRef.current = false;
-
-      let streamToUse = activeMediaStream;
-      if (!streamToUse || streamToUse.getAudioTracks().length === 0) {
-        streamToUse = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true
-          }
-        });
-        setActiveMediaStream(streamToUse);
-      }
-
-      voiceNoteChunksRef.current = [];
-      setVoiceNoteDuration(0);
-
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-        ? 'audio/webm;codecs=opus'
-        : MediaRecorder.isTypeSupported('audio/webm')
-        ? 'audio/webm'
-        : '';
-
-      const recorder = mimeType ? new MediaRecorder(streamToUse, { mimeType }) : new MediaRecorder(streamToUse);
-      recorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) {
-          voiceNoteChunksRef.current.push(e.data);
-        }
-      };
-
-      recorder.start(200);
-      mediaRecorderRef.current = recorder;
-      setIsVoiceNoteRecording(true);
-
-      // Concurrently run speech recognition to transcribe candidate speech for AI reasoning
-      startCandidateSpeechRecognition(true);
-
-      if (voiceNoteTimerRef.current) clearInterval(voiceNoteTimerRef.current);
-      voiceNoteTimerRef.current = setInterval(() => {
-        setVoiceNoteDuration((prev) => prev + 1);
-      }, 1000);
-    } catch (err) {
-      console.warn('Voice note recorder initialization error:', err);
-    }
-  };
-
-  const handleDiscardVoiceNote = () => {
-    if (voiceNoteTimerRef.current) clearInterval(voiceNoteTimerRef.current);
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      try {
-        mediaRecorderRef.current.stop();
-      } catch {}
-    }
-    mediaRecorderRef.current = null;
-    voiceNoteChunksRef.current = [];
-    setIsVoiceNoteRecording(false);
-    setVoiceNoteDuration(0);
-    stopCandidateSpeechRecognition();
-    setSpeechTranscript('');
-    setInterimTranscript('');
-  };
-
-  const handleSendVoiceNote = () => {
-    if (voiceNoteTimerRef.current) clearInterval(voiceNoteTimerRef.current);
-    const recordedDuration = voiceNoteDuration;
-
-    if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') {
-      handleSubmitAnswer(undefined, recordedDuration);
-      return;
-    }
-
-    const recorder = mediaRecorderRef.current;
-    recorder.onstop = () => {
-      const audioBlob = new Blob(voiceNoteChunksRef.current, {
-        type: recorder.mimeType || 'audio/webm'
-      });
-      const candidateAudioUrl = URL.createObjectURL(audioBlob);
-      voiceNoteChunksRef.current = [];
-      setIsVoiceNoteRecording(false);
-      setVoiceNoteDuration(0);
-
-      // WhatsApp listening flow: Elsa listens to the audio note first!
-      setIsElsaListeningVoiceNote(true);
-      stopCandidateSpeechRecognition();
-
-      setTimeout(() => {
-        setIsElsaListeningVoiceNote(false);
-        handleSubmitAnswer(candidateAudioUrl, recordedDuration);
-      }, 1600);
-    };
-
-    try {
-      recorder.stop();
-    } catch {
-      setIsVoiceNoteRecording(false);
-      handleSubmitAnswer();
-    }
-    mediaRecorderRef.current = null;
-  };
-
-  const handleTogglePlayAudio = (id: string, audioUrl: string) => {
-    if (playingAudioId === id) {
-      if (audioPlayerRef.current) {
-        audioPlayerRef.current.pause();
-      }
-      setPlayingAudioId(null);
-    } else {
-      if (audioPlayerRef.current) {
-        audioPlayerRef.current.pause();
-      }
-      const audio = new Audio(audioUrl);
-      audioPlayerRef.current = audio;
-      setPlayingAudioId(id);
-      audio.play().catch(() => {});
-      audio.onended = () => {
-        setPlayingAudioId(null);
-      };
-    }
-  };
-
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       window.speechSynthesis?.cancel();
       if (wordStreamTimerRef.current) clearInterval(wordStreamTimerRef.current);
-      if (voiceNoteTimerRef.current) clearInterval(voiceNoteTimerRef.current);
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        try {
-          mediaRecorderRef.current.stop();
-        } catch {}
-      }
-      if (audioPlayerRef.current) {
-        try {
-          audioPlayerRef.current.pause();
-        } catch {}
-      }
       if (recognitionInstanceRef.current) {
         try {
           recognitionInstanceRef.current.stop();
@@ -1774,156 +1617,8 @@ export const StarkInterviewPage: React.FC = () => {
             {/* Candidate Voice / Dictation Studio */}
             <div className="border border-border bg-zinc-950/90 rounded-2xl p-5 flex-1 flex flex-col justify-between space-y-3 shadow-xl">
               <div>
-                {/* Mode Selector: WhatsApp Voice Reply vs Text / Dictation */}
-                <div className="flex items-center gap-1.5 p-1 bg-zinc-900 border border-zinc-800 rounded-xl mb-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setResponseMode('voice');
-                      if (isCandidateListening) stopCandidateSpeechRecognition();
-                    }}
-                    className={`flex-1 py-1.5 px-3 rounded-lg text-[11px] font-mono font-bold flex items-center justify-center gap-1.5 transition ${
-                      responseMode === 'voice'
-                        ? 'bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
-                        : 'text-zinc-400 hover:text-zinc-200'
-                    }`}
-                  >
-                    <Mic size={13} className={responseMode === 'voice' ? 'text-emerald-400' : 'text-zinc-500'} />
-                    <span>WhatsApp Voice Reply</span>
-                    <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-500/30 text-emerald-300">AUDIO</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setResponseMode('text');
-                      if (isVoiceNoteRecording) handleDiscardVoiceNote();
-                    }}
-                    className={`flex-1 py-1.5 px-3 rounded-lg text-[11px] font-mono font-bold flex items-center justify-center gap-1.5 transition ${
-                      responseMode === 'text'
-                        ? 'bg-cyan-500/20 border border-cyan-500/50 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.2)]'
-                        : 'text-zinc-400 hover:text-zinc-200'
-                    }`}
-                  >
-                    <FileText size={13} className={responseMode === 'text' ? 'text-cyan-400' : 'text-zinc-500'} />
-                    <span>Text / Dictation</span>
-                  </button>
-                </div>
-
-                {/* MODE 1: WHATSAPP VOICE REPLY */}
-                {responseMode === 'voice' && (
-                  <div className="space-y-3">
-                    {!isVoiceNoteRecording && !isElsaListeningVoiceNote && (
-                      <div className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 flex flex-col items-center justify-center text-center space-y-3 py-6">
-                        <div className="space-y-1">
-                          <h4 className="text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider flex items-center justify-center gap-1.5">
-                            <Mic size={14} />
-                            <span>WhatsApp Voice Note to Elsa</span>
-                          </h4>
-                          <p className="text-[11px] font-mono text-zinc-400 max-w-sm">
-                            Record and send your audio response. Elsa listens to your voice note and answers back out loud.
-                          </p>
-                        </div>
-
-                        {/* WhatsApp Record Button */}
-                        <div className="py-2">
-                          <button
-                            type="button"
-                            onClick={handleStartVoiceNoteRecording}
-                            disabled={isStarkThinking}
-                            className="w-20 h-20 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white flex flex-col items-center justify-center shadow-[0_0_25px_rgba(16,185,129,0.4)] transition transform hover:scale-105 active:scale-95 disabled:opacity-50"
-                          >
-                            <Mic size={30} />
-                            <span className="text-[9px] font-mono font-bold mt-1 tracking-wider">RECORD</span>
-                          </button>
-                        </div>
-
-                        <span className="text-[10px] font-mono text-zinc-500">
-                          Tap Record • Explain your architecture • Send to Elsa
-                        </span>
-                      </div>
-                    )}
-
-                    {/* ACTIVE RECORDING CONTAINER */}
-                    {isVoiceNoteRecording && (
-                      <div className="p-4 rounded-2xl bg-zinc-900/90 border border-emerald-500/50 space-y-4 shadow-[0_0_25px_rgba(16,185,129,0.2)]">
-                        <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
-                            <span className="text-xs font-mono font-bold text-red-400 uppercase tracking-wider">
-                              RECORDING VOICE NOTE
-                            </span>
-                          </div>
-                          <div className="font-mono text-sm font-bold text-emerald-300 px-2.5 py-0.5 rounded-lg bg-zinc-800 border border-zinc-700">
-                            {formatVoiceDuration(voiceNoteDuration)}
-                          </div>
-                        </div>
-
-                        {/* Animated Equalizer Waveform */}
-                        <div className="flex items-center justify-center gap-1.5 h-12 px-2 bg-black/40 rounded-xl border border-zinc-800/80">
-                          {[...Array(20)].map((_, i) => {
-                            const dynamicH = Math.min(
-                              38,
-                              Math.max(6, Math.sin((i + voiceNoteDuration * 3)) * 14 + (micAudioLevel / 100) * 28 + (i % 3) * 4)
-                            );
-                            return (
-                              <div
-                                key={i}
-                                className="w-1.5 rounded-full bg-gradient-to-t from-emerald-500 to-teal-400 transition-all duration-75"
-                                style={{ height: `${dynamicH}px` }}
-                              />
-                            );
-                          })}
-                        </div>
-
-                        {/* Live Transcription Preview */}
-                        {speechTranscript && (
-                          <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-[11px] font-mono text-zinc-300 max-h-20 overflow-y-auto">
-                            <span className="text-zinc-500 block text-[9px] uppercase font-bold">Transcribing Live:</span>
-                            &ldquo;{speechTranscript}&rdquo;
-                          </div>
-                        )}
-
-                        {/* Action buttons: Discard vs Send */}
-                        <div className="flex items-center gap-3 pt-1">
-                          <button
-                            type="button"
-                            onClick={handleDiscardVoiceNote}
-                            className="flex-1 py-3 px-3 rounded-xl border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition"
-                          >
-                            <Trash2 size={15} />
-                            <span>Discard</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={handleSendVoiceNote}
-                            className="flex-[2] py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-zinc-950 text-xs font-mono font-bold flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.4)] transition"
-                          >
-                            <Send size={15} />
-                            <span>Send Voice Note to Elsa</span>
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Elsa Listening State Banner */}
-                    {isElsaListeningVoiceNote && (
-                      <div className="p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 flex items-center gap-3 animate-pulse shadow-[0_0_20px_rgba(16,185,129,0.25)]">
-                        <div className="w-10 h-10 rounded-full bg-emerald-500/30 flex items-center justify-center text-emerald-300 shrink-0">
-                          <Radio size={20} className="animate-spin" />
-                        </div>
-                        <div className="font-mono text-xs space-y-0.5">
-                          <p className="font-bold text-emerald-200">Elsa is listening to your voice note...</p>
-                          <p className="text-[10px] text-emerald-400/80">Analyzing candidate vocal articulation and technical depth</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* MODE 2: TEXT & SPEECH-TO-TEXT DICTATION */}
-                {responseMode === 'text' && (
+                {/* Candidate Dictation & Speech Studio */}
+                    (
                   <div>
                     <div className="flex items-center justify-between border-b border-zinc-800 pb-2 mb-3">
                       <div className="flex items-center space-x-2">
@@ -1976,12 +1671,11 @@ export const StarkInterviewPage: React.FC = () => {
                       </span>
                     </div>
                   </div>
-                )}
-              </div>
+                )</div>
 
               {/* Action Buttons */}
               <div className="space-y-2 pt-2">
-                {responseMode === 'text' && (
+                (
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
@@ -2013,7 +1707,6 @@ export const StarkInterviewPage: React.FC = () => {
                       Clear Text
                     </button>
                   </div>
-                )}
 
                 {/* AI Thinking Feedback Banner */}
                 {isStarkThinking && (
@@ -2024,8 +1717,7 @@ export const StarkInterviewPage: React.FC = () => {
                 )}
 
                 {/* Submit to Elsa Button (when in text mode or after recording) */}
-                {responseMode === 'text' && (
-                  <button
+                <button
                     onClick={() => handleSubmitAnswer()}
                     disabled={isStarkThinking}
                     className="w-full py-3.5 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-mono text-xs font-bold shadow-[0_0_20px_rgba(6,182,212,0.4)] transition flex items-center justify-center gap-2 disabled:opacity-50"
@@ -2039,7 +1731,6 @@ export const StarkInterviewPage: React.FC = () => {
                         : 'Submit Final Answer & Conclude Session'}
                     </span>
                   </button>
-                )}
               </div>
             </div>
           </div>
@@ -2333,7 +2024,7 @@ export const StarkInterviewPage: React.FC = () => {
                 <div className="text-xs text-zinc-300 bg-cyan-950/10 p-3 rounded-xl border border-cyan-500/20 space-y-2">
                   <div className="flex items-center justify-between">
                     <strong className="text-cyan-400 block">
-                      {item.candidateAudioUrl ? 'CANDIDATE WHATSAPP VOICE REPLY:' : 'CANDIDATE ANSWER (SPEECH RECOGNITION):'}
+                      'CANDIDATE ANSWER (LIVE SPEECH / TEXT):'
                     </strong>
                     {item.candidateAudioUrl && (
                       <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
@@ -2343,43 +2034,7 @@ export const StarkInterviewPage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* WhatsApp Voice Note Audio Bubble */}
-                  {item.candidateAudioUrl && (
-                    <div className="p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/40 flex items-center justify-between gap-3 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
-                      <div className="flex items-center gap-3">
-                        <button
-                          type="button"
-                          onClick={() => handleTogglePlayAudio(`voice-${idx}`, item.candidateAudioUrl!)}
-                          className="w-10 h-10 rounded-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 flex items-center justify-center shadow-[0_0_12px_rgba(16,185,129,0.4)] transition shrink-0"
-                          title="Play candidate voice recording"
-                        >
-                          {playingAudioId === `voice-${idx}` ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
-                        </button>
-                        <div>
-                          <div className="flex items-center gap-1.5 font-mono text-[10px] text-emerald-400 font-bold uppercase">
-                            <span>Candidate Voice Note</span>
-                          </div>
-                          <div className="flex items-center gap-1 mt-1">
-                            {[4, 12, 8, 16, 20, 14, 8, 18, 12, 6, 14, 10, 16, 8, 4, 12, 6].map((h, i) => (
-                              <div
-                                key={i}
-                                className={`w-1 rounded-full transition-all ${
-                                  playingAudioId === `voice-${idx}` ? 'bg-emerald-400 animate-pulse' : 'bg-emerald-600/70'
-                                }`}
-                                style={{ height: `${h}px` }}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right font-mono text-[10px] text-zinc-400 shrink-0">
-                        <span>{formatVoiceDuration(item.audioDurationSeconds || item.durationSeconds || 0)}</span>
-                        <span className="text-cyan-400 ml-2 font-bold">✓✓</span>
-                      </div>
-                    </div>
-                  )}
-
-                  <p className="text-zinc-200 leading-relaxed">{item.userAnswerText}</p>
+                                    <p className="text-zinc-200 leading-relaxed">{item.userAnswerText}</p>
                 </div>
 
                 <div className="text-[11px] text-zinc-400 bg-background p-2.5 rounded-lg border border-border">

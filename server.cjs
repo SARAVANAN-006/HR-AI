@@ -324,6 +324,98 @@ function generateAiInterviewerReply(rawInput) {
   return "That is a valid engineering perspective. Before writing code in the editor, ensure you have considered the time complexity trade-offs and edge cases for your approach.";
 }
 
+// Native SQLite Relational Engine
+let sqliteDb = null;
+try {
+  const { DatabaseSync } = require('node:sqlite');
+  const sqlitePath = path.join(DATA_DIR, 'kodexis_sqlite.db');
+  sqliteDb = new DatabaseSync(sqlitePath);
+  sqliteDb.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      username TEXT PRIMARY KEY,
+      password TEXT,
+      fullName TEXT,
+      role TEXT,
+      targetRole TEXT,
+      targetCompanies TEXT,
+      experienceLevel TEXT,
+      preferredLanguage TEXT,
+      readinessScore INTEGER DEFAULT 0,
+      isOnboarded INTEGER DEFAULT 1,
+      createdAt TEXT,
+      lastLoginAt TEXT
+    );
+    CREATE TABLE IF NOT EXISTS candidate_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT,
+      action TEXT,
+      page TEXT,
+      logType TEXT,
+      details TEXT,
+      payload TEXT,
+      timestamp TEXT
+    );
+    CREATE TABLE IF NOT EXISTS interview_autopsies (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT,
+      sessionId TEXT,
+      overallScore INTEGER,
+      autopsy TEXT,
+      timestamp TEXT
+    );
+    CREATE TABLE IF NOT EXISTS user_logins (
+      id TEXT PRIMARY KEY,
+      username TEXT,
+      fullName TEXT,
+      role TEXT,
+      timestamp TEXT,
+      ip TEXT,
+      userAgent TEXT,
+      status TEXT
+    );
+  `);
+  console.log('[KODEXIS Backend] Connected permanently to SQLite database:', sqlitePath);
+} catch (e) {
+  console.log('[KODEXIS Backend] SQLite engine notice:', e.message);
+}
+
+// PostgreSQL Online Engine (Supabase / Neon / Render Postgres)
+let pgPool = null;
+const PG_URL = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+if (PG_URL) {
+  try {
+    const { Pool } = require('pg');
+    pgPool = new Pool({ connectionString: PG_URL, ssl: { rejectUnauthorized: false } });
+    pgPool.query(`
+      CREATE TABLE IF NOT EXISTS kodexis_users (
+        username VARCHAR(100) PRIMARY KEY,
+        password VARCHAR(255),
+        full_name VARCHAR(255),
+        role VARCHAR(50),
+        target_role VARCHAR(100),
+        readiness_score INT DEFAULT 0,
+        is_onboarded BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS kodexis_candidate_logs (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(100),
+        action VARCHAR(100),
+        log_type VARCHAR(50),
+        details TEXT,
+        payload TEXT,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `).then(() => {
+      console.log('[KODEXIS Backend] Connected to PostgreSQL cloud database');
+    }).catch(err => {
+      console.log('[KODEXIS Backend] PostgreSQL connection notice:', err.message);
+    });
+  } catch (e) {
+    console.log('[KODEXIS Backend] pg driver notice:', e.message);
+  }
+}
+
 // MongoDB Driver Initialization
 let mongoClient = null;
 let mongoDb = null;
@@ -353,6 +445,88 @@ async function mongoInsert(col, doc) {
 async function mongoUpsert(col, query, doc) {
   if (mongoDb) {
     try { await mongoDb.collection(col).updateOne(query, { $set: doc }, { upsert: true }); } catch {}
+  }
+}
+
+// Helpers for multi-tier DB persistence
+function persistUserToDb(u) {
+  try {
+    if (sqliteDb) {
+      const stmt = sqliteDb.prepare(`
+        INSERT INTO users (username, password, fullName, role, targetRole, targetCompanies, experienceLevel, preferredLanguage, readinessScore, isOnboarded, createdAt, lastLoginAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(username) DO UPDATE SET
+          fullName=excluded.fullName,
+          role=excluded.role,
+          targetRole=excluded.targetRole,
+          targetCompanies=excluded.targetCompanies,
+          experienceLevel=excluded.experienceLevel,
+          preferredLanguage=excluded.preferredLanguage,
+          readinessScore=excluded.readinessScore,
+          isOnboarded=excluded.isOnboarded,
+          lastLoginAt=excluded.lastLoginAt;
+      `);
+      stmt.run(
+        u.username,
+        u.password || '',
+        u.fullName || '',
+        u.role || 'ROLE_CANDIDATE',
+        u.targetRole || '',
+        u.targetCompanies || '',
+        u.experienceLevel || '',
+        u.preferredLanguage || '',
+        u.readinessScore || 0,
+        u.isOnboarded ? 1 : 0,
+        u.createdAt || new Date().toISOString(),
+        u.lastLoginAt || new Date().toISOString()
+      );
+    }
+  } catch (e) {
+    console.warn('[SQLite] User save notice:', e.message);
+  }
+  mongoUpsert('users', { username: u.username }, u);
+  if (pgPool) {
+    pgPool.query(
+      `INSERT INTO kodexis_users (username, full_name, role, target_role, readiness_score, is_onboarded)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (username) DO UPDATE SET
+         full_name = EXCLUDED.full_name,
+         role = EXCLUDED.role,
+         target_role = EXCLUDED.target_role,
+         readiness_score = EXCLUDED.readiness_score,
+         is_onboarded = EXCLUDED.is_onboarded`,
+      [u.username, u.fullName, u.role, u.targetRole, u.readinessScore || 0, !!u.isOnboarded]
+    ).catch(() => {});
+  }
+}
+
+function persistLogToDb(entry) {
+  try {
+    if (sqliteDb) {
+      const stmt = sqliteDb.prepare(`
+        INSERT INTO candidate_logs (username, action, page, logType, details, payload, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `);
+      stmt.run(
+        entry.username || 'candidate',
+        entry.action || 'ACTION',
+        entry.page || 'dashboard',
+        entry.logType || 'BEHAVIOR',
+        entry.details || '',
+        typeof entry.payload === 'string' ? entry.payload : JSON.stringify(entry.payload || {}),
+        entry.timestamp || new Date().toISOString()
+      );
+    }
+  } catch (e) {
+    console.warn('[SQLite] Log save notice:', e.message);
+  }
+  mongoInsert('candidate_logs', entry);
+  if (pgPool) {
+    pgPool.query(
+      `INSERT INTO kodexis_candidate_logs (username, action, log_type, details, payload, timestamp)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [entry.username, entry.action, entry.logType, entry.details, typeof entry.payload === 'string' ? entry.payload : JSON.stringify(entry.payload || {}), entry.timestamp || new Date().toISOString()]
+    ).catch(() => {});
   }
 }
 
@@ -630,15 +804,16 @@ const server = http.createServer((req, res) => {
           fullName: username.charAt(0).toUpperCase() + username.slice(1),
           targetRole: 'Software Engineer',
           targetCompanies: 'Top Tech Companies',
-          experienceLevel: 'MEDIUM',
+          experienceLevel: 'ENTRY',
           preferredLanguage: 'PYTHON',
-          readinessScore: 70,
-          isOnboarded: false
+          readinessScore: 0,
+          isOnboarded: true
         };
         database.users.push(existingUser);
       }
       existingUser.lastLoginAt = new Date().toISOString();
       existingUser.loginCount = (existingUser.loginCount || 0) + 1;
+      persistUserToDb(existingUser);
 
       database.user_logins = database.user_logins || [];
       database.user_logins.unshift({
@@ -667,14 +842,15 @@ const server = http.createServer((req, res) => {
           username: username,
           role: username.toLowerCase().includes('admin') ? 'ROLE_ADMIN' : 'ROLE_CANDIDATE',
           fullName: fullName,
-          targetRole: null,
-          targetCompanies: null,
-          experienceLevel: null,
-          preferredLanguage: null,
+          targetRole: 'Software Engineer',
+          targetCompanies: 'Top Tech Companies',
+          experienceLevel: 'ENTRY',
+          preferredLanguage: 'PYTHON',
           readinessScore: 0,
-          isOnboarded: false
+          isOnboarded: true
         };
         database.users.push(user);
+        persistUserToDb(user);
         saveDatabase();
       }
       return sendJson(res, 200, {
@@ -742,15 +918,24 @@ const server = http.createServer((req, res) => {
         "Graphs": 98
       };
 
+      const rawAutopsies = database.interview_autopsies || [];
+      const userAutopsies = rawAutopsies.filter(a => (a.username || '').toLowerCase() === (u.username || '').toLowerCase());
+      const rawLogs = database.candidate_logs || [];
+      const userLogs = rawLogs.filter(l => (l.username || '').toLowerCase() === (u.username || '').toLowerCase() && (l.action === 'SESSION_COMPLETED' || l.logType === 'INTERVIEW_AUTOPSY'));
+
+      const isNewCandidate = !isAdmin && userAutopsies.length === 0 && userLogs.length === 0;
+
       topics.forEach((t, i) => {
         let existing = database.candidate_skill_telemetry.find(s => s.username === u.username && s.topic === t);
         let score;
         if (isAdmin) {
           score = adminSkillScores[t] || 97;
+        } else if (isNewCandidate) {
+          score = 0;
         } else {
           score = existing ? existing.proficiencyScore : Math.max(38, Math.min(96, base + (((seed * (i + 3)) % 25) - 8)));
         }
-        let level = score >= 88 ? 'EXPERT' : (score >= 74 ? 'STRONG' : (score >= 58 ? 'INTERMEDIATE' : (score >= 40 ? 'DEVELOPING' : 'NOVICE')));
+        let level = isNewCandidate ? 'NOVICE' : (score >= 88 ? 'EXPERT' : (score >= 74 ? 'STRONG' : (score >= 58 ? 'INTERMEDIATE' : (score >= 40 ? 'DEVELOPING' : 'NOVICE'))));
         numericSkills[t] = score;
         skills[t] = level;
 
@@ -761,14 +946,14 @@ const server = http.createServer((req, res) => {
             topic: t,
             proficiencyLevel: level,
             proficiencyScore: score,
-            problemsAttempted: isAdmin ? 42 : 1,
-            problemsPassed: isAdmin ? 42 : (score >= 60 ? 1 : 0),
+            problemsAttempted: isAdmin ? 42 : (isNewCandidate ? 0 : 1),
+            problemsPassed: isAdmin ? 42 : (isNewCandidate ? 0 : (score >= 60 ? 1 : 0)),
             accuracyPercentage: score,
             avgExecutionTimeMs: isAdmin ? 35.0 : 420.0,
-            aiBehaviorScore: isAdmin ? 98.0 : 82.0,
-            identifiedStrengths: isAdmin ? 'Architectural systems optimization' : (score >= 75 ? 'Optimal algorithm execution' : 'Solid fundamental understanding'),
-            identifiedWeaknesses: isAdmin ? 'System reference baseline' : (score < 75 ? 'Deep boundary condition checks' : 'Maintain modular architecture'),
-            aiBehaviorNotes: isAdmin ? 'Administrator System Benchmark profile telemetry' : 'AI live telemetry calibrated from code evaluations and candidate interaction',
+            aiBehaviorScore: isAdmin ? 98.0 : (isNewCandidate ? 0.0 : 82.0),
+            identifiedStrengths: isAdmin ? 'Architectural systems optimization' : (isNewCandidate ? 'Pending initial assessment' : (score >= 75 ? 'Optimal algorithm execution' : 'Solid fundamental understanding')),
+            identifiedWeaknesses: isAdmin ? 'System reference baseline' : (isNewCandidate ? 'Diagnostic pending' : (score < 75 ? 'Deep boundary condition checks' : 'Maintain modular architecture')),
+            aiBehaviorNotes: isAdmin ? 'Administrator System Benchmark profile telemetry' : (isNewCandidate ? 'New candidate registration initialized at 0 benchmark' : 'AI live telemetry calibrated from code evaluations and candidate interaction'),
             visualPreference: 'BAR_CHART',
             lastUpdated: new Date().toISOString()
           };
@@ -777,6 +962,12 @@ const server = http.createServer((req, res) => {
           existing.proficiencyScore = score;
           existing.proficiencyLevel = level;
           existing.accuracyPercentage = score;
+        } else if (isNewCandidate) {
+          existing.proficiencyScore = 0;
+          existing.proficiencyLevel = 'NOVICE';
+          existing.problemsAttempted = 0;
+          existing.problemsPassed = 0;
+          existing.accuracyPercentage = 0;
         }
         sqlRows.push(existing);
       });
@@ -787,11 +978,13 @@ const server = http.createServer((req, res) => {
             "High-Throughput Concurrency (98% Mastery)",
             "Algorithmic Asymptotics & Graph Theory (98% Mastery)"
           ]
-        : Object.entries(numericSkills)
-            .filter(([_, sc]) => sc >= 74)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 3)
-            .map(([t, sc]) => `${t} (${sc}% Mastery)`);
+        : (isNewCandidate
+            ? ["No assessments completed yet. Take an interview or fast coding sprint to calibrate your score."]
+            : Object.entries(numericSkills)
+                .filter(([_, sc]) => sc >= 74)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 3)
+                .map(([t, sc]) => `${t} (${sc}% Mastery)`));
 
       const lowest = Object.entries(numericSkills).sort((a, b) => a[1] - b[1])[0];
       const weaknesses = isAdmin
@@ -802,16 +995,22 @@ const server = http.createServer((req, res) => {
               description: "System Administrator benchmark baseline established at 95% Expert tier."
             }
           ]
-        : [
-            {
-              topic: lowest ? lowest[0] : 'Dynamic Programming',
-              status: 'Focus Area',
-              description: `Live AI telemetry identified ${lowest ? lowest[0] : 'Dynamic Programming'} as candidate primary growth boundary.`
-            }
-          ];
+        : (isNewCandidate
+            ? [
+                {
+                  topic: "Baseline Pending",
+                  status: "NEW_CANDIDATE",
+                  description: "Complete your first technical assessment to diagnose algorithmic proficiency."
+                }
+              ]
+            : [
+                {
+                  topic: lowest ? lowest[0] : 'Dynamic Programming',
+                  status: 'Focus Area',
+                  description: `Live AI telemetry identified ${lowest ? lowest[0] : 'Dynamic Programming'} as candidate primary growth boundary.`
+                }
+              ]);
 
-      const rawAutopsies = database.interview_autopsies || [];
-      const userAutopsies = rawAutopsies.filter(a => (a.username || '').toLowerCase() === (u.username || '').toLowerCase());
       const autopsiesHistory = userAutopsies.map(a => ({
         sessionId: a.sessionId || a.id,
         topic: a.autopsy?.topic || 'Core CS Architecture',
@@ -822,8 +1021,6 @@ const server = http.createServer((req, res) => {
         date: a.timestamp || a.date || new Date().toISOString()
       }));
 
-      const rawLogs = database.candidate_logs || [];
-      const userLogs = rawLogs.filter(l => (l.username || '').toLowerCase() === (u.username || '').toLowerCase() && (l.action === 'SESSION_COMPLETED' || l.logType === 'INTERVIEW_AUTOPSY'));
       const logsHistory = userLogs.map(l => {
         let p = {};
         try { p = typeof l.payload === 'string' ? JSON.parse(l.payload) : (l.payload || {}); } catch {}
@@ -855,6 +1052,12 @@ const server = http.createServer((req, res) => {
       }
       dedupedHistory.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+      const computedReadiness = isAdmin
+        ? 98
+        : (dedupedHistory.length > 0
+            ? Math.max(u.readinessScore || 0, ...dedupedHistory.map(h => h.score))
+            : (isNewCandidate ? 0 : (u.readinessScore || 0)));
+
       return sendJson(res, 200, {
         fullName: u.fullName,
         username: u.username,
@@ -862,7 +1065,16 @@ const server = http.createServer((req, res) => {
         targetCompanies: u.targetCompanies,
         experienceLevel: u.experienceLevel,
         preferredLanguage: u.preferredLanguage,
-        readinessScore: isAdmin ? 98 : (dedupedHistory.length > 0 ? Math.max(u.readinessScore || 70, ...dedupedHistory.map(h => h.score)) : (u.readinessScore || 70)),
+        readinessScore: computedReadiness,
+        skills,
+        numericSkills,
+        strengths,
+        weaknesses,
+        visualPreference: database.candidate_skill_telemetry[0]?.visualPreference || 'BAR_CHART',
+        sqlTableRows: sqlRows,
+        sqlTableLink: `/api/logs/table/candidate_skill_telemetry/${encodeURIComponent(u.username)}`,
+        history: dedupedHistory
+      });
         skills,
         numericSkills,
         strengths,
@@ -1026,8 +1238,25 @@ const server = http.createServer((req, res) => {
         timestamp: new Date().toISOString()
       };
       database.candidate_logs.push(logEntry);
+      persistLogToDb(logEntry);
       saveDatabase();
       return sendJson(res, 200, { status: 'SUCCESS', logId: logEntry.id, timestamp: logEntry.timestamp });
+    }
+
+    if (url === '/api/logs/all' && method === 'GET') {
+      return sendJson(res, 200, {
+        logs: database.candidate_logs || [],
+        users: (database.users || []).map(u => ({
+          username: u.username,
+          fullName: u.fullName,
+          role: u.role,
+          targetRole: u.targetRole,
+          readinessScore: u.readinessScore || 0,
+          isOnboarded: u.isOnboarded,
+          lastLoginAt: u.lastLoginAt
+        })),
+        autopsies: database.interview_autopsies || []
+      });
     }
 
     if (url.startsWith('/api/logs/user/') && method === 'GET') {
@@ -1046,6 +1275,32 @@ const server = http.createServer((req, res) => {
         timestamp: new Date().toISOString()
       };
       database.interview_autopsies.push(autopsyEntry);
+      persistLogToDb({
+        username: autopsyEntry.username,
+        action: 'INTERVIEW_AUTOPSY',
+        page: '/interview',
+        logType: 'INTERVIEW_AUTOPSY',
+        details: `Interview evaluated with score ${autopsyEntry.overallScore}`,
+        payload: autopsyEntry.autopsy,
+        timestamp: autopsyEntry.timestamp
+      });
+      try {
+        if (sqliteDb) {
+          const aStmt = sqliteDb.prepare(`
+            INSERT INTO interview_autopsies (username, sessionId, overallScore, autopsy, timestamp)
+            VALUES (?, ?, ?, ?, ?)
+          `);
+          aStmt.run(
+            autopsyEntry.username,
+            String(autopsyEntry.sessionId),
+            Number(autopsyEntry.overallScore) || 0,
+            JSON.stringify(autopsyEntry.autopsy || {}),
+            autopsyEntry.timestamp
+          );
+        }
+      } catch (e) {
+        console.warn('[SQLite] Autopsy save notice:', e.message);
+      }
       saveDatabase();
       return sendJson(res, 200, { status: 'SUCCESS', autopsyLogId: autopsyEntry.id, timestamp: autopsyEntry.timestamp });
     }

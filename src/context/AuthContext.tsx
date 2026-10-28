@@ -199,7 +199,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         'User authentication'
       );
       const { token: receivedToken, ...userData } = response.data;
-      let finalUserData: User = userData as User;
+      let finalUserData: User = { ...(userData as User), readinessScore: (userData as any).readinessScore !== undefined ? (userData as any).readinessScore : 0, isOnboarded: true };
       if (parsedDna) {
         finalUserData = { ...finalUserData, ...parsedDna, isOnboarded: true };
       }
@@ -224,7 +224,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         experienceLevel: parsedDna?.experienceLevel || null,
         preferredLanguage: parsedDna?.preferredLanguage || null,
         readinessScore: 0,
-        isOnboarded: !!parsedDna?.isOnboarded
+        isOnboarded: true
       };
 
       const sessionToken = `mock_token_${cleanUsername}_${Date.now()}`;
@@ -276,7 +276,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         experienceLevel: parsedDna?.experienceLevel || null,
         preferredLanguage: parsedDna?.preferredLanguage || null,
         readinessScore: 0,
-        isOnboarded: !!parsedDna?.isOnboarded
+        isOnboarded: true
       };
 
       const sessionToken = `mock_token_${cleanUsername}_${Date.now()}`;
@@ -309,7 +309,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         username: currentUsername,
         role: 'ROLE_CANDIDATE',
         fullName: currentUsername.charAt(0).toUpperCase() + currentUsername.slice(1),
-        readinessScore: 75
+        readinessScore: 0
       }),
       ...dnaRecord
     };

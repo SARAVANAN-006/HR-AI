@@ -47,6 +47,7 @@ export interface Question {
   solution?: QuestionSolution;
   mcqChallenge?: McqChallenge;
   testCases: TestCase[];
+  isRapidSprint?: boolean;
 }
 
 export const QUESTION_BANK: Question[] = [
@@ -2508,14 +2509,435 @@ int main() {
       { id: 4, input: "5", expectedOutput: "8", isHidden: true },
       { id: 5, input: "10", expectedOutput: "89", isHidden: true }
     ]
-  }
+  },
+  // ----------------------------------------------------
+  // 2-MIN RAPID SPRINT MICRO-CHALLENGES (EASY 5-LINES)
+  // ----------------------------------------------------
+  {
+    id: 201,
+    title: "Reverse String (Rapid Sprint)",
+    description: "Write a function that reverses an input string s.\n\n**Input Format:**\nFirst line: The string s.\n\n**Output Format:**\nThe reversed string.\n\n**Example 1:**\nInput: hello\nOutput: olleh",
+    difficulty: "EASY",
+    topic: "Strings",
+    expectedTimeComplexity: "O(n)",
+    expectedSpaceComplexity: "O(1) / O(n)",
+    optimalSolutionConcept: "Reverse string using slicing in Python or two pointers / StringBuilder.",
+    isRapidSprint: true,
+    pythonTemplate: `import sys
 
+def reverseString(s):
+    # 5-line rapid code:
+    return s[::-1]
+
+if __name__ == '__main__':
+    input_str = sys.stdin.read().strip()
+    print(reverseString(input_str))`,
+    javaTemplate: `import java.util.*;
+
+public class Main {
+    public static String reverseString(String s) {
+        // 5-line rapid code:
+        return new StringBuilder(s).reverse().toString();
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        if (sc.hasNextLine()) {
+            System.out.println(reverseString(sc.nextLine().trim()));
+        }
+    }
+}`,
+    javascriptTemplate: `const fs = require('fs');
+
+function reverseString(s) {
+    // 5-line rapid code:
+    return s.split('').reverse().join('');
+}
+
+const input = fs.readFileSync(0, 'utf-8').trim();
+console.log(reverseString(input));`,
+    cppTemplate: `#include <iostream>
+#include <string>
+#include <algorithm>
+using namespace std;
+
+int main() {
+    string s;
+    if (getline(cin, s)) {
+        reverse(s.begin(), s.end());
+        cout << s << endl;
+    }
+    return 0;
+}`,
+    solution: {
+      python: "def reverseString(s):\n    return s[::-1]",
+      java: "public class Main {\n    public static String reverseString(String s) {\n        return new StringBuilder(s).reverse().toString();\n    }\n}",
+      javascript: "function reverseString(s) {\n    return s.split('').reverse().join('');\n}"
+    },
+    mcqChallenge: {
+      question: "What is the optimal time complexity to reverse an array or string in-place?",
+      options: ["O(N) with O(1) auxiliary space", "O(N log N)", "O(N^2)", "O(log N)"],
+      correctIndex: 0,
+      explanation: "Swapping elements from two ends moving inward processes N/2 pairs, achieving linear O(N) time with O(1) space."
+    },
+    testCases: [
+      { id: 1, input: "hello", expectedOutput: "olleh", isHidden: false },
+      { id: 2, input: "kodexis", expectedOutput: "sixedok", isHidden: false },
+      { id: 3, input: "algorithm", expectedOutput: "mhtirogla", isHidden: true }
+    ]
+  },
+  {
+    id: 202,
+    title: "Check Palindrome (Rapid Sprint)",
+    description: "Given a string s, return true if it reads the same backward as forward, otherwise return false.\n\n**Input Format:**\nFirst line: The string s.\n\n**Output Format:**\ntrue or false.\n\n**Example 1:**\nInput: racecar\nOutput: true",
+    difficulty: "EASY",
+    topic: "Strings",
+    expectedTimeComplexity: "O(n)",
+    expectedSpaceComplexity: "O(1)",
+    optimalSolutionConcept: "Compare string to its reverse or use two pointers from both ends.",
+    isRapidSprint: true,
+    pythonTemplate: `import sys
+
+def isPalindrome(s):
+    # 5-line rapid code:
+    clean = s.lower().strip()
+    return "true" if clean == clean[::-1] else "false"
+
+if __name__ == '__main__':
+    print(isPalindrome(sys.stdin.read().strip()))`,
+    javaTemplate: `import java.util.*;
+
+public class Main {
+    public static boolean isPalindrome(String s) {
+        String clean = s.trim().toLowerCase();
+        int l = 0, r = clean.length() - 1;
+        while (l < r) {
+            if (clean.charAt(l++) != clean.charAt(r--)) return false;
+        }
+        return true;
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        if (sc.hasNextLine()) {
+            System.out.println(isPalindrome(sc.nextLine().trim()));
+        }
+    }
+}`,
+    javascriptTemplate: `const fs = require('fs');
+
+function isPalindrome(s) {
+    const clean = s.trim().toLowerCase();
+    return clean === clean.split('').reverse().join('');
+}
+
+const input = fs.readFileSync(0, 'utf-8').trim();
+console.log(isPalindrome(input) ? "true" : "false");`,
+    cppTemplate: `#include <iostream>
+#include <string>
+using namespace std;
+
+int main() {
+    string s;
+    if (cin >> s) {
+        int l = 0, r = s.length() - 1;
+        bool ok = true;
+        while (l < r) {
+            if (s[l++] != s[r--]) { ok = false; break; }
+        }
+        cout << (ok ? "true" : "false") << endl;
+    }
+    return 0;
+}`,
+    solution: {
+      python: "def isPalindrome(s):\n    return s == s[::-1]",
+      java: "public class Main {\n    public static boolean isPalindrome(String s) {\n        return s.equals(new StringBuilder(s).reverse().toString());\n    }\n}",
+      javascript: "function isPalindrome(s) {\n    return s === s.split('').reverse().join('');\n}"
+    },
+    mcqChallenge: {
+      question: "Which data structure can be used to check if a word is a palindrome by comparing pops to sequential reads?",
+      options: ["Stack (LIFO)", "Queue (FIFO)", "Max Heap", "Binary Search Tree"],
+      correctIndex: 0,
+      explanation: "A Stack naturally reverses characters when popped, matching the palindrome check."
+    },
+    testCases: [
+      { id: 1, input: "racecar", expectedOutput: "true", isHidden: false },
+      { id: 2, input: "kodex", expectedOutput: "false", isHidden: false },
+      { id: 3, input: "level", expectedOutput: "true", isHidden: true }
+    ]
+  },
+  {
+    id: 203,
+    title: "Find Maximum Element (Rapid Sprint)",
+    description: "Given a comma-separated list of integers, find and return the maximum value.\n\n**Input Format:**\nFirst line: Comma-separated integers.\n\n**Output Format:**\nThe maximum integer value.\n\n**Example 1:**\nInput: 3,11,7,2,99,14\nOutput: 99",
+    difficulty: "EASY",
+    topic: "Arrays / Hashing",
+    expectedTimeComplexity: "O(n)",
+    expectedSpaceComplexity: "O(1)",
+    optimalSolutionConcept: "Iterate through elements maintaining a running max variable.",
+    isRapidSprint: true,
+    pythonTemplate: `import sys
+
+def findMax(nums):
+    # 5-line rapid code:
+    return max(nums)
+
+if __name__ == '__main__':
+    raw = sys.stdin.read().strip()
+    if raw:
+        nums = [int(x) for x in raw.split(',') if x.strip()]
+        print(findMax(nums))`,
+    javaTemplate: `import java.util.*;
+
+public class Main {
+    public static int findMax(int[] nums) {
+        int max = nums[0];
+        for (int n : nums) if (n > max) max = n;
+        return max;
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        if (sc.hasNextLine()) {
+            String[] parts = sc.nextLine().trim().split(",");
+            int[] nums = new int[parts.length];
+            for (int i = 0; i < parts.length; i++) nums[i] = Integer.parseInt(parts[i].trim());
+            System.out.println(findMax(nums));
+        }
+    }
+}`,
+    javascriptTemplate: `const fs = require('fs');
+
+function findMax(nums) {
+    return Math.max(...nums);
+}
+
+const raw = fs.readFileSync(0, 'utf-8').trim();
+if (raw) {
+    const nums = raw.split(',').map(x => parseInt(x.trim())).filter(x => !isNaN(x));
+    console.log(findMax(nums));
+}`,
+    cppTemplate: `#include <iostream>
+#include <sstream>
+#include <algorithm>
+using namespace std;
+
+int main() {
+    string line;
+    if (getline(cin, line)) {
+        stringstream ss(line);
+        string token;
+        int maxVal = -1e9;
+        while (getline(ss, token, ',')) {
+            int val = stoi(token);
+            if (val > maxVal) maxVal = val;
+        }
+        cout << maxVal << endl;
+    }
+    return 0;
+}`,
+    solution: {
+      python: "def findMax(nums):\n    return max(nums)",
+      java: "public class Main {\n    public static int findMax(int[] nums) {\n        int m = nums[0]; for (int n : nums) if (n > m) m = n; return m;\n    }\n}",
+      javascript: "function findMax(nums) {\n    return Math.max(...nums);\n}"
+    },
+    mcqChallenge: {
+      question: "Can an unsorted array of length N be searched for its maximum element in faster than O(N) time?",
+      options: [
+        "No, any comparison algorithm must inspect all N elements at least once.",
+        "Yes, binary search can find it in O(log N).",
+        "Yes, using a hash map in O(1).",
+        "Yes, using interpolation search in O(log log N)."
+      ],
+      correctIndex: 0,
+      explanation: "Without prior ordering or structure, the maximum could reside at any uninspected position, necessitating at least N-1 comparisons (O(N) lower bound)."
+    },
+    testCases: [
+      { id: 1, input: "3,11,7,2,99,14", expectedOutput: "99", isHidden: false },
+      { id: 2, input: "-10,-5,-20,-1", expectedOutput: "-1", isHidden: false },
+      { id: 3, input: "42", expectedOutput: "42", isHidden: true }
+    ]
+  },
+  {
+    id: 204,
+    title: "Array Sum (Rapid Sprint)",
+    description: "Given a comma-separated list of integers, compute the total sum of all elements.\n\n**Input Format:**\nFirst line: Comma-separated integers.\n\n**Output Format:**\nInteger total sum.\n\n**Example 1:**\nInput: 1,2,3,4,5\nOutput: 15",
+    difficulty: "EASY",
+    topic: "Arrays / Hashing",
+    expectedTimeComplexity: "O(n)",
+    expectedSpaceComplexity: "O(1)",
+    optimalSolutionConcept: "Single pass accumulation of array elements.",
+    isRapidSprint: true,
+    pythonTemplate: `import sys
+
+def arraySum(nums):
+    # 5-line rapid code:
+    return sum(nums)
+
+if __name__ == '__main__':
+    raw = sys.stdin.read().strip()
+    if raw:
+        nums = [int(x) for x in raw.split(',') if x.strip()]
+        print(arraySum(nums))`,
+    javaTemplate: `import java.util.*;
+
+public class Main {
+    public static int arraySum(int[] nums) {
+        int sum = 0;
+        for (int n : nums) sum += n;
+        return sum;
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        if (sc.hasNextLine()) {
+            String[] parts = sc.nextLine().trim().split(",");
+            int[] nums = new int[parts.length];
+            for (int i = 0; i < parts.length; i++) nums[i] = Integer.parseInt(parts[i].trim());
+            System.out.println(arraySum(nums));
+        }
+    }
+}`,
+    javascriptTemplate: `const fs = require('fs');
+
+function arraySum(nums) {
+    return nums.reduce((a, b) => a + b, 0);
+}
+
+const raw = fs.readFileSync(0, 'utf-8').trim();
+if (raw) {
+    const nums = raw.split(',').map(x => parseInt(x.trim())).filter(x => !isNaN(x));
+    console.log(arraySum(nums));
+}`,
+    cppTemplate: `#include <iostream>
+#include <sstream>
+using namespace std;
+
+int main() {
+    string line;
+    if (getline(cin, line)) {
+        stringstream ss(line);
+        string token;
+        int sum = 0;
+        while (getline(ss, token, ',')) {
+            sum += stoi(token);
+        }
+        cout << sum << endl;
+    }
+    return 0;
+}`,
+    solution: {
+      python: "def arraySum(nums):\n    return sum(nums)",
+      java: "public class Main {\n    public static int arraySum(int[] nums) {\n        int s = 0; for (int n : nums) s += n; return s;\n    }\n}",
+      javascript: "function arraySum(nums) {\n    return nums.reduce((a, b) => a + b, 0);\n}"
+    },
+    mcqChallenge: {
+      question: "What potential issue must be accounted for when computing the sum of an array of 32-bit integers in C++ or Java?",
+      options: [
+        "Integer 32-bit arithmetic overflow requiring a 64-bit long accumulator",
+        "Stack buffer overflow during loop iteration",
+        "Memory fragmentation",
+        "Cache thrashing"
+      ],
+      correctIndex: 0,
+      explanation: "Summing many large 32-bit integers can exceed 2^31 - 1, causing overflow wrap-around unless stored in a 64-bit type (long in Java / long long in C++)."
+    },
+    testCases: [
+      { id: 1, input: "1,2,3,4,5", expectedOutput: "15", isHidden: false },
+      { id: 2, input: "10,-10,20,-20", expectedOutput: "0", isHidden: false },
+      { id: 3, input: "100,200,300", expectedOutput: "600", isHidden: true }
+    ]
+  },
+  {
+    id: 205,
+    title: "Count Vowels (Rapid Sprint)",
+    description: "Given a string s, count and return the number of vowels ('a', 'e', 'i', 'o', 'u') in the string, case-insensitive.\n\n**Input Format:**\nFirst line: The string s.\n\n**Output Format:**\nInteger vowel count.\n\n**Example 1:**\nInput: kodexis\nOutput: 3",
+    difficulty: "EASY",
+    topic: "Strings",
+    expectedTimeComplexity: "O(n)",
+    expectedSpaceComplexity: "O(1)",
+    optimalSolutionConcept: "Iterate through characters and match against vowel set.",
+    isRapidSprint: true,
+    pythonTemplate: `import sys
+
+def countVowels(s):
+    # 5-line rapid code:
+    vowels = set("aeiouAEIOU")
+    return sum(1 for c in s if c in vowels)
+
+if __name__ == '__main__':
+    print(countVowels(sys.stdin.read().strip()))`,
+    javaTemplate: `import java.util.*;
+
+public class Main {
+    public static int countVowels(String s) {
+        int count = 0;
+        String v = "aeiouAEIOU";
+        for (char c : s.toCharArray()) if (v.indexOf(c) != -1) count++;
+        return count;
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        if (sc.hasNextLine()) {
+            System.out.println(countVowels(sc.nextLine().trim()));
+        }
+    }
+}`,
+    javascriptTemplate: `const fs = require('fs');
+
+function countVowels(s) {
+    const matches = s.match(/[aeiou]/gi);
+    return matches ? matches.length : 0;
+}
+
+const input = fs.readFileSync(0, 'utf-8').trim();
+console.log(countVowels(input));`,
+    cppTemplate: `#include <iostream>
+#include <string>
+using namespace std;
+
+int main() {
+    string s;
+    if (cin >> s) {
+        int c = 0;
+        for (char ch : s) {
+            char lower = tolower(ch);
+            if (lower == 'a' || lower == 'e' || lower == 'i' || lower == 'o' || lower == 'u') c++;
+        }
+        cout << c << endl;
+    }
+    return 0;
+}`,
+    solution: {
+      python: "def countVowels(s):\n    return sum(1 for c in s.lower() if c in 'aeiou')",
+      java: "public class Main {\n    public static int countVowels(String s) {\n        int c = 0; for (char ch : s.toLowerCase().toCharArray()) if (\"aeiou\".indexOf(ch) != -1) c++; return c;\n    }\n}",
+      javascript: "function countVowels(s) {\n    return (s.match(/[aeiou]/gi) || []).length;\n}"
+    },
+    mcqChallenge: {
+      question: "What is the membership check lookup time for a Hash Set containing vowels {'a','e','i','o','u'}?",
+      options: ["O(1) average time", "O(N)", "O(log N)", "O(N^2)"],
+      correctIndex: 0,
+      explanation: "A Hash Set evaluates the hash code of the character to perform constant O(1) membership verification."
+    },
+    testCases: [
+      { id: 1, input: "kodexis", expectedOutput: "3", isHidden: false },
+      { id: 2, input: "xyz", expectedOutput: "0", isHidden: false },
+      { id: 3, input: "education", expectedOutput: "5", isHidden: true }
+    ]
+  }
 ];
 
 /**
  * Retrieve a random question, optionally filtering by difficulty and/or topic.
  */
-export function getRandomQuestion(difficulty?: string, topic?: string): Question {
+export function getRandomQuestion(difficulty?: string, topic?: string, isSprint?: boolean): Question {
+  if (isSprint) {
+    const sprintList = QUESTION_BANK.filter(q => q.isRapidSprint);
+    if (sprintList.length > 0) {
+      return sprintList[Math.floor(Math.random() * sprintList.length)];
+    }
+  }
   let filtered = [...QUESTION_BANK];
   
   if (difficulty && difficulty !== 'ALL') {
@@ -2547,4 +2969,11 @@ export function getQuestionById(id: number | string): Question | undefined {
  */
 export function getAllQuestions(): Question[] {
   return [...QUESTION_BANK];
+}
+
+/**
+ * Retrieve dedicated 5-line rapid sprint questions for 2-minute fast coding
+ */
+export function getRapidSprintQuestions(): Question[] {
+  return QUESTION_BANK.filter(q => q.isRapidSprint);
 }

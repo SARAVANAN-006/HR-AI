@@ -109,7 +109,7 @@ export const Dashboard: React.FC = () => {
   const [syncNotice, setSyncNotice] = useState<string | null>(null);
 
   // Helper to generate personalized deterministic baseline for each candidate (No cloned 0% or all DEVELOPING)
-  const generateCandidateBaseline = (username: string, expLevel: string) => {
+  const generateCandidateBaseline = (username: string, _expLevel?: string) => {
     const cleanUser = username || 'candidate';
     const isAdmin = (user?.role === 'ROLE_ADMIN') || cleanUser.toLowerCase() === 'admin';
 
@@ -153,43 +153,24 @@ export const Dashboard: React.FC = () => {
       return { numericMap, skillMap, strengths, weaknesses, avgScore: 98 };
     }
 
-    let hash = 0;
-    for (let i = 0; i < cleanUser.length; i++) {
-      hash = (hash << 5) - hash + cleanUser.charCodeAt(i);
-      hash |= 0;
-    }
-    const seed = Math.abs(hash % 17);
-    const base = expLevel === 'SENIOR' ? 82 : (expLevel === 'ENTRY' ? 58 : 70);
-
-    topics.forEach((t, i) => {
-      const variance = ((seed * (i + 3)) % 25) - 8;
-      const score = Math.max(38, Math.min(96, base + variance));
-      numericMap[t] = score;
-      skillMap[t] = score >= 88 ? 'EXPERT' : (score >= 74 ? 'STRONG' : (score >= 58 ? 'INTERMEDIATE' : (score >= 40 ? 'DEVELOPING' : 'NOVICE')));
+    // Newly registered candidates start at 0 until they complete assessments
+    topics.forEach((t) => {
+      numericMap[t] = 0;
+      skillMap[t] = 'NOVICE';
     });
 
-    const strengths: string[] = [];
-    Object.entries(numericMap)
-      .filter(([_, sc]) => sc >= 74)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3)
-      .forEach(([t, sc]) => strengths.push(`${t} (${sc}% Mastery)`));
-    if (strengths.length === 0) {
-      strengths.push("Algorithmic Logic Synthesis (72%)", "Data Flow Tracing (70%)");
-    }
-
-    const lowestEntry = Object.entries(numericMap).sort((a, b) => a[1] - b[1])[0];
+    const strengths: string[] = [
+      "No assessments completed yet. Complete a coding challenge or interview to calibrate your score."
+    ];
     const weaknesses: WeaknessAlert[] = [
       {
-        topic: lowestEntry ? lowestEntry[0] : "Dynamic Programming",
-        status: "Focus Area",
-        description: `Live AI telemetry identified ${lowestEntry ? lowestEntry[0] : "Dynamic Programming"} (${lowestEntry ? lowestEntry[1] : 45}%) as candidate's primary growth boundary. Practice recurrence formulation.`
+        topic: "Initial Diagnostic",
+        status: "CALIBRATION_PENDING",
+        description: "Complete your first technical assessment to diagnose algorithmic proficiency and strengths."
       }
     ];
 
-    const avgScore = Math.round(Object.values(numericMap).reduce((a, b) => a + b, 0) / topics.length);
-
-    return { numericMap, skillMap, strengths, weaknesses, avgScore };
+    return { numericMap, skillMap, strengths, weaknesses, avgScore: 0 };
   };
 
   const computeRadar = (d: DashboardData) => {
@@ -205,7 +186,7 @@ export const Dashboard: React.FC = () => {
       ];
       return axes.map((ax) => ({
         subject: ax.label,
-        A: d.numericSkills ? (d.numericSkills[ax.key] || d.readinessScore || 70) : d.readinessScore,
+        A: d.numericSkills && d.numericSkills[ax.key] !== undefined ? d.numericSkills[ax.key] : (d.readinessScore || 0),
         B: 100
       }));
     }
@@ -221,22 +202,22 @@ export const Dashboard: React.FC = () => {
       debugging = d.readinessScore - 10;
       communication = d.readinessScore - 1;
     } else {
-      const score = d.readinessScore || 65;
-      correctness = score + 4;
-      problemSolving = score + 2;
-      complexity = score - 3;
-      codeQuality = score + 1;
-      debugging = score - 5;
-      communication = score + 3;
+      const score = d.readinessScore || 0;
+      correctness = score;
+      problemSolving = score;
+      complexity = score;
+      codeQuality = score;
+      debugging = score;
+      communication = score;
     }
 
     return [
-      { subject: 'Correctness', A: Math.min(100, Math.max(20, correctness)), B: 100 },
-      { subject: 'Problem Solving', A: Math.min(100, Math.max(20, problemSolving)), B: 100 },
-      { subject: 'Complexity', A: Math.min(100, Math.max(20, complexity)), B: 100 },
-      { subject: 'Code Quality', A: Math.min(100, Math.max(20, codeQuality)), B: 100 },
-      { subject: 'Debugging', A: Math.min(100, Math.max(20, debugging)), B: 100 },
-      { subject: 'Communication', A: Math.min(100, Math.max(20, communication)), B: 100 },
+      { subject: 'Correctness', A: Math.min(100, Math.max(0, correctness)), B: 100 },
+      { subject: 'Problem Solving', A: Math.min(100, Math.max(0, problemSolving)), B: 100 },
+      { subject: 'Complexity', A: Math.min(100, Math.max(0, complexity)), B: 100 },
+      { subject: 'Code Quality', A: Math.min(100, Math.max(0, codeQuality)), B: 100 },
+      { subject: 'Debugging', A: Math.min(100, Math.max(0, debugging)), B: 100 },
+      { subject: 'Communication', A: Math.min(100, Math.max(0, communication)), B: 100 },
     ];
   };
 
@@ -1080,10 +1061,10 @@ export const Dashboard: React.FC = () => {
               <CheckCircle2 size={12} className="text-cyan-400" />
             </div>
             <div className="text-lg font-bold text-cyan-300">
-              {data.readinessScore ? Math.min(100, data.readinessScore + 4) : 78}%
+              {data.readinessScore > 0 ? Math.min(100, data.readinessScore + 4) : 0}%
             </div>
             <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
-              <div className="bg-cyan-400 h-full rounded-full" style={{ width: `${Math.min(100, (data.readinessScore || 74) + 4)}%` }} />
+              <div className="bg-cyan-400 h-full rounded-full" style={{ width: `${data.readinessScore > 0 ? Math.min(100, data.readinessScore + 4) : 0}%` }} />
             </div>
           </div>
 
@@ -1093,10 +1074,10 @@ export const Dashboard: React.FC = () => {
               <ShieldAlert size={12} className="text-emerald-400" />
             </div>
             <div className="text-lg font-bold text-emerald-400">
-              {data.readinessScore ? Math.max(30, data.readinessScore - 2) : 72}%
+              {data.readinessScore > 0 ? Math.max(30, data.readinessScore - 2) : 0}%
             </div>
             <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
-              <div className="bg-emerald-400 h-full rounded-full" style={{ width: `${Math.max(30, (data.readinessScore || 74) - 2)}%` }} />
+              <div className="bg-emerald-400 h-full rounded-full" style={{ width: `${data.readinessScore > 0 ? Math.max(30, data.readinessScore - 2) : 0}%` }} />
             </div>
           </div>
 
@@ -1106,10 +1087,10 @@ export const Dashboard: React.FC = () => {
               <Zap size={12} className="text-purple-400" />
             </div>
             <div className="text-lg font-bold text-purple-300">
-              {data.readinessScore ? Math.min(100, data.readinessScore + 3) : 82}%
+              {data.readinessScore > 0 ? Math.min(100, data.readinessScore + 3) : 0}%
             </div>
             <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
-              <div className="bg-purple-400 h-full rounded-full" style={{ width: `${Math.min(100, (data.readinessScore || 74) + 3)}%` }} />
+              <div className="bg-purple-400 h-full rounded-full" style={{ width: `${data.readinessScore > 0 ? Math.min(100, data.readinessScore + 3) : 0}%` }} />
             </div>
           </div>
 
@@ -1119,10 +1100,10 @@ export const Dashboard: React.FC = () => {
               <TrendingUp size={12} className="text-amber-400" />
             </div>
             <div className="text-lg font-bold text-amber-400">
-              {data.readinessScore ? Math.max(25, data.readinessScore - 6) : 68}%
+              {data.readinessScore > 0 ? Math.max(25, data.readinessScore - 6) : 0}%
             </div>
             <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
-              <div className="bg-amber-400 h-full rounded-full" style={{ width: `${Math.max(25, (data.readinessScore || 74) - 6)}%` }} />
+              <div className="bg-amber-400 h-full rounded-full" style={{ width: `${data.readinessScore > 0 ? Math.max(25, data.readinessScore - 6) : 0}%` }} />
             </div>
           </div>
         </div>
@@ -1204,7 +1185,7 @@ export const Dashboard: React.FC = () => {
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
           {Object.entries(data.skills).map(([skillName, level]) => {
-            const numScore = data.numericSkills ? (data.numericSkills[skillName] || 65) : 65;
+            const numScore = data.numericSkills && data.numericSkills[skillName] !== undefined ? data.numericSkills[skillName] : 0;
             return (
               <div
                 key={skillName}

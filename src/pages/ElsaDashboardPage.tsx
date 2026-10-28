@@ -106,7 +106,7 @@ export const ElsaDashboardPage: React.FC = () => {
               Elsa AI Tech Lead Interview Dashboard
             </h1>
             <p className="text-sm text-zinc-400 font-mono max-w-2xl">
-              Dedicated analytics for Elsa conversational oral examinations, WhatsApp-style voice note recordings, audio clarity metrics, and technical autopsy dossiers stored in MongoDB.
+              Dedicated analytics for Elsa conversational oral examinations, real-time speech recognition, conversational audio clarity metrics, and technical autopsy dossiers stored in MongoDB.
             </p>
           </div>
 
@@ -161,7 +161,7 @@ export const ElsaDashboardPage: React.FC = () => {
         <div className="p-5 rounded-xl border border-amber-500/20 bg-amber-500/5">
           <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">Vocal Feature</span>
           <div className="flex items-baseline space-x-2 mt-2">
-            <span className="text-lg font-bold text-amber-400">WhatsApp Voice</span>
+            <span className="text-lg font-bold text-amber-400">Live Speech / Audio</span>
           </div>
           <span className="text-[10px] text-zinc-400 mt-1 block">Record &amp; Elsa Answers</span>
         </div>
