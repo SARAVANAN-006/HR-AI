@@ -1,7 +1,7 @@
 /**
  * KODEXIS Multi-Disciplinary Question Bank
  * Comprehensive repository of 20+ algorithmic & systems challenges across 10 core computer science topics.
- * Provides rich starter templates, complexity constraints, and comprehensive test cases.
+ * Provides clean starter skeletons, solutions guarded behind MCQ challenges, and comprehensive test cases.
  */
 
 export interface TestCase {
@@ -9,6 +9,23 @@ export interface TestCase {
   input: string;
   expectedOutput: string;
   isHidden: boolean;
+}
+
+export interface McqChallenge {
+  question: string;
+  options: string[];
+  correctIndex: number;
+  explanation: string;
+}
+
+export interface QuestionSolution {
+  python: string;
+  java: string;
+  javascript: string;
+  cpp?: string;
+  c?: string;
+  csharp?: string;
+  go?: string;
 }
 
 export interface Question {
@@ -27,6 +44,8 @@ export interface Question {
   cTemplate?: string;
   csharpTemplate?: string;
   goTemplate?: string;
+  solution?: QuestionSolution;
+  mcqChallenge?: McqChallenge;
   testCases: TestCase[];
 }
 
@@ -66,6 +85,77 @@ Output:
 
 def twoSum(nums, target):
     # TODO: Implement single-pass hash map solution
+    pass
+
+if __name__ == '__main__':
+    lines = sys.stdin.read().splitlines()
+    if len(lines) >= 2:
+        target = int(lines[0].strip())
+        nums = [int(x) for x in lines[1].strip().split(',') if x.strip()]
+        print(twoSum(nums, target) or "")`,
+    javaTemplate: `import java.util.*;
+
+public class Main {
+    public static String twoSum(int[] nums, int target) {
+        // TODO: Implement single-pass hash map solution
+        return "";
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        if (!sc.hasNextLine()) return;
+        int target = Integer.parseInt(sc.nextLine().trim());
+        if (!sc.hasNextLine()) return;
+        String[] parts = sc.nextLine().trim().split(",");
+        int[] nums = new int[parts.length];
+        for (int i = 0; i < parts.length; i++) nums[i] = Integer.parseInt(parts[i].trim());
+        System.out.println(twoSum(nums, target));
+    }
+}`,
+    javascriptTemplate: `const fs = require('fs');
+
+function twoSum(nums, target) {
+    // TODO: Implement single-pass hash map solution
+    return "";
+}
+
+const lines = fs.readFileSync(0, 'utf-8').trim().split('\n');
+if (lines.length >= 2) {
+    const target = parseInt(lines[0].trim());
+    const nums = lines[1].trim().split(',').map(Number);
+    console.log(twoSum(nums, target));
+}`,
+    cppTemplate: `#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <unordered_map>
+using namespace std;
+
+string twoSum(vector<int>& nums, int target) {
+    // TODO: Implement single-pass hash map solution
+    return "";
+}
+
+int main() {
+    int target;
+    if (!(cin >> target)) return 0;
+    string line;
+    if (!(cin >> line)) return 0;
+    stringstream ss(line);
+    string token;
+    vector<int> nums;
+    while (getline(ss, token, ',')) {
+        if (!token.empty()) nums.push_back(stoi(token));
+    }
+    cout << twoSum(nums, target) << endl;
+    return 0;
+}`,
+    solution: {
+      python: `import sys
+
+def twoSum(nums, target):
+    # TODO: Implement single-pass hash map solution
     seen = {}
     for i, num in enumerate(nums):
         comp = target - num
@@ -80,7 +170,7 @@ if __name__ == '__main__':
         target = int(lines[0].strip())
         nums = [int(x) for x in lines[1].strip().split(',') if x.strip()]
         print(twoSum(nums, target))`,
-    javaTemplate: `import java.util.*;
+      java: `import java.util.*;
 
 public class Main {
     public static String twoSum(int[] nums, int target) {
@@ -105,7 +195,7 @@ public class Main {
         System.out.println(twoSum(nums, target));
     }
 }`,
-    javascriptTemplate: `const fs = require('fs');
+      javascript: `const fs = require('fs');
 
 function twoSum(nums, target) {
     const map = new Map();
@@ -123,7 +213,7 @@ if (input.length >= 2) {
     const nums = input[1].trim().split(',').map(Number);
     console.log(twoSum(nums, target));
 }`,
-    cppTemplate: `#include <iostream>
+      cpp: `#include <iostream>
 #include <vector>
 #include <unordered_map>
 #include <sstream>
@@ -149,7 +239,19 @@ int main() {
         seen[nums[i]] = i;
     }
     return 0;
-}`,
+}`
+    },
+    mcqChallenge: {
+      question: "What is the optimal average time and space complexity to solve the Two Sum problem using a Hash Map?",
+      options: [
+        "O(n) Time, O(n) Space",
+        "O(n log n) Time, O(1) Space",
+        "O(n^2) Time, O(1) Space",
+        "O(1) Time, O(n) Space"
+],
+      correctIndex: 0,
+      explanation: "A single-pass hash map allows looking up each element's complement (target - nums[i]) in O(1) average time, giving an overall O(n) time complexity and O(n) auxiliary space."
+    },
     testCases: [
       { id: 1, input: "9\n2,7,11,15", expectedOutput: "0,1", isHidden: false },
       { id: 2, input: "6\n3,2,4", expectedOutput: "1,2", isHidden: false },
@@ -190,6 +292,79 @@ Explanation: The subarray [3, 7, 5] has sum 15 and length 3.
 
 def longestSubarray(nums, k):
     # TODO: Implement prefix sums hash map
+    pass
+
+if __name__ == '__main__':
+    lines = sys.stdin.read().splitlines()
+    if len(lines) >= 2:
+        k = int(lines[0].strip())
+        nums = [int(x) for x in lines[1].strip().split(',') if x.strip()]
+        res = longestSubarray(nums, k)
+        print(res if res is not None else 0)`,
+    javaTemplate: `import java.util.*;
+
+public class Main {
+    public static int longestSubarray(int[] nums, int k) {
+        // TODO: Implement prefix sums hash map
+        return 0;
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        if (!sc.hasNextLine()) return;
+        int k = Integer.parseInt(sc.nextLine().trim());
+        if (!sc.hasNextLine()) return;
+        String[] parts = sc.nextLine().trim().split(",");
+        int[] nums = new int[parts.length];
+        for (int i = 0; i < parts.length; i++) nums[i] = Integer.parseInt(parts[i].trim());
+        System.out.println(longestSubarray(nums, k));
+    }
+}`,
+    javascriptTemplate: `const fs = require('fs');
+
+function longestSubarray(nums, k) {
+    // TODO: Implement prefix sums hash map
+    return 0;
+}
+
+const lines = fs.readFileSync(0, 'utf-8').trim().split('\n');
+if (lines.length >= 2) {
+    const k = parseInt(lines[0].trim());
+    const nums = lines[1].trim().split(',').map(Number);
+    console.log(longestSubarray(nums, k));
+}`,
+    cppTemplate: `#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <unordered_map>
+#include <algorithm>
+using namespace std;
+
+int longestSubarray(vector<int>& nums, int k) {
+    // TODO: Implement prefix sums hash map
+    return 0;
+}
+
+int main() {
+    int k;
+    if (!(cin >> k)) return 0;
+    string line;
+    if (!(cin >> line)) return 0;
+    stringstream ss(line);
+    string token;
+    vector<int> nums;
+    while (getline(ss, token, ',')) {
+        if (!token.empty()) nums.push_back(stoi(token));
+    }
+    cout << longestSubarray(nums, k) << endl;
+    return 0;
+}`,
+    solution: {
+      python: `import sys
+
+def longestSubarray(nums, k):
+    # TODO: Implement prefix sums hash map
     prefix_map = {0: -1}
     curr_sum = 0
     max_len = 0
@@ -207,7 +382,7 @@ if __name__ == '__main__':
         k = int(lines[0].strip())
         nums = [int(x) for x in lines[1].strip().split(',') if x.strip()]
         print(longestSubarray(nums, k))`,
-    javaTemplate: `import java.util.*;
+      java: `import java.util.*;
 
 public class Main {
     public static int longestSubarray(int[] nums, int k) {
@@ -236,7 +411,7 @@ public class Main {
         System.out.println(longestSubarray(nums, k));
     }
 }`,
-    javascriptTemplate: `const fs = require('fs');
+      javascript: `const fs = require('fs');
 
 function longestSubarray(nums, k) {
     const map = new Map();
@@ -260,7 +435,7 @@ if (input.length >= 2) {
     const nums = input[1].trim().split(',').map(Number);
     console.log(longestSubarray(nums, k));
 }`,
-    cppTemplate: `#include <iostream>
+      cpp: `#include <iostream>
 #include <vector>
 #include <unordered_map>
 #include <sstream>
@@ -282,7 +457,19 @@ int main() {
     }
     cout << maxLen << endl;
     return 0;
-}`,
+}`
+    },
+    mcqChallenge: {
+      question: "When solving 'Longest Subarray with Sum K' containing negative numbers, why can't a simple two-pointer sliding window be used?",
+      options: [
+        "Two pointers only work on sorted arrays or strictly monotonic prefix sums (non-negative numbers)",
+        "Two pointers cannot handle integers greater than 10^5",
+        "Hash maps are always faster than two pointers",
+        "Sliding window has O(n^2) space complexity"
+],
+      correctIndex: 0,
+      explanation: "When negative numbers exist, expanding the window does not monotonically increase the sum, and shrinking does not monotonically decrease it. Hence, prefix sums with a hash map must be used."
+    },
     testCases: [
       { id: 1, input: "15\n1,2,3,7,5", expectedOutput: "3", isHidden: false },
       { id: 2, input: "3\n-1,2,3", expectedOutput: "1", isHidden: false },
@@ -324,6 +511,60 @@ true
 
 def isValid(s):
     # TODO: Implement stack matching
+    pass
+
+if __name__ == '__main__':
+    line = sys.stdin.read().strip()
+    if line:
+        print("true" if isValid(line) else "false")`,
+    javaTemplate: `import java.util.*;
+
+public class Main {
+    public static boolean isValid(String s) {
+        // TODO: Implement stack matching
+        return false;
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        if (!sc.hasNextLine()) return;
+        String s = sc.nextLine().trim();
+        System.out.println(isValid(s) ? "true" : "false");
+    }
+}`,
+    javascriptTemplate: `const fs = require('fs');
+
+function isValid(s) {
+    // TODO: Implement stack matching
+    return false;
+}
+
+const input = fs.readFileSync(0, 'utf-8').trim();
+if (input) {
+    console.log(isValid(input) ? "true" : "false");
+}`,
+    cppTemplate: `#include <iostream>
+#include <string>
+#include <stack>
+using namespace std;
+
+bool isValid(string s) {
+    // TODO: Implement stack matching
+    return false;
+}
+
+int main() {
+    string s;
+    if (cin >> s) {
+        cout << (isValid(s) ? "true" : "false") << endl;
+    }
+    return 0;
+}`,
+    solution: {
+      python: `import sys
+
+def isValid(s):
+    # TODO: Implement stack matching
     stack = []
     mapping = {')': '(', '}': '{', ']': '['}
     for char in s:
@@ -338,7 +579,7 @@ def isValid(s):
 if __name__ == '__main__':
     s = sys.stdin.read().strip()
     print(isValid(s))`,
-    javaTemplate: `import java.util.*;
+      java: `import java.util.*;
 
 public class Main {
     public static boolean isValid(String s) {
@@ -358,7 +599,7 @@ public class Main {
         System.out.println(isValid(sc.nextLine().trim()) ? "true" : "false");
     }
 }`,
-    javascriptTemplate: `const fs = require('fs');
+      javascript: `const fs = require('fs');
 
 function isValid(s) {
     const stack = [];
@@ -375,7 +616,7 @@ function isValid(s) {
 
 const input = fs.readFileSync(0, 'utf-8').trim();
 console.log(isValid(input));`,
-    cppTemplate: `#include <iostream>
+      cpp: `#include <iostream>
 #include <stack>
 using namespace std;
 
@@ -393,7 +634,19 @@ int main() {
     }
     cout << (st.empty() ? "true" : "false") << endl;
     return 0;
-}`,
+}`
+    },
+    mcqChallenge: {
+      question: "Which data structure follows the Last-In, First-Out (LIFO) property and is ideal for matching nested brackets?",
+      options: [
+        "Queue",
+        "Stack",
+        "Binary Heap",
+        "Disjoint Set (Union-Find)"
+],
+      correctIndex: 1,
+      explanation: "A Stack enforces LIFO order, ensuring that the most recently opened bracket is the first one closed and validated against its corresponding pair."
+    },
     testCases: [
       { id: 1, input: "()[]{}", expectedOutput: "true", isHidden: false },
       { id: 2, input: "(]", expectedOutput: "false", isHidden: false },
@@ -434,6 +687,73 @@ Explanation: Buy on day 2 (price = 1) and sell on day 5 (price = 6), profit = 6 
 
 def maxProfit(prices):
     # TODO: Implement single pass minPrice & maxProfit
+    pass
+
+if __name__ == '__main__':
+    line = sys.stdin.read().strip()
+    if line:
+        prices = [int(x) for x in line.split(',') if x.strip()]
+        res = maxProfit(prices)
+        print(res if res is not None else 0)`,
+    javaTemplate: `import java.util.*;
+
+public class Main {
+    public static int maxProfit(int[] prices) {
+        // TODO: Implement single pass minPrice & maxProfit
+        return 0;
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        if (!sc.hasNextLine()) return;
+        String[] parts = sc.nextLine().trim().split(",");
+        int[] prices = new int[parts.length];
+        for (int i = 0; i < parts.length; i++) prices[i] = Integer.parseInt(parts[i].trim());
+        System.out.println(maxProfit(prices));
+    }
+}`,
+    javascriptTemplate: `const fs = require('fs');
+
+function maxProfit(prices) {
+    // TODO: Implement single pass minPrice & maxProfit
+    return 0;
+}
+
+const input = fs.readFileSync(0, 'utf-8').trim();
+if (input) {
+    const prices = input.split(',').map(Number);
+    console.log(maxProfit(prices));
+}`,
+    cppTemplate: `#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <algorithm>
+using namespace std;
+
+int maxProfit(vector<int>& prices) {
+    // TODO: Implement single pass minPrice & maxProfit
+    return 0;
+}
+
+int main() {
+    string line;
+    if (cin >> line) {
+        stringstream ss(line);
+        string token;
+        vector<int> prices;
+        while (getline(ss, token, ',')) {
+            if (!token.empty()) prices.push_back(stoi(token));
+        }
+        cout << maxProfit(prices) << endl;
+    }
+    return 0;
+}`,
+    solution: {
+      python: `import sys
+
+def maxProfit(prices):
+    # TODO: Implement single pass minPrice & maxProfit
     min_price = float('inf')
     max_profit = 0
     for price in prices:
@@ -448,7 +768,7 @@ if __name__ == '__main__':
     if line:
         prices = [int(x) for x in line.split(',') if x.strip()]
         print(maxProfit(prices))`,
-    javaTemplate: `import java.util.*;
+      java: `import java.util.*;
 
 public class Main {
     public static int maxProfit(int[] prices) {
@@ -469,7 +789,7 @@ public class Main {
         System.out.println(maxProfit(prices));
     }
 }`,
-    javascriptTemplate: `const fs = require('fs');
+      javascript: `const fs = require('fs');
 
 function maxProfit(prices) {
     let minPrice = Infinity;
@@ -486,7 +806,7 @@ if (input) {
     const prices = input.split(',').map(Number);
     console.log(maxProfit(prices));
 }`,
-    cppTemplate: `#include <iostream>
+      cpp: `#include <iostream>
 #include <vector>
 #include <sstream>
 using namespace std;
@@ -502,7 +822,19 @@ int main() {
     }
     cout << maxProf << endl;
     return 0;
-}`,
+}`
+    },
+    mcqChallenge: {
+      question: "In the single-transaction Stock Buy/Sell problem, what variables are sufficient to maintain during a single forward pass?",
+      options: [
+        "Minimum price seen so far and maximum profit achievable",
+        "Maximum price seen so far and average price",
+        "Array of all future price differentials",
+        "Priority queue of previous dips"
+],
+      correctIndex: 0,
+      explanation: "At each step, candidate profit is price[i] - min_price. By tracking min_price and updating max_profit = max(max_profit, price[i] - min_price), we achieve O(n) time and O(1) space."
+    },
     testCases: [
       { id: 1, input: "7,1,5,3,6,4", expectedOutput: "5", isHidden: false },
       { id: 2, input: "7,6,4,3,1", expectedOutput: "0", isHidden: false },
@@ -541,13 +873,64 @@ true
 
 def isPalindrome(s):
     # TODO: Implement two pointer alphanumeric check
+    pass
+
+if __name__ == '__main__':
+    line = sys.stdin.read().strip()
+    print("true" if isPalindrome(line) else "false")`,
+    javaTemplate: `import java.util.*;
+
+public class Main {
+    public static boolean isPalindrome(String s) {
+        // TODO: Implement two pointer alphanumeric check
+        return false;
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        if (!sc.hasNextLine()) return;
+        String s = sc.nextLine();
+        System.out.println(isPalindrome(s) ? "true" : "false");
+    }
+}`,
+    javascriptTemplate: `const fs = require('fs');
+
+function isPalindrome(s) {
+    // TODO: Implement two pointer alphanumeric check
+    return false;
+}
+
+const input = fs.readFileSync(0, 'utf-8').trim();
+console.log(isPalindrome(input) ? "true" : "false");`,
+    cppTemplate: `#include <iostream>
+#include <string>
+#include <cctype>
+using namespace std;
+
+bool isPalindrome(string s) {
+    // TODO: Implement two pointer alphanumeric check
+    return false;
+}
+
+int main() {
+    string line;
+    if (getline(cin, line)) {
+        cout << (isPalindrome(line) ? "true" : "false") << endl;
+    }
+    return 0;
+}`,
+    solution: {
+      python: `import sys
+
+def isPalindrome(s):
+    # TODO: Implement two pointer alphanumeric check
     filtered = [c.lower() for c in s if c.isalnum()]
     return "true" if filtered == filtered[::-1] else "false"
 
 if __name__ == '__main__':
     s = sys.stdin.read().strip()
     print(isPalindrome(s))`,
-    javaTemplate: `import java.util.*;
+      java: `import java.util.*;
 
 public class Main {
     public static boolean isPalindrome(String s) {
@@ -567,7 +950,7 @@ public class Main {
         System.out.println(isPalindrome(sc.nextLine()) ? "true" : "false");
     }
 }`,
-    javascriptTemplate: `const fs = require('fs');
+      javascript: `const fs = require('fs');
 
 function isPalindrome(s) {
     const clean = s.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -576,7 +959,7 @@ function isPalindrome(s) {
 
 const input = fs.readFileSync(0, 'utf-8').trim();
 console.log(isPalindrome(input));`,
-    cppTemplate: `#include <iostream>
+      cpp: `#include <iostream>
 #include <cctype>
 using namespace std;
 
@@ -591,7 +974,19 @@ int main() {
     }
     cout << "true" << endl;
     return 0;
-}`,
+}`
+    },
+    mcqChallenge: {
+      question: "What is the most space-efficient way to verify if a string is a palindrome ignoring non-alphanumeric characters?",
+      options: [
+        "Create a reversed copy of the string in memory",
+        "Two pointers moving inward from both ends, skipping non-alphanumeric characters in-place",
+        "Recursive call stack slicing substrings",
+        "Sorting the characters alphabetically"
+],
+      correctIndex: 1,
+      explanation: "Two pointers inward use O(1) auxiliary memory because no new string or array is allocated, achieving optimal O(n) time and O(1) space."
+    },
     testCases: [
       { id: 1, input: "A man, a plan, a canal: Panama", expectedOutput: "true", isHidden: false },
       { id: 2, input: "race a car", expectedOutput: "false", isHidden: false },
@@ -604,7 +999,7 @@ int main() {
   // 6. Dynamic Programming - Maximum Subarray (Kadane's Algorithm)
   {
     id: 6,
-    title: "Maximum Subarray (Kadane's Algorithm)",
+    title: "Maximum Subarray (Kadane",
     description: `Given an integer array \`nums\`, find the subarray with the largest sum, and return its sum.
 
 **Input Format:**
@@ -625,8 +1020,75 @@ Explanation: The subarray [4,-1,2,1] has the largest sum 6.
     topic: "Dynamic Programming",
     expectedTimeComplexity: "O(n)",
     expectedSpaceComplexity: "O(1)",
-    optimalSolutionConcept: "Kadane's Algorithm: Maintain running max ending at i, resetting to nums[i] if negative.",
+    optimalSolutionConcept: "Kadane",
     pythonTemplate: `import sys
+
+def maxSubArray(nums):
+    # TODO: Implement Kadane's algorithm
+    pass
+
+if __name__ == '__main__':
+    line = sys.stdin.read().strip()
+    if line:
+        nums = [int(x) for x in line.split(',') if x.strip()]
+        res = maxSubArray(nums)
+        print(res if res is not None else 0)`,
+    javaTemplate: `import java.util.*;
+
+public class Main {
+    public static int maxSubArray(int[] nums) {
+        // TODO: Implement Kadane's algorithm
+        return 0;
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        if (!sc.hasNextLine()) return;
+        String[] parts = sc.nextLine().trim().split(",");
+        int[] nums = new int[parts.length];
+        for (int i = 0; i < parts.length; i++) nums[i] = Integer.parseInt(parts[i].trim());
+        System.out.println(maxSubArray(nums));
+    }
+}`,
+    javascriptTemplate: `const fs = require('fs');
+
+function maxSubArray(nums) {
+    // TODO: Implement Kadane's algorithm
+    return 0;
+}
+
+const input = fs.readFileSync(0, 'utf-8').trim();
+if (input) {
+    const nums = input.split(',').map(Number);
+    console.log(maxSubArray(nums));
+} `,
+    cppTemplate: `#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <algorithm>
+using namespace std;
+
+int maxSubArray(vector<int>& nums) {
+    // TODO: Implement Kadane's algorithm
+    return 0;
+}
+
+int main() {
+    string line;
+    if (cin >> line) {
+        stringstream ss(line);
+        string token;
+        vector<int> nums;
+        while (getline(ss, token, ',')) {
+            if (!token.empty()) nums.push_back(stoi(token));
+        }
+        cout << maxSubArray(nums) << endl;
+    }
+    return 0;
+}`,
+    solution: {
+      python: `import sys
 
 def maxSubArray(nums):
     # TODO: Implement Kadane's algorithm
@@ -642,7 +1104,7 @@ if __name__ == '__main__':
     if line:
         nums = [int(x) for x in line.split(',') if x.strip()]
         print(maxSubArray(nums))`,
-    javaTemplate: `import java.util.*;
+      java: `import java.util.*;
 
 public class Main {
     public static int maxSubArray(int[] nums) {
@@ -661,7 +1123,7 @@ public class Main {
         System.out.println(maxSubArray(nums));
     }
 }`,
-    javascriptTemplate: `const fs = require('fs');
+      javascript: `const fs = require('fs');
 
 function maxSubArray(nums) {
     let maxSoFar = nums[0];
@@ -678,7 +1140,7 @@ if (input) {
     const nums = input.split(',').map(Number);
     console.log(maxSubArray(nums));
 }`,
-    cppTemplate: `#include <iostream>
+      cpp: `#include <iostream>
 #include <vector>
 #include <sstream>
 using namespace std;
@@ -694,7 +1156,19 @@ int main() {
     }
     cout << maxSoFar << endl;
     return 0;
-}`,
+}`
+    },
+    mcqChallenge: {
+      question: "In Kadane's Algorithm, what is the core recurrence relation for updating current sum cur_sum with element nums[i]?",
+      options: [
+        "cur_sum = max(nums[i], cur_sum + nums[i])",
+        "cur_sum = cur_sum + nums[i] if nums[i] > 0 else 0",
+        "cur_sum = min(nums[i], cur_sum * nums[i])",
+        "cur_sum = (cur_sum + nums[i]) / 2"
+],
+      correctIndex: 0,
+      explanation: "At each index, we decide whether to add nums[i] to the existing subarray (cur_sum + nums[i]) or start a fresh subarray at nums[i] if the existing sum was negative."
+    },
     testCases: [
       { id: 1, input: "-2,1,-3,4,-1,2,1,-5,4", expectedOutput: "6", isHidden: false },
       { id: 2, input: "1", expectedOutput: "1", isHidden: false },
@@ -735,6 +1209,77 @@ Output:
 
 def search(nums, target):
     # TODO: Implement O(log n) modified binary search
+    pass
+
+if __name__ == '__main__':
+    lines = sys.stdin.read().splitlines()
+    if len(lines) >= 2:
+        target = int(lines[0].strip())
+        nums = [int(x) for x in lines[1].strip().split(',') if x.strip()]
+        res = search(nums, target)
+        print(res if res is not None else -1)`,
+    javaTemplate: `import java.util.*;
+
+public class Main {
+    public static int search(int[] nums, int target) {
+        // TODO: Implement O(log n) modified binary search
+        return -1;
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        if (!sc.hasNextLine()) return;
+        int target = Integer.parseInt(sc.nextLine().trim());
+        if (!sc.hasNextLine()) return;
+        String[] parts = sc.nextLine().trim().split(",");
+        int[] nums = new int[parts.length];
+        for (int i = 0; i < parts.length; i++) nums[i] = Integer.parseInt(parts[i].trim());
+        System.out.println(search(nums, target));
+    }
+}`,
+    javascriptTemplate: `const fs = require('fs');
+
+function search(nums, target) {
+    // TODO: Implement O(log n) modified binary search
+    return -1;
+}
+
+const lines = fs.readFileSync(0, 'utf-8').trim().split('\n');
+if (lines.length >= 2) {
+    const target = parseInt(lines[0].trim());
+    const nums = lines[1].trim().split(',').map(Number);
+    console.log(search(nums, target));
+}`,
+    cppTemplate: `#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+using namespace std;
+
+int search(vector<int>& nums, int target) {
+    // TODO: Implement O(log n) modified binary search
+    return -1;
+}
+
+int main() {
+    int target;
+    if (!(cin >> target)) return 0;
+    string line;
+    if (!(cin >> line)) return 0;
+    stringstream ss(line);
+    string token;
+    vector<int> nums;
+    while (getline(ss, token, ',')) {
+        if (!token.empty()) nums.push_back(stoi(token));
+    }
+    cout << search(nums, target) << endl;
+    return 0;
+}`,
+    solution: {
+      python: `import sys
+
+def search(nums, target):
+    # TODO: Implement O(log n) modified binary search
     l, r = 0, len(nums) - 1
     while l <= r:
         mid = (l + r) // 2
@@ -758,7 +1303,7 @@ if __name__ == '__main__':
         target = int(lines[0].strip())
         nums = [int(x) for x in lines[1].strip().split(',') if x.strip()]
         print(search(nums, target))`,
-    javaTemplate: `import java.util.*;
+      java: `import java.util.*;
 
 public class Main {
     public static int search(int[] nums, int target) {
@@ -786,7 +1331,7 @@ public class Main {
         System.out.println(search(nums, target));
     }
 }`,
-    javascriptTemplate: `const fs = require('fs');
+      javascript: `const fs = require('fs');
 
 function search(nums, target) {
     let l = 0, r = nums.length - 1;
@@ -810,7 +1355,7 @@ if (input.length >= 2) {
     const nums = input[1].trim().split(',').map(Number);
     console.log(search(nums, target));
 }`,
-    cppTemplate: `#include <iostream>
+      cpp: `#include <iostream>
 #include <vector>
 #include <sstream>
 using namespace std;
@@ -834,7 +1379,19 @@ int main() {
     }
     cout << -1 << endl;
     return 0;
-}`,
+}`
+    },
+    mcqChallenge: {
+      question: "In a rotated sorted array without duplicates, what property guarantees that binary search can still run in O(log n) time?",
+      options: [
+        "At least one half of the array (left or right of mid) is always normally sorted",
+        "The middle element is always the pivot point",
+        "Both halves are always reverse-sorted",
+        "The array can be rotated back to sorted in O(1) time"
+],
+      correctIndex: 0,
+      explanation: "Because the array was originally sorted and rotated once, dividing at mid always leaves at least one contiguous half strictly sorted (nums[l] <= nums[mid] or nums[mid] <= nums[r])."
+    },
     testCases: [
       { id: 1, input: "0\n4,5,6,7,0,1,2", expectedOutput: "4", isHidden: false },
       { id: 2, input: "3\n4,5,6,7,0,1,2", expectedOutput: "-1", isHidden: false },
@@ -872,8 +1429,66 @@ Output:
 
 def invertTreeArray(arr):
     # TODO: Invert binary tree in level order representation
+    pass
+
+if __name__ == '__main__':
+    line = sys.stdin.read().strip()
+    if line:
+        arr = [int(x) for x in line.split(',') if x.strip()]
+        print(invertTreeArray(arr) or "")`,
+    javaTemplate: `import java.util.*;
+
+public class Main {
+    public static String invertTreeArray(String[] parts) {
+        // TODO: Invert binary tree in level order representation
+        return "";
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        if (!sc.hasNextLine()) return;
+        String[] parts = sc.nextLine().trim().split(",");
+        System.out.println(invertTreeArray(parts));
+    }
+}`,
+    javascriptTemplate: `const fs = require('fs');
+
+function invertTreeArray(parts) {
+    // TODO: Invert binary tree in level order representation
+    return "";
+}
+
+const input = fs.readFileSync(0, 'utf-8').trim();
+if (input) {
+    const parts = input.split(',');
+    console.log(invertTreeArray(parts));
+}`,
+    cppTemplate: `#include <iostream>
+#include <vector>
+#include <sstream>
+#include <algorithm>
+using namespace std;
+
+string invertTreeArray(vector<string>& v) {
+    // TODO: Invert binary tree in level order representation
+    return "";
+}
+
+int main() {
+    string line;
+    if (!(cin >> line)) return 0;
+    stringstream ss(line);
+    string tok;
+    vector<string> v;
+    while (getline(ss, tok, ',')) v.push_back(tok);
+    cout << invertTreeArray(v) << endl;
+    return 0;
+}`,
+    solution: {
+      python: `import sys
+
+def invertTreeArray(arr):
     if not arr: return ""
-    # Standard complete binary tree swap by depth levels
     n = len(arr)
     result = list(arr)
     level = 0
@@ -891,13 +1506,10 @@ if __name__ == '__main__':
     if line:
         arr = [int(x) for x in line.split(',') if x.strip()]
         print(invertTreeArray(arr))`,
-    javaTemplate: `import java.util.*;
+      java: `import java.util.*;
 
 public class Main {
-    public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
-        if (!sc.hasNextLine()) return;
-        String[] parts = sc.nextLine().trim().split(",");
+    public static String invertTreeArray(String[] parts) {
         int n = parts.length;
         String[] res = new String[n];
         int level = 0, start = 0;
@@ -910,13 +1522,19 @@ public class Main {
             start = end;
             level++;
         }
-        System.out.println(String.join(",", res));
+        return String.join(",", res);
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        if (!sc.hasNextLine()) return;
+        String[] parts = sc.nextLine().trim().split(",");
+        System.out.println(invertTreeArray(parts));
     }
 }`,
-    javascriptTemplate: `const fs = require('fs');
-const input = fs.readFileSync(0, 'utf-8').trim();
-if (input) {
-    const parts = input.split(',');
+      javascript: `const fs = require('fs');
+
+function invertTreeArray(parts) {
     const n = parts.length;
     let res = [];
     let level = 0, start = 0;
@@ -927,18 +1545,21 @@ if (input) {
         start = end;
         level++;
     }
-    console.log(res.join(','));
+    return res.join(',');
+}
+
+const input = fs.readFileSync(0, 'utf-8').trim();
+if (input) {
+    const parts = input.split(',');
+    console.log(invertTreeArray(parts));
 }`,
-    cppTemplate: `#include <iostream>
+      cpp: `#include <iostream>
 #include <vector>
 #include <sstream>
 #include <algorithm>
 using namespace std;
 
-int main() {
-    string line; if (!(cin >> line)) return 0;
-    stringstream ss(line); string tok; vector<string> v;
-    while (getline(ss, tok, ',')) v.push_back(tok);
+string invertTreeArray(vector<string>& v) {
     int n = v.size(), start = 0, level = 0;
     vector<string> res;
     while (start < n) {
@@ -949,12 +1570,32 @@ int main() {
         res.insert(res.end(), sub.begin(), sub.end());
         start = end; level++;
     }
-    for (int i = 0; i < res.size(); i++) {
-        cout << res[i] << (i + 1 == res.size() ? "" : ",");
+    string out = "";
+    for (size_t i = 0; i < res.size(); i++) {
+        out += res[i] + (i + 1 == res.size() ? "" : ",");
     }
-    cout << endl;
+    return out;
+}
+
+int main() {
+    string line; if (!(cin >> line)) return 0;
+    stringstream ss(line); string tok; vector<string> v;
+    while (getline(ss, tok, ',')) v.push_back(tok);
+    cout << invertTreeArray(v) << endl;
     return 0;
-}`,
+}`
+    },
+    mcqChallenge: {
+      question: "What is the maximum recursion depth (call stack space complexity) when inverting an unbalanced, skewed binary tree with N nodes?",
+      options: [
+        "O(1)",
+        "O(log N)",
+        "O(N)",
+        "O(N^2)"
+],
+      correctIndex: 2,
+      explanation: "In the worst case (a degenerate skewed tree like a linked list), the tree height is equal to N, meaning recursion uses O(N) stack frames. For a balanced tree, it is O(log N)."
+    },
     testCases: [
       { id: 1, input: "4,2,7,1,3,6,9", expectedOutput: "4,7,2,9,6,3,1", isHidden: false },
       { id: 2, input: "2,1,3", expectedOutput: "2,3,1", isHidden: false },
@@ -991,28 +1632,38 @@ Output:
 
 def reverseList(arr):
     # TODO: Implement in-place reversal logic
-    return ",".join(map(str, reversed(arr)))
+    pass
 
 if __name__ == '__main__':
     line = sys.stdin.read().strip()
     if line:
         arr = [int(x) for x in line.split(',') if x.strip()]
-        print(reverseList(arr))`,
+        print(reverseList(arr) or "")`,
     javaTemplate: `import java.util.*;
 
 public class Main {
+    public static String reverseList(String[] parts) {
+        // TODO: Implement in-place reversal logic
+        return "";
+    }
+
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
         if (!sc.hasNextLine()) return;
         String[] parts = sc.nextLine().trim().split(",");
-        Collections.reverse(Arrays.asList(parts));
-        System.out.println(String.join(",", parts));
+        System.out.println(reverseList(parts));
     }
 }`,
     javascriptTemplate: `const fs = require('fs');
+
+function reverseList(parts) {
+    // TODO: Implement in-place reversal logic
+    return "";
+}
+
 const input = fs.readFileSync(0, 'utf-8').trim();
 if (input) {
-    console.log(input.split(',').reverse().join(','));
+    console.log(reverseList(input.split(',')));
 }`,
     cppTemplate: `#include <iostream>
 #include <vector>
@@ -1020,15 +1671,89 @@ if (input) {
 #include <algorithm>
 using namespace std;
 
+string reverseList(vector<string>& v) {
+    // TODO: Implement in-place reversal logic
+    return "";
+}
+
+int main() {
+    string line;
+    if (!(cin >> line)) return 0;
+    stringstream ss(line);
+    string tok;
+    vector<string> v;
+    while (getline(ss, tok, ',')) v.push_back(tok);
+    cout << reverseList(v) << endl;
+    return 0;
+}`,
+    solution: {
+      python: `import sys
+
+def reverseList(arr):
+    return ",".join(map(str, reversed(arr)))
+
+if __name__ == '__main__':
+    line = sys.stdin.read().strip()
+    if line:
+        arr = [int(x) for x in line.split(',') if x.strip()]
+        print(reverseList(arr))`,
+      java: `import java.util.*;
+
+public class Main {
+    public static String reverseList(String[] parts) {
+        Collections.reverse(Arrays.asList(parts));
+        return String.join(",", parts);
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        if (!sc.hasNextLine()) return;
+        String[] parts = sc.nextLine().trim().split(",");
+        System.out.println(reverseList(parts));
+    }
+}`,
+      javascript: `const fs = require('fs');
+
+function reverseList(parts) {
+    return parts.reverse().join(',');
+}
+
+const input = fs.readFileSync(0, 'utf-8').trim();
+if (input) {
+    console.log(reverseList(input.split(',')));
+}`,
+      cpp: `#include <iostream>
+#include <vector>
+#include <sstream>
+#include <algorithm>
+using namespace std;
+
+string reverseList(vector<string>& v) {
+    reverse(v.begin(), v.end());
+    string out = "";
+    for (size_t i = 0; i < v.size(); i++) out += v[i] + (i + 1 == v.size() ? "" : ",");
+    return out;
+}
+
 int main() {
     string line; if (!(cin >> line)) return 0;
     stringstream ss(line); string tok; vector<string> v;
     while (getline(ss, tok, ',')) v.push_back(tok);
-    reverse(v.begin(), v.end());
-    for (size_t i = 0; i < v.size(); i++) cout << v[i] << (i + 1 == v.size() ? "" : ",");
-    cout << endl;
+    cout << reverseList(v) << endl;
     return 0;
-}`,
+}`
+    },
+    mcqChallenge: {
+      question: "How many auxiliary pointer variables are required to reverse a singly linked list iteratively in-place?",
+      options: [
+        "3 pointers (prev, curr, next) with O(1) extra space",
+        "An auxiliary array of size N",
+        "A double stack with O(N) space",
+        "0 pointers"
+],
+      correctIndex: 0,
+      explanation: "By keeping track of prev, curr, and temporary next = curr.next, we can reverse curr.next = prev and advance the pointers in O(n) time and O(1) extra space."
+    },
     testCases: [
       { id: 1, input: "1,2,3,4,5", expectedOutput: "5,4,3,2,1", isHidden: false },
       { id: 2, input: "1,2", expectedOutput: "2,1", isHidden: false },
@@ -1066,8 +1791,92 @@ Output:
     topic: "Graphs",
     expectedTimeComplexity: "O(m * n)",
     expectedSpaceComplexity: "O(m * n)",
-    optimalSolutionConcept: "Breadth-First Search (BFS) or Depth-First Search (DFS) grid flood fill sinking visited lands to '0'.",
+    optimalSolutionConcept: "Breadth-First Search (BFS) or Depth-First Search (DFS) grid flood fill sinking visited lands to ",
     pythonTemplate: `import sys
+
+def numIslands(grid):
+    # TODO: Implement DFS or BFS flood fill
+    pass
+
+if __name__ == '__main__':
+    lines = sys.stdin.read().splitlines()
+    grid = [[c for c in line.strip().split(',') if c] for line in lines if line.strip()]
+    res = numIslands(grid)
+    print(res if res is not None else 0)`,
+    javaTemplate: `import java.util.*;
+
+public class Main {
+    public static int numIslands(char[][] grid) {
+        // TODO: Implement DFS or BFS flood fill
+        return 0;
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        List<String> lines = new ArrayList<>();
+        while (sc.hasNextLine()) {
+            String l = sc.nextLine().trim();
+            if (!l.isEmpty()) lines.add(l);
+        }
+        if (lines.isEmpty()) {
+            System.out.println(0);
+            return;
+        }
+        int rows = lines.size();
+        int cols = lines.get(0).split(",").length;
+        char[][] grid = new char[rows][cols];
+        for (int i = 0; i < rows; i++) {
+            String[] p = lines.get(i).split(",");
+            for (int j = 0; j < cols && j < p.length; j++) {
+                grid[i][j] = p[j].trim().charAt(0);
+            }
+        }
+        System.out.println(numIslands(grid));
+    }
+}`,
+    javascriptTemplate: `const fs = require('fs');
+
+function numIslands(grid) {
+    // TODO: Implement DFS or BFS flood fill
+    return 0;
+}
+
+const lines = fs.readFileSync(0, 'utf-8').trim().split('\n').map(l => l.trim()).filter(Boolean);
+if (lines.length > 0) {
+    const grid = lines.map(line => line.split(','));
+    console.log(numIslands(grid));
+} else {
+    console.log(0);
+}`,
+    cppTemplate: `#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+using namespace std;
+
+int numIslands(vector<vector<char>>& grid) {
+    // TODO: Implement DFS or BFS flood fill
+    return 0;
+}
+
+int main() {
+    string line;
+    vector<vector<char>> grid;
+    while (getline(cin, line)) {
+        if (line.empty()) continue;
+        stringstream ss(line);
+        string tok;
+        vector<char> row;
+        while (getline(ss, tok, ',')) {
+            if (!tok.empty()) row.push_back(tok[0]);
+        }
+        if (!row.empty()) grid.push_back(row);
+    }
+    cout << numIslands(grid) << endl;
+    return 0;
+}`,
+    solution: {
+      python: `import sys
 
 def numIslands(grid):
     # TODO: Implement DFS or BFS flood fill
@@ -1093,7 +1902,7 @@ if __name__ == '__main__':
         m = int(lines[0].strip())
         grid = [line.strip().split(',') for line in lines[1:m+1] if line.strip()]
         print(numIslands(grid))`,
-    javaTemplate: `import java.util.*;
+      java: `import java.util.*;
 
 public class Main {
     public static int numIslands(char[][] grid) {
@@ -1130,7 +1939,7 @@ public class Main {
         System.out.println(numIslands(list.toArray(new char[0][0])));
     }
 }`,
-    javascriptTemplate: `const fs = require('fs');
+      javascript: `const fs = require('fs');
 
 function numIslands(grid) {
     let count = 0;
@@ -1157,7 +1966,7 @@ if (lines.length >= 2) {
     const grid = lines.slice(1, m + 1).map(l => l.trim().split(','));
     console.log(numIslands(grid));
 }`,
-    cppTemplate: `#include <iostream>
+      cpp: `#include <iostream>
 #include <vector>
 #include <sstream>
 using namespace std;
@@ -1185,7 +1994,19 @@ int main() {
     }
     cout << count << endl;
     return 0;
-}`,
+}`
+    },
+    mcqChallenge: {
+      question: "When using Breadth-First Search (BFS) or Depth-First Search (DFS) to count connected components on an M x N grid, what is the optimal time complexity?",
+      options: [
+        "O(M * N) because each cell is visited a constant number of times",
+        "O((M * N)^2) due to repeated graph traversals",
+        "O(M + N)",
+        "O(M * log N)"
+],
+      correctIndex: 0,
+      explanation: "Each land cell '1' is visited and marked as visited at most once, resulting in strictly O(M * N) linear time."
+    },
     testCases: [
       { id: 1, input: "4\n1,1,1,1,0\n1,1,0,1,0\n1,1,0,0,0\n0,0,0,0,0", expectedOutput: "1", isHidden: false },
       { id: 2, input: "4\n1,1,0,0,0\n1,1,0,0,0\n0,0,1,0,0\n0,0,0,1,1", expectedOutput: "3", isHidden: false },
@@ -1232,6 +2053,136 @@ Output:
 
 class LRUCache:
     def __init__(self, capacity: int):
+        # TODO: Initialize LRU Cache with capacity
+        self.cap = capacity
+
+    def get(self, key: int) -> int:
+        # TODO: Return value if exists, else -1
+        return -1
+
+    def put(self, key: int, value: int) -> None:
+        # TODO: Update or insert key-value pair. Evict LRU if capacity exceeded.
+        pass
+
+if __name__ == '__main__':
+    lines = sys.stdin.read().splitlines()
+    if len(lines) >= 2:
+        cap = int(lines[0].strip())
+        ops = int(lines[1].strip())
+        lru = LRUCache(cap)
+        res = []
+        for i in range(2, 2 + ops):
+            if i < len(lines):
+                parts = lines[i].strip().split()
+                if parts[0] == 'PUT':
+                    lru.put(int(parts[1]), int(parts[2]))
+                elif parts[0] == 'GET':
+                    res.append(str(lru.get(int(parts[1]))))
+        print(','.join(res))`,
+    javaTemplate: `import java.util.*;
+
+public class Main {
+    static class LRUCache {
+        private int cap;
+        public LRUCache(int capacity) {
+            // TODO: Initialize LRU Cache
+            this.cap = capacity;
+        }
+        public int get(int key) {
+            // TODO: Return value if exists, else -1
+            return -1;
+        }
+        public void put(int key, int value) {
+            // TODO: Update or insert key-value pair. Evict LRU if capacity exceeded.
+        }
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        if (!sc.hasNextLine()) return;
+        int cap = Integer.parseInt(sc.nextLine().trim());
+        if (!sc.hasNextLine()) return;
+        int ops = Integer.parseInt(sc.nextLine().trim());
+        LRUCache cache = new LRUCache(cap);
+        List<String> res = new ArrayList<>();
+        for (int i = 0; i < ops && sc.hasNextLine(); i++) {
+            String[] p = sc.nextLine().trim().split("\s+");
+            if (p[0].equals("PUT")) cache.put(Integer.parseInt(p[1]), Integer.parseInt(p[2]));
+            else if (p[0].equals("GET")) res.add(String.valueOf(cache.get(Integer.parseInt(p[1]))));
+        }
+        System.out.println(String.join(",", res));
+    }
+}`,
+    javascriptTemplate: `const fs = require('fs');
+
+class LRUCache {
+    constructor(cap) {
+        // TODO: Initialize LRU Cache
+        this.cap = cap;
+    }
+    get(key) {
+        // TODO: Return value if exists, else -1
+        return -1;
+    }
+    put(key, val) {
+        // TODO: Update or insert key-value pair. Evict LRU if capacity exceeded.
+    }
+}
+
+const lines = fs.readFileSync(0, 'utf-8').trim().split('\n');
+if (lines.length >= 2) {
+    const cap = parseInt(lines[0].trim());
+    const ops = parseInt(lines[1].trim());
+    const lru = new LRUCache(cap);
+    const res = [];
+    for (let i = 2; i < 2 + ops; i++) {
+        if (i < lines.length) {
+            const parts = lines[i].trim().split(/\s+/);
+            if (parts[0] === 'PUT') lru.put(Number(parts[1]), Number(parts[2]));
+            else if (parts[0] === 'GET') res.push(lru.get(Number(parts[1])));
+        }
+    }
+    console.log(res.join(','));
+}`,
+    cppTemplate: `#include <iostream>
+#include <vector>
+#include <string>
+using namespace std;
+
+class LRUCache {
+    int cap;
+public:
+    LRUCache(int capacity) : cap(capacity) {
+        // TODO: Initialize LRU Cache
+    }
+    int get(int key) {
+        // TODO: Return value if exists, else -1
+        return -1;
+    }
+    void put(int key, int value) {
+        // TODO: Update or insert key-value pair. Evict LRU if capacity exceeded.
+    }
+};
+
+int main() {
+    int cap, ops;
+    if (!(cin >> cap >> ops)) return 0;
+    LRUCache lru(cap);
+    vector<int> res;
+    for (int i = 0; i < ops; i++) {
+        string cmd; cin >> cmd;
+        if (cmd == "PUT") { int k, v; cin >> k >> v; lru.put(k, v); }
+        else if (cmd == "GET") { int k; cin >> k; res.push_back(lru.get(k)); }
+    }
+    for (int i = 0; i < res.size(); i++) cout << res[i] << (i + 1 == res.size() ? "" : ",");
+    cout << endl;
+    return 0;
+}`,
+    solution: {
+      python: `import sys
+
+class LRUCache:
+    def __init__(self, capacity: int):
         self.cap = capacity
         self.cache = {}
         # Utilizing Python's dict insertion ordering as an LRU queue
@@ -1266,7 +2217,7 @@ if __name__ == '__main__':
             elif parts[0] == 'GET':
                 results.append(str(lru.get(int(parts[1]))))
         print(",".join(results))`,
-    javaTemplate: `import java.util.*;
+      java: `import java.util.*;
 
 public class Main {
     static class LRUCache extends LinkedHashMap<Integer, Integer> {
@@ -1302,7 +2253,7 @@ public class Main {
         System.out.println(String.join(",", res));
     }
 }`,
-    javascriptTemplate: `const fs = require('fs');
+      javascript: `const fs = require('fs');
 
 class LRUCache {
     constructor(cap) {
@@ -1339,7 +2290,7 @@ if (lines.length >= 2) {
     }
     console.log(res.join(','));
 }`,
-    cppTemplate: `#include <iostream>
+      cpp: `#include <iostream>
 #include <list>
 #include <unordered_map>
 #include <vector>
@@ -1384,7 +2335,19 @@ int main() {
     for (int i = 0; i < res.size(); i++) cout << res[i] << (i + 1 == res.size() ? "" : ",");
     cout << endl;
     return 0;
-}`,
+}`
+    },
+    mcqChallenge: {
+      question: "Which combination of data structures allows both get and put operations in an LRU Cache to execute in O(1) time?",
+      options: [
+        "Hash Map + Doubly Linked List",
+        "Binary Search Tree + Array",
+        "Priority Queue + Singly Linked List",
+        "Stack + Queue"
+],
+      correctIndex: 0,
+      explanation: "The Hash Map provides O(1) key-to-node lookup, and the Doubly Linked List allows O(1) node removal and insertion at the head/tail to track recency."
+    },
     testCases: [
       { id: 1, input: "2\n4\nPUT 1 1\nPUT 2 2\nGET 1\nGET 2", expectedOutput: "1,2", isHidden: false },
       { id: 2, input: "2\n6\nPUT 1 1\nPUT 2 2\nGET 1\nPUT 3 3\nGET 2\nGET 3", expectedOutput: "1,-1,3", isHidden: false },
@@ -1422,6 +2385,60 @@ Explanation: There are three ways: (1+1+1), (1+2), (2+1).
 
 def climbStairs(n):
     # TODO: Implement Fibonacci DP / recurrence
+    pass
+
+if __name__ == '__main__':
+    line = sys.stdin.read().strip()
+    if line:
+        n = int(line)
+        res = climbStairs(n)
+        print(res if res is not None else 0)`,
+    javaTemplate: `import java.util.*;
+
+public class Main {
+    public static int climbStairs(int n) {
+        // TODO: Implement Fibonacci DP / recurrence
+        return 0;
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        if (!sc.hasNextLine()) return;
+        int n = Integer.parseInt(sc.nextLine().trim());
+        System.out.println(climbStairs(n));
+    }
+}`,
+    javascriptTemplate: `const fs = require('fs');
+
+function climbStairs(n) {
+    // TODO: Implement Fibonacci DP / recurrence
+    return 0;
+}
+
+const input = fs.readFileSync(0, 'utf-8').trim();
+if (input) {
+    console.log(climbStairs(parseInt(input)));
+}`,
+    cppTemplate: `#include <iostream>
+using namespace std;
+
+int climbStairs(int n) {
+    // TODO: Implement Fibonacci DP / recurrence
+    return 0;
+}
+
+int main() {
+    int n;
+    if (cin >> n) {
+        cout << climbStairs(n) << endl;
+    }
+    return 0;
+}`,
+    solution: {
+      python: `import sys
+
+def climbStairs(n):
+    # TODO: Implement Fibonacci DP / recurrence
     if n <= 2: return n
     a, b = 1, 2
     for _ in range(3, n + 1):
@@ -1432,7 +2449,7 @@ if __name__ == '__main__':
     line = sys.stdin.read().strip()
     if line:
         print(climbStairs(int(line)))`,
-    javaTemplate: `import java.util.*;
+      java: `import java.util.*;
 
 public class Main {
     public static int climbStairs(int n) {
@@ -1449,7 +2466,7 @@ public class Main {
         if (sc.hasNextInt()) System.out.println(climbStairs(sc.nextInt()));
     }
 }`,
-    javascriptTemplate: `const fs = require('fs');
+      javascript: `const fs = require('fs');
 const n = parseInt(fs.readFileSync(0, 'utf-8').trim());
 if (!isNaN(n)) {
     if (n <= 2) console.log(n);
@@ -1461,7 +2478,7 @@ if (!isNaN(n)) {
         console.log(b);
     }
 }`,
-    cppTemplate: `#include <iostream>
+      cpp: `#include <iostream>
 using namespace std;
 
 int main() {
@@ -1471,7 +2488,19 @@ int main() {
     for (int i = 3; i <= n; i++) { int c = a + b; a = b; b = c; }
     cout << b << endl;
     return 0;
-}`,
+}`
+    },
+    mcqChallenge: {
+      question: "The Climbing Stairs problem (taking 1 or 2 steps) is mathematically equivalent to which well-known mathematical sequence?",
+      options: [
+        "Fibonacci sequence: f(n) = f(n-1) + f(n-2)",
+        "Catalan numbers: C(n) = (2n)! / ((n+1)! * n!)",
+        "Harmonic progression",
+        "Pascal's Triangle row sums"
+],
+      correctIndex: 0,
+      explanation: "To reach step n, you can come from step n-1 (1 step) or step n-2 (2 steps). Thus, ways(n) = ways(n-1) + ways(n-2), exactly matching the Fibonacci recurrence."
+    },
     testCases: [
       { id: 1, input: "2", expectedOutput: "2", isHidden: false },
       { id: 2, input: "3", expectedOutput: "3", isHidden: false },
@@ -1480,6 +2509,7 @@ int main() {
       { id: 5, input: "10", expectedOutput: "89", isHidden: true }
     ]
   }
+
 ];
 
 /**
