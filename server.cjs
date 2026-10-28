@@ -1481,24 +1481,147 @@ CREATE TABLE IF NOT EXISTS candidate_skill_telemetry (
 
     // --- CREATE NEW SESSION ---
     if (url === '/api/interviews' && method === 'POST') {
-      const newSession = {
-        id: 101,
-        question: {
-          title: 'Two Sum - Hash Map Lookup',
-          topic: 'Arrays / Hashing',
-          expectedTimeComplexity: 'O(n)',
-          expectedSpaceComplexity: 'O(n)'
+      const isSprint = parsedBody.isRapidSprint || parsedBody.durationMinutes === 2 || (parsedBody.interviewMode || '').toLowerCase().includes('sprint');
+      
+      const sprintCatalog = [
+        {
+          id: 201,
+          title: "Reverse String (Rapid Sprint)",
+          description: "Write a function that reverses an input string s.\n\nInput: hello\nOutput: olleh",
+          difficulty: "EASY",
+          topic: "Strings",
+          expectedTimeComplexity: "O(n)",
+          expectedSpaceComplexity: "O(1)",
+          optimalSolutionConcept: "Reverse string using slicing or two pointers.",
+          isRapidSprint: true,
+          pythonTemplate: "import sys\n\ndef reverseString(s):\n    return s[::-1]\n\nif __name__ == '__main__':\n    input_str = sys.stdin.read().strip()\n    print(reverseString(input_str))",
+          javaTemplate: "import java.util.*;\n\npublic class Main {\n    public static String reverseString(String s) {\n        return new StringBuilder(s).reverse().toString();\n    }\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (sc.hasNextLine()) System.out.println(reverseString(sc.nextLine().trim()));\n    }\n}",
+          javascriptTemplate: "const fs = require('fs');\nfunction reverseString(s) { return s.split('').reverse().join(''); }\nconsole.log(reverseString(fs.readFileSync(0, 'utf-8').trim()));",
+          testCases: [
+            { id: 1, input: "hello", expectedOutput: "olleh" },
+            { id: 2, input: "kodexis", expectedOutput: "sixedok" },
+            { id: 3, input: "racecar", expectedOutput: "racecar" }
+          ]
         },
-        language: parsedBody.language || 'JAVA',
-        difficulty: parsedBody.difficulty || 'EASY',
-        state: 'DISCUSSION',
+        {
+          id: 202,
+          title: "Check Palindrome (Rapid Sprint)",
+          description: "Given a string s, return true if it reads the same backward as forward, otherwise return false.\n\nInput: racecar\nOutput: true",
+          difficulty: "EASY",
+          topic: "Strings",
+          expectedTimeComplexity: "O(n)",
+          expectedSpaceComplexity: "O(1)",
+          optimalSolutionConcept: "Compare string to reverse.",
+          isRapidSprint: true,
+          pythonTemplate: "import sys\n\ndef isPalindrome(s):\n    clean = s.lower().strip()\n    return 'true' if clean == clean[::-1] else 'false'\n\nif __name__ == '__main__':\n    print(isPalindrome(sys.stdin.read().strip()))",
+          javaTemplate: "import java.util.*;\n\npublic class Main {\n    public static boolean isPalindrome(String s) {\n        String clean = s.toLowerCase().trim();\n        return clean.equals(new StringBuilder(clean).reverse().toString());\n    }\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (sc.hasNextLine()) System.out.println(isPalindrome(sc.nextLine().trim()));\n    }\n}",
+          javascriptTemplate: "const fs = require('fs');\nfunction isPalindrome(s) { const c = s.toLowerCase().trim(); return c === c.split('').reverse().join(''); }\nconsole.log(isPalindrome(fs.readFileSync(0, 'utf-8').trim()) ? 'true' : 'false');",
+          testCases: [
+            { id: 1, input: "racecar", expectedOutput: "true" },
+            { id: 2, input: "kodex", expectedOutput: "false" },
+            { id: 3, input: "level", expectedOutput: "true" }
+          ]
+        },
+        {
+          id: 203,
+          title: "Find Maximum Element (Rapid Sprint)",
+          description: "Given a comma-separated list of integers, find and return the maximum value.\n\nInput: 3,11,7,2,99,14\nOutput: 99",
+          difficulty: "EASY",
+          topic: "Arrays / Hashing",
+          expectedTimeComplexity: "O(n)",
+          expectedSpaceComplexity: "O(1)",
+          optimalSolutionConcept: "Iterate maintaining running max.",
+          isRapidSprint: true,
+          pythonTemplate: "import sys\n\ndef findMax(nums):\n    return max(nums)\n\nif __name__ == '__main__':\n    raw = sys.stdin.read().strip()\n    if raw:\n        nums = [int(x) for x in raw.split(',') if x.strip()]\n        print(findMax(nums))",
+          javaTemplate: "import java.util.*;\n\npublic class Main {\n    public static int findMax(int[] nums) {\n        int m = nums[0]; for(int n: nums) if(n > m) m = n; return m;\n    }\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (sc.hasNextLine()) {\n            String[] p = sc.nextLine().trim().split(",");\n            int[] nums = new int[p.length];\n            for (int i=0; i<p.length; i++) nums[i] = Integer.parseInt(p[i].trim());\n            System.out.println(findMax(nums));\n        }\n    }\n}",
+          javascriptTemplate: "const fs = require('fs');\nconst raw = fs.readFileSync(0, 'utf-8').trim();\nif (raw) console.log(Math.max(...raw.split(',').map(x => parseInt(x.trim())).filter(x => !isNaN(x))));",
+          testCases: [
+            { id: 1, input: "3,11,7,2,99,14", expectedOutput: "99" },
+            { id: 2, input: "-10,-5,-20,-1", expectedOutput: "-1" },
+            { id: 3, input: "42", expectedOutput: "42" }
+          ]
+        },
+        {
+          id: 204,
+          title: "Array Sum (Rapid Sprint)",
+          description: "Given a comma-separated list of integers, compute the total sum.\n\nInput: 1,2,3,4,5\nOutput: 15",
+          difficulty: "EASY",
+          topic: "Arrays / Hashing",
+          expectedTimeComplexity: "O(n)",
+          expectedSpaceComplexity: "O(1)",
+          optimalSolutionConcept: "Single pass accumulation.",
+          isRapidSprint: true,
+          pythonTemplate: "import sys\n\ndef arraySum(nums):\n    return sum(nums)\n\nif __name__ == '__main__':\n    raw = sys.stdin.read().strip()\n    if raw:\n        nums = [int(x) for x in raw.split(',') if x.strip()]\n        print(arraySum(nums))",
+          javaTemplate: "import java.util.*;\n\npublic class Main {\n    public static int arraySum(int[] nums) {\n        int s = 0; for(int n: nums) s += n; return s;\n    }\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (sc.hasNextLine()) {\n            String[] p = sc.nextLine().trim().split(",");\n            int[] nums = new int[p.length];\n            for (int i=0; i<p.length; i++) nums[i] = Integer.parseInt(p[i].trim());\n            System.out.println(arraySum(nums));\n        }\n    }\n}",
+          javascriptTemplate: "const fs = require('fs');\nconst raw = fs.readFileSync(0, 'utf-8').trim();\nif (raw) console.log(raw.split(',').map(x => parseInt(x.trim())).filter(x => !isNaN(x)).reduce((a, b) => a + b, 0));",
+          testCases: [
+            { id: 1, input: "1,2,3,4,5", expectedOutput: "15" },
+            { id: 2, input: "10,-10,20,-20", expectedOutput: "0" },
+            { id: 3, input: "100,200,300", expectedOutput: "600" }
+          ]
+        },
+        {
+          id: 205,
+          title: "Count Vowels (Rapid Sprint)",
+          description: "Given a string s, count and return number of vowels ('a', 'e', 'i', 'o', 'u').\n\nInput: kodexis\nOutput: 3",
+          difficulty: "EASY",
+          topic: "Strings",
+          expectedTimeComplexity: "O(n)",
+          expectedSpaceComplexity: "O(1)",
+          optimalSolutionConcept: "Count character occurrences matching vowels.",
+          isRapidSprint: true,
+          pythonTemplate: "import sys\n\ndef countVowels(s):\n    vowels = set('aeiouAEIOU')\n    return sum(1 for c in s if c in vowels)\n\nif __name__ == '__main__':\n    print(countVowels(sys.stdin.read().strip()))",
+          javaTemplate: "import java.util.*;\n\npublic class Main {\n    public static int countVowels(String s) {\n        int c = 0; String v = \"aeiouAEIOU\";\n        for (char ch: s.toCharArray()) if (v.indexOf(ch) != -1) c++;\n        return c;\n    }\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (sc.hasNextLine()) System.out.println(countVowels(sc.nextLine().trim()));\n    }\n}",
+          javascriptTemplate: "const fs = require('fs');\nconst input = fs.readFileSync(0, 'utf-8').trim();\nconst matches = input.match(/[aeiou]/gi);\nconsole.log(matches ? matches.length : 0);",
+          testCases: [
+            { id: 1, input: "kodexis", expectedOutput: "3" },
+            { id: 2, input: "xyz", expectedOutput: "0" },
+            { id: 3, input: "education", expectedOutput: "5" }
+          ]
+        }
+      ];
+
+      let q = parsedBody.question;
+      if (!q && parsedBody.questionId) {
+        if (isSprint) {
+          q = sprintCatalog.find(sq => sq.id === Number(parsedBody.questionId));
+        } else {
+          q = (database.questions || []).find(x => x.id === Number(parsedBody.questionId));
+        }
+      }
+      if (!q) {
+        if (isSprint) {
+          q = sprintCatalog[Math.floor(Math.random() * sprintCatalog.length)];
+        } else {
+          q = (database.questions || [])[0] || {
+            id: 1,
+            title: 'Two Sum - Hash Map Lookup',
+            topic: 'Arrays / Hashing',
+            expectedTimeComplexity: 'O(n)',
+            expectedSpaceComplexity: 'O(n)'
+          };
+        }
+      }
+
+      const sessId = Date.now();
+      const newSession = {
+        id: sessId,
+        question: q,
+        language: parsedBody.language || 'PYTHON',
+        difficulty: isSprint ? 'EASY' : (parsedBody.difficulty || 'EASY'),
+        durationMinutes: isSprint ? 2 : (parsedBody.durationMinutes || 45),
+        interviewMode: isSprint ? '2-Min Rapid Sprint' : (parsedBody.interviewMode || 'AI Interview'),
+        state: isSprint ? 'CODING' : 'DISCUSSION',
         startedAt: new Date().toISOString(),
         completedAt: null,
-        lastSubmittedCode: `public class TwoSum {\n    public int[] solveTwoSum(int[] nums, int target) {\n        java.util.Map<Integer, Integer> map = new java.util.HashMap<>();\n        for (int i = 0; i < nums.length; i++) {\n            int complement = target - nums[i];\n            if (map.containsKey(complement)) {\n                return new int[] { map.get(complement), i };\n            }\n            map.put(nums[i], i);\n        }\n        return new int[0];\n    }\n}`,
+        lastSubmittedCode: '',
         telemetryLog: JSON.stringify([
-          { time: new Date().toISOString(), event: 'Session initiated' }
+          { time: new Date().toISOString(), event: `Session initiated: ${q.title}` }
         ])
       };
+      database.sessions = database.sessions || {};
+      database.sessions[String(sessId)] = newSession;
+      if (typeof saveDatabase === 'function') saveDatabase();
       return sendJson(res, 200, newSession);
     }
 
@@ -1510,8 +1633,13 @@ CREATE TABLE IF NOT EXISTS candidate_skill_telemetry (
       const sub = parts[1];
 
       if (sub === 'messages') {
+        const sess = database.sessions && database.sessions[id];
+        const isSessSprint = sess && (sess.durationMinutes === 2 || (sess.interviewMode || '').toLowerCase().includes('sprint'));
+        const welcomeContent = isSessSprint
+          ? `⚡ **2-MIN RAPID SPRINT INITIALIZED!**\n\nProblem: **${sess.question ? sess.question.title : 'Fast Coding Sprint'}**\n\nYou have strictly **120 seconds** to write a concise ~5-line solution and execute against test suites. The code editor is unlocked immediately. Type fast and submit!`
+          : 'Welcome to your KODEXIS Technical Interview! Before writing code in the editor, please explain your initial approach for solving the problem.';
         return sendJson(res, 200, [
-          { id: 1, sender: 'AI_INTERVIEWER', content: 'Welcome to your KODEXIS Technical Interview! Before writing code in the editor, please explain your initial approach for solving the problem.', timestamp: new Date().toISOString() }
+          { id: 1, sender: 'AI_INTERVIEWER', content: welcomeContent, timestamp: new Date().toISOString() }
         ]);
       }
 

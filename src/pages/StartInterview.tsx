@@ -17,27 +17,47 @@ const StartInterview: React.FC = () => {
     setLoading(true);
     const isSprint = duration === 2 || mode.includes("2-Min") || mode.includes("Sprint");
     const randomQ = isSprint ? getRandomQuestion("EASY", undefined, true) : getRandomQuestion(difficulty);
+
+    // Always store session preference immediately so InterviewRoom always knows exact intent
+    sessionStorage.setItem(
+      'kodexis_offline_pref',
+      JSON.stringify({
+        difficulty: isSprint ? "EASY" : difficulty,
+        language,
+        duration: isSprint ? 2 : duration,
+        mode: isSprint ? "2-Min Rapid Sprint" : mode,
+        isRapidSprint: isSprint,
+        questionId: randomQ.id,
+        questionTitle: randomQ.title
+      })
+    );
+
     try {
       const response = await withFastTimeout(
         axios.post('/api/interviews', {
-          difficulty,
+          difficulty: isSprint ? "EASY" : difficulty,
           language,
-          durationMinutes: duration,
-          interviewMode: mode,
+          durationMinutes: isSprint ? 2 : duration,
+          interviewMode: isSprint ? "2-Min Rapid Sprint" : mode,
           isRapidSprint: isSprint,
-          questionId: randomQ.id
+          questionId: randomQ.id,
+          question: randomQ
         }),
         2500,
         'Interview initialization'
       );
       const session = response.data;
-      navigate(`/interview/${session.id}`);
+      if (isSprint && session) {
+        if (!session.question || !session.question.isRapidSprint || (session.question.title || '').toLowerCase().includes('two sum')) {
+          session.question = randomQ;
+          session.durationMinutes = 2;
+          session.interviewMode = '2-Min Rapid Sprint';
+          session.state = 'CODING';
+        }
+      }
+      navigate(`/interview/${session.id || randomQ.id}`);
     } catch {
       console.warn('Backend server offline or high latency. Launching dynamic interview session...');
-      sessionStorage.setItem(
-        'kodexis_offline_pref',
-        JSON.stringify({ difficulty: isSprint ? "EASY" : difficulty, language, duration: isSprint ? 2 : duration, mode, isRapidSprint: isSprint, questionId: randomQ.id })
-      );
       navigate(`/interview/${randomQ.id}`);
     } finally {
       setLoading(false);

@@ -2933,12 +2933,14 @@ int main() {
  */
 export function getRandomQuestion(difficulty?: string, topic?: string, isSprint?: boolean): Question {
   if (isSprint) {
+    // SPRINT MODE: strictly return dedicated rapid sprint micro-challenges (5-line problems)
     const sprintList = QUESTION_BANK.filter(q => q.isRapidSprint);
     if (sprintList.length > 0) {
       return sprintList[Math.floor(Math.random() * sprintList.length)];
     }
   }
-  let filtered = [...QUESTION_BANK];
+  // STANDARD INTERVIEW: strictly filter OUT rapid sprint questions (Two Sum, Valid Parentheses, etc. only)
+  let filtered = QUESTION_BANK.filter(q => !q.isRapidSprint);
   
   if (difficulty && difficulty !== 'ALL') {
     const diffUpper = difficulty.toUpperCase();

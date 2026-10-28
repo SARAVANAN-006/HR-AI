@@ -56,13 +56,42 @@ public class InterviewService {
     @Transactional
     public InterviewSession startSession(User user, Enums.Difficulty requestedDifficulty, Enums.Language language, Integer duration, String mode,
                                          String candidateAlias, String targetRole, String candidateMood, String interviewerPersona) {
+        return startSession(user, requestedDifficulty, language, duration, mode, candidateAlias, targetRole, candidateMood, interviewerPersona, null, null);
+    }
+
+    @Transactional
+    public InterviewSession startSession(User user, Enums.Difficulty requestedDifficulty, Enums.Language language, Integer duration, String mode,
+                                         String candidateAlias, String targetRole, String candidateMood, String interviewerPersona,
+                                         Long questionId, Boolean isRapidSprint) {
         CandidateProfile profile = profileRepository.findByUserId(user.getId()).orElse(null);
         
-        AdaptiveDifficultyEngine.QuestionRecommendation recommendation = difficultyEngine.recommendQuestion(profile, requestedDifficulty);
-        InterviewQuestion question = recommendation.getQuestion();
+        boolean isSprint = Boolean.TRUE.equals(isRapidSprint) || (duration != null && duration == 2) || (mode != null && mode.toLowerCase().contains("sprint"));
+        InterviewQuestion question = null;
+
+        if (isSprint) {
+            if (questionId != null) {
+                question = questionRepository.findById(questionId).orElse(null);
+            }
+            if (question == null) {
+                List<InterviewQuestion> sprintMatches = questionRepository.findAll().stream()
+                        .filter(q -> (q.getTopic() != null && q.getTopic().toLowerCase().contains("sprint")) ||
+                                     (q.getTitle() != null && q.getTitle().toLowerCase().contains("sprint")))
+                        .toList();
+                if (!sprintMatches.isEmpty()) {
+                    question = sprintMatches.get(new Random().nextInt(sprintMatches.size()));
+                }
+            }
+        } else if (questionId != null) {
+            question = questionRepository.findById(questionId).orElse(null);
+        }
+
+        if (question == null) {
+            AdaptiveDifficultyEngine.QuestionRecommendation recommendation = difficultyEngine.recommendQuestion(profile, requestedDifficulty);
+            question = recommendation.getQuestion();
+        }
 
         InterviewSession session = new InterviewSession(user, question, requestedDifficulty, language, duration, mode);
-        boolean isFullSim = mode != null && (mode.toLowerCase().contains("full") || mode.toLowerCase().contains("simulation"));
+        boolean isFullSim = isSprint || (mode != null && (mode.toLowerCase().contains("full") || mode.toLowerCase().contains("simulation")));
         if (isFullSim) {
             session.setState(Enums.SessionState.CODING);
         } else {
@@ -80,7 +109,10 @@ public class InterviewService {
         // Save AI Welcome Message
         String candidateName = session.getCandidateAlias();
         String welcomeText;
-        if (isFullSim) {
+        if (isSprint) {
+            welcomeText = "⚡ **2-MIN RAPID SPRINT INITIALIZED!**\n\nProblem: **" + question.getTitle() + "**\n\n" +
+                    "Your code editor is **UNLOCKED and active from second 0**. You have strictly **120 seconds** to write a concise ~5-line solution and execute test suites. Type fast and submit!";
+        } else if (isFullSim) {
             welcomeText = "Welcome " + candidateName + "! You are in **Full Simulation Mode** (Timed OA Sandbox) for **" + question.getTitle() + "** (" + question.getDifficulty() + ").\n\n" +
                     "Your code editor is **UNLOCKED and active from second 0**. Review the problem requirements on the left, implement your solution in the editor, and run test suites when ready. Use this chat if you need hints on edge cases or complexity analysis.";
         } else if ("Chaotic Code Critic".equals(session.getInterviewerPersona())) {

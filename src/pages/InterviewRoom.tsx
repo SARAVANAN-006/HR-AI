@@ -32,6 +32,7 @@ interface Question {
   expectedTimeComplexity: string;
   expectedSpaceComplexity: string;
   optimalSolutionConcept?: string;
+  isRapidSprint?: boolean;
   javaTemplate: string;
   pythonTemplate: string;
   javascriptTemplate: string;
@@ -1059,10 +1060,15 @@ const InterviewRoom: React.FC = () => {
   useEffect(() => {
     // Fetch Session and Question Details with fast timeout to prevent cold-start latency
     withFastTimeout(axios.get(`/api/interviews/${id}`), 2500, 'Interview session loading')
-      .then((res) => {
+      .then(async (res) => {
         const sData = res.data as Session;
-        if (sData.durationMinutes === 2 || (sData.interviewMode || "").toLowerCase().includes("sprint")) {
+        const isSprint = sData.durationMinutes === 2 || (sData.interviewMode || "").toLowerCase().includes("sprint");
+        if (isSprint) {
           sData.state = "CODING";
+          // If backend returned a standard question (like Two Sum), strictly replace with a dedicated sprint challenge!
+          if (!sData.question || !sData.question.isRapidSprint || (sData.question.title || "").toLowerCase().includes("two sum")) {
+            sData.question = getRandomQuestion("EASY", undefined, true);
+          }
         }
         setSession(sData);
         setLanguage(sData.language);
@@ -1091,19 +1097,45 @@ const InterviewRoom: React.FC = () => {
           }
         }
 
-        // Load Chat logs from local storage or backend
-        try {
-          const localChat = localStorage.getItem(`interview-messages-${id}`);
-          if (localChat) {
-            const parsed = JSON.parse(localChat);
-            if (Array.isArray(parsed) && parsed.length > 0) setMessages(parsed);
+        if (isSprint) {
+          setMessages([
+            {
+              id: 1,
+              sender: 'AI',
+              content: `⚡ **2-MIN RAPID SPRINT INITIALIZED!**\n\nProblem: **${sData.question.title}**\n\nYou have strictly **120 seconds** to write a concise ~5-line solution and execute against test suites. The code editor is unlocked immediately. Type fast and submit!`,
+              timestamp: new Date().toISOString()
+            }
+          ]);
+        } else {
+          // Load Chat logs from local storage or backend
+          let localChatLoaded = false;
+          try {
+            const localChat = localStorage.getItem(`interview-messages-${id}`);
+            if (localChat) {
+              const parsed = JSON.parse(localChat);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                setMessages(parsed);
+                localChatLoaded = true;
+              }
+            }
+          } catch {}
+          try {
+            const msgRes = await withFastTimeout(axios.get(`/api/interviews/${id}/messages`), 1500, 'Chat messages loading');
+            if (msgRes && msgRes.data && msgRes.data.length > 0) {
+              setMessages(prev => prev.length > 1 ? prev : msgRes.data);
+            }
+          } catch {
+            if (!localChatLoaded) {
+              setMessages([
+                {
+                  id: 1,
+                  sender: 'AI',
+                  content: `Welcome to your KODEXIS Technical Interview for **${sData.question.title}**!\n\nI am your AI Interviewer. Please explain your approach and Big-O runtime before writing code.`,
+                  timestamp: new Date().toISOString()
+                }
+              ]);
+            }
           }
-        } catch {}
-        return withFastTimeout(axios.get(`/api/interviews/${id}/messages`), 1500, 'Chat messages loading');
-      })
-      .then((res) => {
-        if (res && res.data && res.data.length > 0) {
-          setMessages(prev => prev.length > 1 ? prev : res.data);
         }
       })
       .catch((err) => {
@@ -1138,13 +1170,19 @@ const InterviewRoom: React.FC = () => {
           if (qFromId) chosenQuestion = qFromId as unknown as Question;
         }
 
-        // If still null, pick a random question based on preferred difficulty
-        if (!chosenQuestion) {
-          chosenQuestion = getRandomQuestion(prefDifficulty) as unknown as Question;
-        }
-
         const isSprint = (prefMode || '').toLowerCase().includes('sprint') || prefDuration === 2;
         const isSim = isSprint || (prefMode || '').toLowerCase().includes('simulation') || (prefMode || '').toLowerCase().includes('full');
+
+        // Strictly guarantee dedicated sprint questions for sprint, and standard questions for standard interview
+        if (isSprint) {
+          if (!chosenQuestion || !chosenQuestion.isRapidSprint || (chosenQuestion.title || '').toLowerCase().includes('two sum')) {
+            chosenQuestion = getRandomQuestion("EASY", undefined, true) as unknown as Question;
+          }
+        } else {
+          if (!chosenQuestion || chosenQuestion.isRapidSprint) {
+            chosenQuestion = getRandomQuestion(prefDifficulty) as unknown as Question;
+          }
+        }
 
         const offlineSession: Session = {
           id: chosenQuestion.id,

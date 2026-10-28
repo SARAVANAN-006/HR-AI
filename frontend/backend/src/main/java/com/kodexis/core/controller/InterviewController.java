@@ -51,6 +51,8 @@ public class InterviewController {
         public String targetRole;
         public String candidateMood;
         public String interviewerPersona;
+        public Long questionId;
+        public Boolean isRapidSprint;
     }
 
     public static class MessageRequest {
@@ -145,7 +147,9 @@ public class InterviewController {
                 request.candidateAlias,
                 request.targetRole,
                 request.candidateMood,
-                request.interviewerPersona
+                request.interviewerPersona,
+                request.questionId,
+                request.isRapidSprint
         );
         return ResponseEntity.ok(session);
     }
